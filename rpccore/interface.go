@@ -20,5 +20,5 @@ type Node interface {
 }
 
 type Network interface {
-	NewNode(addr Address) Node
+	NewNode(addr Address) (*Node, error)
 }
