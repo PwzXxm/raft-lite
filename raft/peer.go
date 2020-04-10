@@ -25,16 +25,25 @@ type Peer struct {
 	matchIndex map[int]int
 
 	id       int
-	peersIds []int
+	peersIds map[int]int
 	dead     bool
 }
 
+func NewPeer(nodeID int, otherNodes []int) *Peer {
+    p := new(Peer)
+
+    // initialisation
+
+    return p
+}
+
 // start fire up a new peer in the network
-func (p *Peer) start(id int) {
+// may start after shutdown
+func (p *Peer) Start(id int) {
 }
 
 // shutDown stop this peer from running
-func (p *Peer) shutDown() {
+func (p *Peer) ShutDown() {
 }
 
 func (p *Peer) startElection() {
