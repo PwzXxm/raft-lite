@@ -1,27 +1,33 @@
 package simulation
 
 import (
-	"github.com/PwzXxm/raft-lite/raft"
+	"log"
+
+	"github.com/PwzXxm/raft-lite/rpccore"
 )
 
 type local struct {
-    n int
-    peers map[int]*raft.Peer
+	n       int
+	peers   map[rpccore.NodeID]*rpccore.Node
+	network rpccore.Network
 
-    // TODO: add rpc network
-    // rpc network may simulate long delays and unreliable communications
-    // add a random waiting time?
+	// TODO: add rpc network
+	// rpc network may simulate long delays and unreliable communications
+	// add a random waiting time?
 }
 
 func RunLocally(n int) *local {
-    rf := new(local)
-    rf.n = n
+	rf := new(local)
 
-    // fire up individual peer
+	// initialisation
+	rf.n = n
 
-    // connect them to the network
+	// fire up individual peer
 
-    return rf
+	// connect them to the network
+
+	log.Println("Start simulation locally ...")
+	return rf
 }
 
 func (rf *local) Stop() {

@@ -1,5 +1,7 @@
 package raft
 
+import "github.com/PwzXxm/raft-lite/rpccore"
+
 type PeerState int
 
 const (
@@ -25,11 +27,12 @@ type Peer struct {
 	matchIndex map[int]int
 
 	id       int
-	peersIds map[int]int
+	peersIds []rpccore.NodeID
+	node     *rpccore.Node
 	dead     bool
 }
 
-func NewPeer(nodeID int, otherNodes []int) *Peer {
+func NewPeer(node *rpccore.Node, peers []rpccore.NodeID) *Peer {
     p := new(Peer)
 
     // initialisation
