@@ -3,6 +3,7 @@ package rpccore
 import (
 	"fmt"
 	"log"
+	"sync"
 
 	"github.com/pkg/errors"
 )
@@ -28,7 +29,10 @@ type ChanNode struct {
 }
 
 func (node *ChanNode) SendRawRequest(target NodeID, method string, data []byte) ([]byte, error) {
-	if reqChan, ok := node.network.nodeChannelMap[target]; ok {
+	node.network.lock.RLock()
+	reqChan, ok := node.network.nodeChannelMap[target]
+	node.network.lock.RUnlock()
+	if ok {
 		resChan := make(chan *resMsg)
 		req := reqMsg{source: node.id, method: method, data: data, resChan: resChan}
 		reqChan <- &req
@@ -46,16 +50,20 @@ func (node *ChanNode) RegisterRawRequestCallback(callback Callback) {
 }
 
 type ChanNetwork struct {
+	lock           sync.RWMutex
 	nodeChannelMap map[NodeID](chan *reqMsg)
 }
 
 func NewChanNetwork() *ChanNetwork {
 	n := new(ChanNetwork)
+	n.lock = sync.RWMutex{}
 	n.nodeChannelMap = make(map[NodeID](chan *reqMsg))
 	return n
 }
 
 func (n *ChanNetwork) NewNode(addr ChanAddress) (*ChanNode, error) {
+	n.lock.Lock()
+	defer n.lock.Unlock()
 	if _, ok := n.nodeChannelMap[addr.NodeID()]; ok {
 		err := errors.New(fmt.Sprintf(
 			"Node with same ID already exists. NodeID: %v.", addr.NodeID()))
