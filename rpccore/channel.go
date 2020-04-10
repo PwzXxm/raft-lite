@@ -28,6 +28,10 @@ type ChanNode struct {
 	callback Callback
 }
 
+func (node *ChanNode) NodeID() NodeID {
+	return node.id
+}
+
 func (node *ChanNode) SendRawRequest(target NodeID, method string, data []byte) ([]byte, error) {
 	node.network.lock.RLock()
 	reqChan, ok := node.network.nodeChannelMap[target]

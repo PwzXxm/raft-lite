@@ -15,6 +15,7 @@ type Address interface {
 }
 
 type Node interface {
+	NodeID() NodeID
 	SendRawRequest(target NodeID, method string, data []byte) ([]byte, error)
 	RegisterRawRequestCallback(callback Callback)
 }
