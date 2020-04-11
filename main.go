@@ -4,9 +4,9 @@ import (
 	"github.com/PwzXxm/raft-lite/simulation"
 )
 
-func main()  {
-    size := 5
+func main() {
+	size := 5
 
-    rf := simulation.RunLocally(size)
-    defer rf.Stop()
+	rf := simulation.RunLocally(size)
+	defer rf.Stop()
 }

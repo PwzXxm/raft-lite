@@ -33,11 +33,11 @@ type Peer struct {
 }
 
 func NewPeer(node *rpccore.Node, peers []rpccore.NodeID) *Peer {
-    p := new(Peer)
+	p := new(Peer)
 
-    // initialisation
+	// initialisation
 
-    return p
+	return p
 }
 
 // start fire up a new peer in the network
@@ -57,5 +57,5 @@ func (p *Peer) runTimer() {
 }
 
 func (p *Peer) sendHeartBeats() {
-    // send heartbeats to all peers
+	// send heartbeats to all peers
 }
