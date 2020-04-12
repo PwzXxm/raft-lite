@@ -6,5 +6,5 @@ func TestPass(t *testing.T) {
 }
 
 func TestFail(t *testing.T) {
-    t.Errorf("Failed")
+	t.Errorf("Failed")
 }
