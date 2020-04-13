@@ -28,14 +28,16 @@ type Peer struct {
 
 	id       int
 	peersIds []rpccore.NodeID
-	node     *rpccore.Node
+	node     rpccore.Node
 	dead     bool
 }
 
-func NewPeer(node *rpccore.Node, peers []rpccore.NodeID) *Peer {
+func NewPeer(node rpccore.Node, peers []rpccore.NodeID) *Peer {
 	p := new(Peer)
 
 	// initialisation
+	p.node = node
+	node.RegisterRawRequestCallback(p.handleRpcCallAndLogError)
 
 	return p
 }
