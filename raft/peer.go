@@ -1,6 +1,9 @@
 package raft
 
-import "github.com/PwzXxm/raft-lite/rpccore"
+import (
+	"github.com/PwzXxm/raft-lite/rpccore"
+	"github.com/sirupsen/logrus"
+)
 
 type PeerState int
 
@@ -30,6 +33,8 @@ type Peer struct {
 	peersIds []rpccore.NodeID
 	node     rpccore.Node
 	dead     bool
+
+	logger *logrus.Entry
 }
 
 func NewPeer(node rpccore.Node, peers []rpccore.NodeID) *Peer {

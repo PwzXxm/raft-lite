@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
-	"log"
 
 	"github.com/PwzXxm/raft-lite/rpccore"
 	"github.com/pkg/errors"
@@ -61,8 +60,7 @@ func (p *Peer) appendEntries(target rpccore.NodeID, arg appendEntriesReq) *appen
 func (p *Peer) callRpcAndLogError(target rpccore.NodeID, method string, req, res interface{}) error {
 	err := p.callRpc(target, method, req, res)
 	if err != nil {
-		// TODO: we need better logging to group messages by peers.
-		log.Printf("RPC call failed. \n target: %v, method: %v, err: %+v",
+		p.logger.Warnf("RPC call failed. \n target: %v, method: %v, err: %+v",
 			target, method, err)
 	}
 	return err
@@ -89,7 +87,7 @@ func (p *Peer) callRpc(target rpccore.NodeID, method string, req, res interface{
 func (p *Peer) handleRpcCallAndLogError(source rpccore.NodeID, method string, data []byte) ([]byte, error) {
 	res, err := p.handleRpcCall(source, method, data)
 	if err != nil {
-		log.Printf("Handle RPC call failed. \n source: %v, method: %v, error: %+v",
+		p.logger.Warning("Handle RPC call failed. \n source: %v, method: %v, error: %+v",
 			source, method, err)
 	}
 	return res, err
