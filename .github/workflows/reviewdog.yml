@@ -1,5 +1,7 @@
 name: reviewdog
-on: [pull_request]
+on:
+  push:
+    branches: [ pwzxxm/ci ]
 jobs:
   golangci-lint:
     name: runner / golangci-lint
