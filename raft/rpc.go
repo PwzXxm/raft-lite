@@ -17,6 +17,7 @@ const (
 type appendEntriesReq struct {
 	Term         int
 	LeaderId     int
+	PrevLogIndex int
 	PrevLogTerm  int
 	LeaderCommit int
 	Entries      []LogEntry
