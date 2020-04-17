@@ -87,7 +87,7 @@ func (p *Peer) callRpc(target rpccore.NodeID, method string, req, res interface{
 func (p *Peer) handleRpcCallAndLogError(source rpccore.NodeID, method string, data []byte) ([]byte, error) {
 	res, err := p.handleRpcCall(source, method, data)
 	if err != nil {
-		p.logger.Warning("Handle RPC call failed. \n source: %v, method: %v, error: %+v",
+		p.logger.Warningf("Handle RPC call failed. \n source: %v, method: %v, error: %+v",
 			source, method, err)
 	}
 	return res, err

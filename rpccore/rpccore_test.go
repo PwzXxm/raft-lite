@@ -51,8 +51,7 @@ func TestCommunication(t *testing.T) {
 	nodeC, _ := network.NewNode(addrC)
 
 	nodeB.RegisterRawRequestCallback(func(source NodeID, method string, data []byte) ([]byte, error) {
-		str := string(data[:])
-		if str == "Test: A -> B" {
+		if string(data) == "Test: A -> B" {
 			return []byte(string(source)), nil
 		} else {
 			return []byte(string(source)), errors.New("Incorrect data")
