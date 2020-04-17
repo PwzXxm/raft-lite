@@ -29,13 +29,13 @@ func TestNewNode(t *testing.T) {
 
 	_, err := network.NewNode(addrA)
 	if err != nil {
-		t.Errorf("Node A should have no error.\n")
+		t.Errorf("Node A should have no error")
 	}
 
 	_, err = network.NewNode(addrB)
 
 	if err == nil {
-		t.Errorf("Node B should have same ID with A.\n")
+		t.Errorf("Node B should have same ID with A")
 	}
 }
 
