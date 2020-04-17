@@ -1,33 +1,96 @@
 package simulation
 
 import (
-	"log"
+	"os"
+	"strconv"
 
+	"github.com/PwzXxm/raft-lite/raft"
 	"github.com/PwzXxm/raft-lite/rpccore"
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 )
 
 type local struct {
-	n       int
-	peers   map[rpccore.NodeID]*rpccore.Node
-	network rpccore.Network
+	n         int
+	network   *rpccore.ChanNetwork
+	rpcPeers  map[rpccore.NodeID]*rpccore.ChanNode
+	raftPeers map[rpccore.NodeID]*raft.Peer
+	loggers   map[rpccore.NodeID]*logrus.Logger
 
 	// TODO: add rpc network
 	// rpc network may simulate long delays and unreliable communications
 	// add a random waiting time?
 }
 
-func RunLocally(n int) *local {
-	rf := new(local)
+var log *logrus.Logger
 
-	// initialisation
-	rf.n = n
+func init() {
+	log = logrus.New()
+	log.Out = os.Stdout
+}
+
+func RunLocally(n int) *local {
+	rf, err := new_local(n)
+	if err != nil {
+		log.Panicln(err)
+	}
 
 	// fire up individual peer
 
 	// connect them to the network
 
-	log.Println("Start simulation locally ...")
+	log.Info("Start simulation locally ...")
 	return rf
+}
+
+func new_local(n int) (*local, error) {
+	if n <= 0 {
+		err := errors.Errorf("The number of peers should be positive, but got %v", n)
+		return nil, err
+	}
+
+	rf := new(local)
+	rf.n = n
+	rf.network = rpccore.NewChanNetwork()
+
+	// create rpc nodes
+	for i := 0; i < n; i++ {
+		addr := rpccore.NewChanAddress(strconv.Itoa(i))
+		node, err := rf.network.NewNode(*addr)
+		if err != nil {
+			errors.Errorf("Failed to allocate a new node with node id %v", node.NodeID)
+			return nil, err
+		}
+		rf.rpcPeers[node.NodeID()] = node
+
+		logger := logrus.New()
+		logger.Out = os.Stdout
+		rf.loggers[node.NodeID()] = logger
+	}
+
+	// gather nodeIDs and a map (nodeID -> idex in nodeIDs slice)
+	nodeIDs := make([]rpccore.NodeID, n)
+	idxMap := make(map[rpccore.NodeID]int)
+	var i int = 0
+	for k := range rf.rpcPeers {
+		nodeIDs[i] = k
+		idxMap[k] = i
+		i++
+	}
+
+	// create raft nodes
+	for id, node := range rf.rpcPeers {
+		// move current nodeID to the last of the nodeIDs slice
+		i, j := idxMap[id], n-1
+		nodeIDs[i], nodeIDs[j] = nodeIDs[j], nodeIDs[i]
+		idxMap[nodeIDs[i]] = i
+		idxMap[id] = j
+
+		// TODO: implement NewPeer func
+		rf.raftPeers[id] = raft.NewPeer(node, nodeIDs[:n-1])
+	}
+
+	return rf, nil
 }
 
 func (rf *local) Stop() {

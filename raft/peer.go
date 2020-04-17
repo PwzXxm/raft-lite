@@ -26,15 +26,13 @@ type Peer struct {
 	commitIndex int
 	lastApplied int
 
-	nextIndex  map[int]int
-	matchIndex map[int]int
+	nextIndex  map[rpccore.NodeID]int
+	matchIndex map[rpccore.NodeID]int
 
-	id       int
-	peersIds []rpccore.NodeID
-	node     rpccore.Node
-	dead     bool
-
-	logger *logrus.Entry
+	rpcPeersIds []rpccore.NodeID
+	node        rpccore.Node
+	dead        bool
+	logger      *logrus.Entry
 }
 
 func NewPeer(node rpccore.Node, peers []rpccore.NodeID) *Peer {
@@ -47,12 +45,12 @@ func NewPeer(node rpccore.Node, peers []rpccore.NodeID) *Peer {
 	return p
 }
 
-// start fire up a new peer in the network
+// Start fire up this peer
 // may start after shutdown
-func (p *Peer) Start(id int) {
+func (p *Peer) Start() {
 }
 
-// shutDown stop this peer from running
+// ShutDown stop this peer from running
 func (p *Peer) ShutDown() {
 }
 
