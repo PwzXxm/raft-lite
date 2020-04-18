@@ -62,7 +62,7 @@ func new_local(n int) (*local, error) {
 		addr := rpccore.NewChanAddress(strconv.Itoa(i))
 		node, err := rf.network.NewNode(addr)
 		if err != nil {
-			errors.Errorf("Failed to allocate a new node with node id %v", node.NodeID)
+			errors.Errorf("Failed to allocate a new node with node id %v", node.NodeID())
 			return nil, err
 		}
 		rf.rpcPeers[node.NodeID()] = node
