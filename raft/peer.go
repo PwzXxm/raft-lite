@@ -20,12 +20,13 @@ type LogEntry struct {
 
 type Peer struct {
 	currentTerm int
-	votedFor    int
+	votedFor    *rpccore.NodeID
 	log         []LogEntry
 
 	commitIndex int
 	lastApplied int
 
+	// leader only
 	nextIndex  map[rpccore.NodeID]int
 	matchIndex map[rpccore.NodeID]int
 
@@ -35,18 +36,32 @@ type Peer struct {
 	logger      *logrus.Entry
 }
 
-func NewPeer(node rpccore.Node, peers []rpccore.NodeID) *Peer {
+func NewPeer(node rpccore.Node, peers []rpccore.NodeID, logger *logrus.Entry) *Peer {
 	p := new(Peer)
 
 	// initialisation
+	// initialise leader only fields (nextIndex, matchIndex) when becoming leader
+	p.currentTerm = 0
+	p.votedFor = nil
+	p.log = make([]LogEntry, 0)
+
+	p.commitIndex = 0
+	p.lastApplied = 0
+
+	p.rpcPeersIds = make([]rpccore.NodeID, len(peers))
+	copy(p.rpcPeersIds, peers)
+
 	p.node = node
 	node.RegisterRawRequestCallback(p.handleRpcCallAndLogError)
+
+	p.dead = false
+	p.logger = logger
 
 	return p
 }
 
 // Start fire up this peer
-// may start after shutdown
+// TODO: handle starting after shutdown
 func (p *Peer) Start() {
 }
 

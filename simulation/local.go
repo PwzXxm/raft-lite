@@ -91,7 +91,9 @@ func new_local(n int) (*local, error) {
 		idxMap[id] = j
 
 		// TODO: implement NewPeer func
-		rf.raftPeers[id] = raft.NewPeer(node, nodeIDs[:n-1])
+		rf.raftPeers[id] = raft.NewPeer(node, nodeIDs[:n-1], rf.loggers[id].WithFields(logrus.Fields{
+			"nodeID": node.NodeID(),
+		}))
 	}
 
 	return rf, nil
