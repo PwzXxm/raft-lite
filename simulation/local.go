@@ -56,7 +56,7 @@ func new_local(n int) (*local, error) {
 	// create rpc nodes
 	for i := 0; i < n; i++ {
 		addr := rpccore.NewChanAddress(strconv.Itoa(i))
-		node, err := rf.network.NewNode(*addr)
+		node, err := rf.network.NewNode(addr)
 		if err != nil {
 			errors.Errorf("Failed to allocate a new node with node id %v", node.NodeID)
 			return nil, err
