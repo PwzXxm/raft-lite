@@ -17,7 +17,7 @@ func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
 	}
 	p.log = append(p.log[0:PrevLogIndex+newLogIndex+1], req.Entries[newLogIndex:]...)
 	p.logger.Infof("Delete and append new logs from index %v \n", PrevLogIndex+newLogIndex+1)
-	// how to set peer's current term?
+	// consistency check ensure that req.Term >= p.currentTerm
 	p.currentTerm = req.Term
 	if req.LeaderCommit > p.commitIndex {
 		p.commitIndex = utils.Min(req.LeaderCommit, req.Entries[len(req.Entries)-1].term)
