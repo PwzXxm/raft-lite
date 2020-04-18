@@ -1,6 +1,8 @@
 package raft
 
 import (
+	"sync"
+
 	"github.com/PwzXxm/raft-lite/rpccore"
 	"github.com/sirupsen/logrus"
 )
@@ -19,6 +21,7 @@ type LogEntry struct {
 }
 
 type Peer struct {
+	mutex       sync.Mutex
 	currentTerm int
 	votedFor    int
 	log         []LogEntry
@@ -42,7 +45,7 @@ func NewPeer(node rpccore.Node, peers []rpccore.NodeID) *Peer {
 
 	// initialisation
 	p.node = node
-	node.RegisterRawRequestCallback(p.handleRpcCallAndLogError)
+	node.RegisterRawRequestCallback(p.handleRPCCallAndLogError)
 
 	return p
 }

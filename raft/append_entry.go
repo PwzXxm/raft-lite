@@ -8,15 +8,15 @@ func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
 	if !consistent {
 		return &appendEntriesRes{Term: p.currentTerm, Success: false}
 	}
-	PrevLogIndex := req.PrevLogIndex
+	prevLogIndex := req.PrevLogIndex
 	newLogIndex := 0
 	// find the index that the peer is consistent with the new entries
-	for len(p.log) > (PrevLogIndex+newLogIndex+1) &&
-		p.log[PrevLogIndex+newLogIndex+1].term == req.Entries[newLogIndex].term {
+	for len(p.log) > (prevLogIndex+newLogIndex+1) &&
+		p.log[prevLogIndex+newLogIndex+1].term == req.Entries[newLogIndex].term {
 		newLogIndex++
 	}
-	p.log = append(p.log[0:PrevLogIndex+newLogIndex+1], req.Entries[newLogIndex:]...)
-	p.logger.Infof("Delete and append new logs from index %v \n", PrevLogIndex+newLogIndex+1)
+	p.log = append(p.log[0:prevLogIndex+newLogIndex+1], req.Entries[newLogIndex:]...)
+	p.logger.Infof("Delete and append new logs from index %v", prevLogIndex+newLogIndex+1)
 	// consistency check ensure that req.Term >= p.currentTerm
 	p.currentTerm = req.Term
 	if req.LeaderCommit > p.commitIndex {

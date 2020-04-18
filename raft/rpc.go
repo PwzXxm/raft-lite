@@ -16,7 +16,7 @@ const (
 
 type appendEntriesReq struct {
 	Term         int
-	LeaderId     int
+	LeaderID     int
 	PrevLogIndex int
 	PrevLogTerm  int
 	LeaderCommit int
@@ -30,7 +30,7 @@ type appendEntriesRes struct {
 
 type requestVoteReq struct {
 	Term         int
-	CandidateId  int
+	CandidateID  int
 	LastLogIndex int
 	LastLogTerm  int
 }
@@ -42,7 +42,7 @@ type requestVoteRes struct {
 
 func (p *Peer) requestVote(target rpccore.NodeID, arg requestVoteReq) *requestVoteRes {
 	var res requestVoteRes
-	if p.callRpcAndLogError(target, rpcMethodRequestVote, arg, &res) == nil {
+	if p.callRPCAndLogError(target, rpcMethodRequestVote, arg, &res) == nil {
 		return &res
 	} else {
 		return nil
@@ -51,15 +51,15 @@ func (p *Peer) requestVote(target rpccore.NodeID, arg requestVoteReq) *requestVo
 
 func (p *Peer) appendEntries(target rpccore.NodeID, arg appendEntriesReq) *appendEntriesRes {
 	var res appendEntriesRes
-	if p.callRpcAndLogError(target, rpcMethodAppendEntries, arg, &res) == nil {
+	if p.callRPCAndLogError(target, rpcMethodAppendEntries, arg, &res) == nil {
 		return &res
 	} else {
 		return nil
 	}
 }
 
-func (p *Peer) callRpcAndLogError(target rpccore.NodeID, method string, req, res interface{}) error {
-	err := p.callRpc(target, method, req, res)
+func (p *Peer) callRPCAndLogError(target rpccore.NodeID, method string, req, res interface{}) error {
+	err := p.callRPC(target, method, req, res)
 	if err != nil {
 		p.logger.Warnf("RPC call failed. \n target: %v, method: %v, err: %+v",
 			target, method, err)
@@ -67,7 +67,7 @@ func (p *Peer) callRpcAndLogError(target rpccore.NodeID, method string, req, res
 	return err
 }
 
-func (p *Peer) callRpc(target rpccore.NodeID, method string, req, res interface{}) error {
+func (p *Peer) callRPC(target rpccore.NodeID, method string, req, res interface{}) error {
 	var buf bytes.Buffer
 	err := gob.NewEncoder(&buf).Encode(req)
 	if err != nil {
@@ -85,8 +85,8 @@ func (p *Peer) callRpc(target rpccore.NodeID, method string, req, res interface{
 	return nil
 }
 
-func (p *Peer) handleRpcCallAndLogError(source rpccore.NodeID, method string, data []byte) ([]byte, error) {
-	res, err := p.handleRpcCall(source, method, data)
+func (p *Peer) handleRPCCallAndLogError(source rpccore.NodeID, method string, data []byte) ([]byte, error) {
+	res, err := p.handleRPCCall(source, method, data)
 	if err != nil {
 		p.logger.Warningf("Handle RPC call failed. \n source: %v, method: %v, error: %+v",
 			source, method, err)
@@ -94,7 +94,7 @@ func (p *Peer) handleRpcCallAndLogError(source rpccore.NodeID, method string, da
 	return res, err
 }
 
-func (p *Peer) handleRpcCall(source rpccore.NodeID, method string, data []byte) ([]byte, error) {
+func (p *Peer) handleRPCCall(source rpccore.NodeID, method string, data []byte) ([]byte, error) {
 	switch method {
 	case rpcMethodRequestVote:
 		var req requestVoteReq
@@ -113,8 +113,9 @@ func (p *Peer) handleRpcCall(source rpccore.NodeID, method string, data []byte) 
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
-		// TODO: add handler here.
-		var res appendEntriesRes
+		p.mutex.Lock()
+		res := p.handleAppendEntries(req)
+		p.mutex.Unlock()
 		var buf bytes.Buffer
 		err = gob.NewEncoder(&buf).Encode(res)
 		return buf.Bytes(), errors.WithStack(err)
