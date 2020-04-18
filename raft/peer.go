@@ -23,39 +23,52 @@ type LogEntry struct {
 type Peer struct {
 	mutex       sync.Mutex
 	currentTerm int
-	votedFor    int
+	votedFor    *rpccore.NodeID
 	log         []LogEntry
 
 	commitIndex int
 	lastApplied int
 
-	nextIndex  map[int]int
-	matchIndex map[int]int
+	// leader only
+	nextIndex  map[rpccore.NodeID]int
+	matchIndex map[rpccore.NodeID]int
 
-	id       int
-	peersIds []rpccore.NodeID
-	node     rpccore.Node
-	dead     bool
-
-	logger *logrus.Entry
+	rpcPeersIds []rpccore.NodeID
+	node        rpccore.Node
+	dead        bool
+	logger      *logrus.Entry
 }
 
-func NewPeer(node rpccore.Node, peers []rpccore.NodeID) *Peer {
+func NewPeer(node rpccore.Node, peers []rpccore.NodeID, logger *logrus.Entry) *Peer {
 	p := new(Peer)
 
 	// initialisation
+	// initialise leader only fields (nextIndex, matchIndex) when becoming leader
+	p.currentTerm = 0
+	p.votedFor = nil
+	p.log = make([]LogEntry, 0)
+
+	p.commitIndex = 0
+	p.lastApplied = 0
+
+	p.rpcPeersIds = make([]rpccore.NodeID, len(peers))
+	copy(p.rpcPeersIds, peers)
+
 	p.node = node
 	node.RegisterRawRequestCallback(p.handleRPCCallAndLogError)
+
+	p.dead = false
+	p.logger = logger
 
 	return p
 }
 
-// start fire up a new peer in the network
-// may start after shutdown
-func (p *Peer) Start(id int) {
+// Start fire up this peer
+// TODO: handle starting after shutdown
+func (p *Peer) Start() {
 }
 
-// shutDown stop this peer from running
+// ShutDown stop this peer from running
 func (p *Peer) ShutDown() {
 }
 

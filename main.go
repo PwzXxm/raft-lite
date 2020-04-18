@@ -8,5 +8,5 @@ func main() {
 	size := 5
 
 	rf := simulation.RunLocally(size)
-	defer rf.Stop()
+	defer rf.StopAll()
 }
