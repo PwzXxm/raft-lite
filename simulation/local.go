@@ -35,11 +35,12 @@ func RunLocally(n int) *local {
 		log.Panicln(err)
 	}
 
-	// fire up individual peer
+	log.Info("Starting simulation locally ...")
 
-	// connect them to the network
+	for _, node := range rf.raftPeers {
+		node.Start()
+	}
 
-	log.Info("Start simulation locally ...")
 	return rf
 }
 
@@ -52,6 +53,9 @@ func new_local(n int) (*local, error) {
 	rf := new(local)
 	rf.n = n
 	rf.network = rpccore.NewChanNetwork()
+	rf.rpcPeers = make(map[rpccore.NodeID]*rpccore.ChanNode)
+	rf.raftPeers = make(map[rpccore.NodeID]*raft.Peer)
+	rf.loggers = make(map[rpccore.NodeID]*logrus.Logger)
 
 	// create rpc nodes
 	for i := 0; i < n; i++ {
@@ -93,17 +97,20 @@ func new_local(n int) (*local, error) {
 	return rf, nil
 }
 
-func (rf *local) Stop() {
+func (rf *local) StopAll() {
+	for _, node := range rf.raftPeers {
+		node.ShutDown()
+	}
 }
 
 func (rf *local) Request(cmd interface{}) {
 }
 
-func (rf *local) ShutDownPeer(id int) {
+func (rf *local) ShutDownPeer(id rpccore.NodeID) {
 }
 
-func (rf *local) ConnectPeer(id int) {
+func (rf *local) ConnectPeer(id rpccore.NodeID) {
 }
 
-func (rf *local) DisconnectPeer(id int) {
+func (rf *local) DisconnectPeer(id rpccore.NodeID) {
 }
