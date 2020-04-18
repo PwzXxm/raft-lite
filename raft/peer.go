@@ -1,6 +1,8 @@
 package raft
 
 import (
+	"sync"
+
 	"github.com/PwzXxm/raft-lite/rpccore"
 	"github.com/sirupsen/logrus"
 )
@@ -19,6 +21,7 @@ type LogEntry struct {
 }
 
 type Peer struct {
+	mutex       sync.Mutex
 	currentTerm int
 	votedFor    *rpccore.NodeID
 	log         []LogEntry
@@ -52,7 +55,7 @@ func NewPeer(node rpccore.Node, peers []rpccore.NodeID, logger *logrus.Entry) *P
 	copy(p.rpcPeersIds, peers)
 
 	p.node = node
-	node.RegisterRawRequestCallback(p.handleRpcCallAndLogError)
+	node.RegisterRawRequestCallback(p.handleRPCCallAndLogError)
 
 	p.dead = false
 	p.logger = logger
