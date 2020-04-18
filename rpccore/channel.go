@@ -12,13 +12,13 @@ type ChanAddress struct {
 	nodeID NodeID
 }
 
-func NewChanAddress(nodeID string) *ChanAddress {
-	addr := new(ChanAddress)
+func NewChanAddress(nodeID string) ChanAddress {
+	addr := ChanAddress{}
 	addr.nodeID = NodeID(nodeID)
 	return addr
 }
 
-func (addr *ChanAddress) NodeID() NodeID {
+func (addr ChanAddress) NodeID() NodeID {
 	return addr.nodeID
 }
 
