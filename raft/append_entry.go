@@ -8,6 +8,7 @@ func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
 	if !consistent {
 		return &appendEntriesRes{Term: p.currentTerm, Success: false}
 	}
+	p.heardFromLeader = true
 	prevLogIndex := req.PrevLogIndex
 	newLogIndex := 0
 	// find the index that the peer is consistent with the new entries
@@ -22,7 +23,6 @@ func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
 	if req.LeaderCommit > p.commitIndex {
 		p.commitIndex = utils.Min(req.LeaderCommit, req.Entries[len(req.Entries)-1].term)
 	}
-	p.heardFromLeader = true
 	return &appendEntriesRes{Term: p.currentTerm, Success: true}
 }
 

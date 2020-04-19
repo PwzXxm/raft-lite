@@ -135,9 +135,7 @@ func (p *Peer) changeState(state PeerState) {
 		p.nextIndex = make(map[rpccore.NodeID]int)
 		p.matchIndex = make(map[rpccore.NodeID]int)
 	}
-
-	// restart the timeout
-	p.triggerTimeout()
+	p.resetTimeout()
 }
 
 // Start fire up this peer
@@ -160,7 +158,7 @@ func (p *Peer) ShutDown() {
 	if p.shutdown == false {
 		p.shutdown = true
 		p.logger.Info("Stopping peer.")
-		p.triggerTimeout()
+		p.resetTimeout()
 	} else {
 		p.logger.Warning("This peer is already stopped.")
 	}
