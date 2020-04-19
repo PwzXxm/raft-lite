@@ -125,6 +125,7 @@ func (p *Peer) resetTimeout() {
 }
 
 func (p *Peer) changeState(state PeerState) {
+	p.logger.Infof("Change from state: %v to state: %v.", p.state, state)
 	p.state = state
 	// TODO: init state here
 	switch state {
