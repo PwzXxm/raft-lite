@@ -8,6 +8,7 @@ func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
 	if !consistent {
 		return &appendEntriesRes{Term: p.currentTerm, Success: false}
 	}
+	// TODO: check this.
 	p.heardFromLeader = true
 	prevLogIndex := req.PrevLogIndex
 	newLogIndex := 0

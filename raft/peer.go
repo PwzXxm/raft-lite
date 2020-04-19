@@ -33,13 +33,12 @@ type Peer struct {
 
 	rpcPeersIds []rpccore.NodeID
 	node        rpccore.Node
-	dead        bool
+	shutdown    bool
 	logger      *logrus.Entry
 
 	// [false] for reset and [true] for trigger
-	// don't use this one directly, ues [triggerTimeout] or [resetTimeout]
+	// don't use this one directly, use [triggerTimeout] or [resetTimeout]
 	timeoutLoopChan chan (bool)
-	shutdown        bool
 
 	// leader only
 	nextIndex  map[rpccore.NodeID]int
@@ -67,14 +66,12 @@ func NewPeer(node rpccore.Node, peers []rpccore.NodeID, logger *logrus.Entry) *P
 	p.node = node
 	node.RegisterRawRequestCallback(p.handleRPCCallAndLogError)
 
-	p.dead = false
+	p.shutdown = true
 	p.logger = logger
 	// this channel can't be blocking, otherwise it will cause a dead lock
 	p.timeoutLoopChan = make(chan bool, 1)
 
 	p.changeState(Follower)
-
-	p.shutdown = true
 
 	return p
 }
