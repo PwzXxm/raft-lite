@@ -22,6 +22,7 @@ func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
 	if req.LeaderCommit > p.commitIndex {
 		p.commitIndex = utils.Min(req.LeaderCommit, req.Entries[len(req.Entries)-1].term)
 	}
+	p.heardFromLeader = true
 	return &appendEntriesRes{Term: p.currentTerm, Success: true}
 }
 

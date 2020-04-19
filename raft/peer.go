@@ -36,8 +36,10 @@ type Peer struct {
 	dead        bool
 	logger      *logrus.Entry
 
-	triggerTimeoutChan chan (int)
-	shutdown           bool
+	// [false] for reset and [true] for trigger
+	// don't use this one directly, ues [triggerTimeout] or [resetTimeout]
+	timeoutLoopChan chan (bool)
+	shutdown        bool
 
 	// leader only
 	nextIndex  map[rpccore.NodeID]int
@@ -67,6 +69,8 @@ func NewPeer(node rpccore.Node, peers []rpccore.NodeID, logger *logrus.Entry) *P
 
 	p.dead = false
 	p.logger = logger
+	// this channel can't be blocking, otherwise it will cause a dead lock
+	p.timeoutLoopChan = make(chan bool, 1)
 
 	p.changeState(Follower)
 
@@ -85,14 +89,24 @@ func (p *Peer) timeoutLoop() {
 
 		// TODO: get timeout based on state
 		timeout := time.Duration(1000)
+
+		execute := true
 		select {
 		case <-time.After(timeout * time.Millisecond):
-		case _ = <-p.triggerTimeoutChan:
+		case execute = <-p.timeoutLoopChan:
 		}
 		p.mutex.Lock()
 		// ignore this round if the state has been changed.
-		if currentState == p.state {
+		if currentState == p.state && execute {
 			// TODO: handle timeout here
+			switch p.state {
+			case Follower:
+				if !p.heardFromLeader {
+					// TODO: change to candidate?
+				} else {
+					p.heardFromLeader = false
+				}
+			}
 
 		}
 		if p.shutdown {
@@ -103,12 +117,24 @@ func (p *Peer) timeoutLoop() {
 }
 
 func (p *Peer) triggerTimeout() {
-	p.triggerTimeoutChan <- 0
+	p.timeoutLoopChan <- true
+}
+
+func (p *Peer) resetTimeout() {
+	p.timeoutLoopChan <- false
 }
 
 func (p *Peer) changeState(state PeerState) {
 	p.state = state
 	// TODO: init state here
+	switch state {
+	case Follower:
+		p.heardFromLeader = false
+	case Candidate:
+	case Leader:
+		p.nextIndex = make(map[rpccore.NodeID]int)
+		p.matchIndex = make(map[rpccore.NodeID]int)
+	}
 
 	// restart the timeout
 	p.triggerTimeout()
