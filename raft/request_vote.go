@@ -31,3 +31,16 @@ func (p *Peer) checkMyLogMoreUptodate(lastLogIndex int, lastLogTerm int) bool {
 		return false
 	}
 }
+
+func (p *Peer) handleRequestVoteRespond(term int, success bool) {
+	totalPeers := len(p.rpcPeersIds)
+
+	if success {
+		// TODO
+	} else {
+		if term > p.currentTerm {
+			p.currentTerm = term
+		}
+	}
+
+}

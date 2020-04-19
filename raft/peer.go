@@ -73,6 +73,7 @@ func (p *Peer) ShutDown() {
 }
 
 func (p *Peer) startElection() {
+	p.currentTerm += 1
 }
 
 func (p *Peer) runTimer() {
