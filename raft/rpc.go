@@ -30,7 +30,7 @@ type appendEntriesRes struct {
 
 type requestVoteReq struct {
 	Term         int
-	CandidateID  int
+	CandidateID  *rpccore.NodeID
 	LastLogIndex int
 	LastLogTerm  int
 }
@@ -42,6 +42,7 @@ type requestVoteRes struct {
 
 func (p *Peer) requestVote(target rpccore.NodeID, arg requestVoteReq) *requestVoteRes {
 	var res requestVoteRes
+	res.Term, res.VoteGranted = p.handleRequestVote(arg.Term, arg.CandidateID, arg.LastLogIndex, arg.LastLogTerm)
 	if p.callRPCAndLogError(target, rpcMethodRequestVote, arg, &res) == nil {
 		return &res
 	} else {
