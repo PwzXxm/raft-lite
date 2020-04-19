@@ -109,10 +109,11 @@ func (p *Peer) timeoutLoop() {
 			}
 
 		}
-		if p.shutdown {
+		shutdown := p.shutdown
+		p.mutex.Unlock()
+		if shutdown {
 			break
 		}
-		p.mutex.Unlock()
 	}
 }
 
