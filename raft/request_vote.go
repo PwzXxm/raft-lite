@@ -35,14 +35,19 @@ func (p *Peer) logPriorCheck(lastLogIndex int, lastLogTerm int) bool {
 }
 
 func (p *Peer) handleRequestVoteRespond(term int, success bool) {
-	totalPeers := len(p.rpcPeersIds)
-
 	if success {
-		// TODO
+		// TODO: success, increment the count
+		p.voteCount += 1
 	} else {
 		if term > p.currentTerm {
 			p.currentTerm = term
+			// TODO: become follower?
 		}
+	}
+
+	totalPeers := len(p.rpcPeersIds)
+	if p.voteCount > totalPeers/2 {
+		// received majority votes, become leader
 	}
 
 }

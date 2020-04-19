@@ -24,6 +24,7 @@ type Peer struct {
 	mutex       sync.Mutex
 	currentTerm int
 	votedFor    *rpccore.NodeID
+	voteCount   int
 	log         []LogEntry
 
 	commitIndex int
