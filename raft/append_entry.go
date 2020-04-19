@@ -39,5 +39,5 @@ func (p *Peer) consitencyCheck(req appendEntriesReq) bool {
 }
 
 func (p *Peer) callAppendEntryRPC(target rpccore.NodeID, prevLogIndex int, prevLogTerm int, entries []LogEntry) {
-	
+
 }
