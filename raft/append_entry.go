@@ -1,6 +1,9 @@
 package raft
 
-import "github.com/PwzXxm/raft-lite/utils"
+import (
+	"github.com/PwzXxm/raft-lite/utils"
+	"github.com/PwzXxm/raft-lite/rpccore"
+)
 
 func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
 	// consistency check
@@ -33,4 +36,8 @@ func (p *Peer) consitencyCheck(req appendEntriesReq) bool {
 		return false
 	}
 	return true
+}
+
+func (p *Peer) callAppendEntryRPC(target rpccore.NodeID, prevLogIndex int, prevLogTerm int, entries []LogEntry) {
+	
 }
