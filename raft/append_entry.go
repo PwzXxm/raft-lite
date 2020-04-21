@@ -1,8 +1,8 @@
 package raft
 
 import (
-	"github.com/PwzXxm/raft-lite/utils"
 	"github.com/PwzXxm/raft-lite/rpccore"
+	"github.com/PwzXxm/raft-lite/utils"
 )
 
 func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
@@ -38,6 +38,29 @@ func (p *Peer) consitencyCheck(req appendEntriesReq) bool {
 	return true
 }
 
-func (p *Peer) callAppendEntryRPC(target rpccore.NodeID, prevLogIndex int, prevLogTerm int, entries []LogEntry) {
-
+//iteratively call appendEntry RPC until getting success result
+func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
+	nextIndex := p.nextIndex[target]
+	prevLogTerm := p.log[nextIndex-1].term
+	// call append entry RPC
+	req := appendEntriesReq{Term: p.currentTerm, LeaderID: p.node.NodeID(), PrevLogIndex: nextIndex - 1, PrevLogTerm: prevLogTerm, LeaderCommit: p.commitIndex, Entries: p.log[nextIndex:]}
+	res := p.appendEntries(target, req)
+	for res.Success == false && p.state == Leader {
+		// update nextIndex for target node
+		p.mutex.Lock()
+		p.nextIndex[target]--
+		p.mutex.Unlock()
+		// update and resend appendEntry request
+		nextIndex = p.nextIndex[target]
+		req.PrevLogIndex = nextIndex - 1
+		req.PrevLogTerm = p.log[nextIndex-1].term
+		req.Entries = p.log[nextIndex:]
+		res = p.appendEntries(target, req)
+	}
+	//if success, update nextIndex for the node
+	if res.Success == true && p.state == Leader {
+		p.mutex.Lock()
+		p.nextIndex[target] = p.nextIndex[target] + len(req.Entries)
+		p.mutex.Unlock()
+	}
 }

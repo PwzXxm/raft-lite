@@ -25,6 +25,7 @@ type Peer struct {
 	currentTerm int
 	votedFor    *rpccore.NodeID
 	log         []LogEntry
+	state       PeerState
 
 	commitIndex int
 	lastApplied int
