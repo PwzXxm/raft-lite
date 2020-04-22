@@ -62,13 +62,48 @@ func TestCommunication(t *testing.T) {
 	data := []byte("Test: A -> B")
 	_, err := nodeA.SendRawRequest(NodeID("nodeB"), "test", data)
 	if err != nil {
-		t.Errorf("Node A should receive callback.\n %+v", err)
+		t.Errorf("Node A should receive callback.\n%+v", err)
 	}
 
 	data = []byte("Test: C -> B")
 	_, err = nodeC.SendRawRequest(NodeID("nodeB"), "test", data)
 	if err == nil {
 		t.Errorf("Node C should receive error")
+	}
+}
+
+func TestTimeoutAndDelayGenerator(t *testing.T) {
+	addrA := NewChanAddress("nodeA")
+	addrB := NewChanAddress("nodeB")
+	addrC := NewChanAddress("nodeC")
+
+	network := NewChanNetwork(time.Second)
+	network.SetDelayGenerator(func(source, target NodeID) time.Duration {
+		// block all message from/to node A
+		if source == addrA.NodeID() || target == addrA.NodeID() {
+			return 2 * time.Second
+		}
+		return 0
+	})
+
+	nodeA, _ := network.NewNode(addrA)
+	nodeB, _ := network.NewNode(addrB)
+	nodeC, _ := network.NewNode(addrC)
+
+	callback := func(source NodeID, method string, data []byte) ([]byte, error) {
+		return []byte("OK"), nil
+	}
+	nodeA.RegisterRawRequestCallback(callback)
+	nodeB.RegisterRawRequestCallback(callback)
+
+	_, err := nodeC.SendRawRequest(addrA.NodeID(), "", nil)
+	if err == nil {
+		t.Errorf("Send raw request to A should fail.")
+	}
+
+	_, err = nodeC.SendRawRequest(addrB.NodeID(), "", nil)
+	if err != nil {
+		t.Errorf("Send raw request to B shouldn't fail.\n%+v", err)
 	}
 }
 
