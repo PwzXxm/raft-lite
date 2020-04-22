@@ -62,7 +62,7 @@ func TestCommunication(t *testing.T) {
 	data := []byte("Test: A -> B")
 	_, err := nodeA.SendRawRequest(NodeID("nodeB"), "test", data)
 	if err != nil {
-		t.Errorf("Node A should receive callback")
+		t.Errorf("Node A should receive callback.\n %+v", err)
 	}
 
 	data = []byte("Test: C -> B")

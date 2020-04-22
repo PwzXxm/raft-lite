@@ -102,7 +102,7 @@ func (n *ChanNetwork) NewNode(addr ChanAddress) (*ChanNode, error) {
 			// start a new goroutine for handling this request
 			go func(req *reqMsg) {
 				remainingTime := req.deadline.Sub(time.Now())
-				if remainingTime > 0 {
+				if remainingTime <= 0 {
 					req.resChan <- &resMsg{data: nil,
 						err: errors.New("Request timeout.")}
 				} else {
