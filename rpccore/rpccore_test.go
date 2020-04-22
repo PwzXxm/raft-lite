@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/pkg/errors"
 )
@@ -22,7 +23,7 @@ func TestNewChanAddress(t *testing.T) {
 }
 
 func TestNewNode(t *testing.T) {
-	network := NewChanNetwork()
+	network := NewChanNetwork(time.Second)
 
 	addrA := NewChanAddress("node")
 	addrB := NewChanAddress("node")
@@ -40,7 +41,7 @@ func TestNewNode(t *testing.T) {
 }
 
 func TestCommunication(t *testing.T) {
-	network := NewChanNetwork()
+	network := NewChanNetwork(time.Second)
 
 	addrA := NewChanAddress("nodeA")
 	addrB := NewChanAddress("nodeB")
@@ -72,7 +73,7 @@ func TestCommunication(t *testing.T) {
 }
 
 func BenchmarkCommunication(b *testing.B) {
-	network := NewChanNetwork()
+	network := NewChanNetwork(time.Second)
 
 	addrA := NewChanAddress("nodeA")
 	addrB := NewChanAddress("nodeB")
