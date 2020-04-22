@@ -4,13 +4,24 @@ import (
 	"github.com/PwzXxm/raft-lite/rpccore"
 )
 
-func (p *Peer) handleRequestVote(term int, candidateID *rpccore.NodeID, lastLogIndex int, lastLogTerm int) (int, bool) {
+func (p *Peer) startRequestVote() {
+	req := requestVoteReq{Term: p.currentTerm, CandidateID: p.node.NodeID(), LastLogIndex: len(p.log) - 1, LastLogTerm: p.log[len(p.log)-1].term}
+
+	for _, peerID := range p.rpcPeersIds {
+		go func(peerID rpccore.NodeID) {
+			res := p.requestVote(peerID, req)
+			p.handleRequestVoteRespond(res.Term, res.VoteGranted)
+		}(peerID)
+	}
+}
+
+func (p *Peer) handleRequestVote(term int, candidateID rpccore.NodeID, lastLogIndex int, lastLogTerm int) (int, bool) {
 	// check candidate's qualification: 1. Deny if its term is samller than mine 2. or my log is more up to date
 	if term < p.currentTerm || p.logPriorCheck(lastLogIndex, lastLogTerm) {
 		return p.currentTerm, false
 	}
 	// check receiver's qualification: Have not voted before, or voted to you before
-	if !(p.votedFor == nil || p.votedFor == candidateID) {
+	if !(p.votedFor == "" || p.votedFor == candidateID) {
 		return p.currentTerm, false
 	}
 	// vote for this candidate
@@ -35,19 +46,20 @@ func (p *Peer) logPriorCheck(lastLogIndex int, lastLogTerm int) bool {
 }
 
 func (p *Peer) handleRequestVoteRespond(term int, success bool) {
-	if success {
-		// TODO: success, increment the count
-		p.voteCount += 1
-	} else {
+	// TODO: check term (term == p.CurrentTerm)
+	if !success {
 		if term > p.currentTerm {
 			p.currentTerm = term
-			// TODO: become follower?
+			p.changeState(Follower)
 		}
+		return
 	}
+
+	p.voteCount += 1
 
 	totalPeers := len(p.rpcPeersIds)
+	// received majority votes, become leader
 	if p.voteCount > totalPeers/2 {
-		// received majority votes, become leader
+		p.changeState(Leader)
 	}
-
 }

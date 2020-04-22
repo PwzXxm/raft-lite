@@ -30,7 +30,7 @@ type appendEntriesRes struct {
 
 type requestVoteReq struct {
 	Term         int
-	CandidateID  *rpccore.NodeID
+	CandidateID  rpccore.NodeID
 	LastLogIndex int
 	LastLogTerm  int
 }
