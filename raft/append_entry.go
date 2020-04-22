@@ -98,7 +98,7 @@ func (p *Peer) onReceiveClientRequest(newlog LogEntry) bool {
 	var result bool
 	var totalCount int
 	var agreeCount int
-	for true {
+	for totalPeers > 0 {
 		result = <-majorityCheckChannel
 		if result {
 			agreeCount++
@@ -111,5 +111,6 @@ func (p *Peer) onReceiveClientRequest(newlog LogEntry) bool {
 			return false
 		}
 	}
-	return false
+	// if no peers, return true
+	return true
 }
