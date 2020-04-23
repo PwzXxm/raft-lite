@@ -21,12 +21,12 @@ func (p *Peer) handleRequestVote(term int, candidateID rpccore.NodeID, lastLogIn
 		return p.currentTerm, false
 	}
 	// check receiver's qualification: Have not voted before, or voted to you before
-	if !(p.votedFor == "" || p.votedFor == candidateID) {
+	if !(p.votedFor == nil || p.votedFor == &candidateID) {
 		return p.currentTerm, false
 	}
 	// vote for this candidate
 	// what else should this receiver do?
-	p.votedFor = candidateID
+	p.votedFor = &candidateID
 	// change its current term to candidate's term
 	p.currentTerm = term
 	return p.currentTerm, true

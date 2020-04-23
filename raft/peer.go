@@ -25,7 +25,7 @@ type Peer struct {
 	state       PeerState
 	mutex       sync.Mutex
 	currentTerm int
-	votedFor    rpccore.NodeID
+	votedFor    *rpccore.NodeID
 	voteCount   int
 	log         []LogEntry
 
@@ -55,7 +55,7 @@ func NewPeer(node rpccore.Node, peers []rpccore.NodeID, logger *logrus.Entry) *P
 	// initialisation
 	// initialise leader only fields (nextIndex, matchIndex) when becoming leader
 	p.currentTerm = 0
-	p.votedFor = ""
+	p.votedFor = nil
 	p.log = make([]LogEntry, 0)
 
 	p.commitIndex = 0
