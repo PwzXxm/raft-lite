@@ -5,6 +5,10 @@ import (
 	"time"
 )
 
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
+
 func Min(a, b int) int {
 	if a < b {
 		return a
@@ -14,6 +18,5 @@ func Min(a, b int) int {
 
 // Random an integer within the range
 func Random(a, b int) int {
-	rand.Seed(time.Now().UnixNano())
 	return rand.Intn(b-a+1) + a
 }

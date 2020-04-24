@@ -42,7 +42,6 @@ type requestVoteRes struct {
 
 func (p *Peer) requestVote(target rpccore.NodeID, arg requestVoteReq) *requestVoteRes {
 	var res requestVoteRes
-	res.Term, res.VoteGranted = p.handleRequestVote(arg.Term, arg.CandidateID, arg.LastLogIndex, arg.LastLogTerm)
 	if p.callRPCAndLogError(target, rpcMethodRequestVote, arg, &res) == nil {
 		return &res
 	} else {
@@ -103,8 +102,9 @@ func (p *Peer) handleRPCCall(source rpccore.NodeID, method string, data []byte) 
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
-		// TODO: add handler here.
-		var res requestVoteRes
+		p.mutex.Lock()
+		res := p.handleRequestVote(req.Term, req.CandidateID, req.LastLogIndex, req.LastLogTerm)
+		p.mutex.Unlock()
 		var buf bytes.Buffer
 		err = gob.NewEncoder(&buf).Encode(res)
 		return buf.Bytes(), errors.WithStack(err)

@@ -15,51 +15,50 @@ func (p *Peer) startRequestVote() {
 	}
 }
 
-func (p *Peer) handleRequestVote(term int, candidateID rpccore.NodeID, lastLogIndex int, lastLogTerm int) (int, bool) {
+func (p *Peer) handleRequestVote(term int, candidateID rpccore.NodeID, lastLogIndex int, lastLogTerm int) requestVoteRes {
 	// check candidate's qualification: 1. Deny if its term is samller than mine 2. or my log is more up to date
 	if term < p.currentTerm || p.logPriorCheck(lastLogIndex, lastLogTerm) {
-		return p.currentTerm, false
+		return requestVoteRes{Term: p.currentTerm, VoteGranted: false}
 	}
 	// check receiver's qualification: Have not voted before, or voted to you before
 	if !(p.votedFor == nil || p.votedFor == &candidateID) {
-		return p.currentTerm, false
+		return requestVoteRes{Term: p.currentTerm, VoteGranted: false}
 	}
 	// vote for this candidate
 	// what else should this receiver do?
 	p.votedFor = &candidateID
 	// change its current term to candidate's term
 	p.currentTerm = term
-	return p.currentTerm, true
+	return requestVoteRes{Term: p.currentTerm, VoteGranted: true}
 }
 
 func (p *Peer) logPriorCheck(lastLogIndex int, lastLogTerm int) bool {
 	myLastLogIndex := len(p.log) - 1
 	myLastLogTerm := p.log[myLastLogIndex].term
-	switch {
-	case myLastLogTerm > lastLogTerm:
-		return true
-	case myLastLogTerm == lastLogTerm:
-		return myLastLogIndex > lastLogIndex
-	default:
+	if myLastLogTerm < lastLogTerm {
 		return false
 	}
+	return myLastLogTerm > lastLogTerm ||
+		(myLastLogTerm == lastLogTerm && myLastLogIndex > lastLogIndex)
 }
 
+// Called by go routine, plz check lock status first
 func (p *Peer) handleRequestVoteRespond(term int, success bool) {
-	// TODO: check term (term == p.CurrentTerm)
-	if !success {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+
+	if success && term == p.currentTerm {
+		p.voteCount += 1
+
+		totalPeers := len(p.rpcPeersIds)
+		// received majority votes, become leader
+		if p.voteCount > totalPeers/2 && p.state == Candidate {
+			p.changeState(Leader)
+		}
+	} else {
 		if term > p.currentTerm {
 			p.currentTerm = term
 			p.changeState(Follower)
 		}
-		return
-	}
-
-	p.voteCount += 1
-
-	totalPeers := len(p.rpcPeersIds)
-	// received majority votes, become leader
-	if p.voteCount > totalPeers/2 {
-		p.changeState(Leader)
 	}
 }

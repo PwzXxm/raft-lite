@@ -132,7 +132,7 @@ func (p *Peer) changeState(state PeerState) {
 		p.heardFromLeader = false
 	case Candidate:
 		p.voteCount = 0
-		p.startRequestVote()
+		p.startElection()
 	case Leader:
 		p.nextIndex = make(map[rpccore.NodeID]int)
 		p.matchIndex = make(map[rpccore.NodeID]int)
@@ -168,6 +168,7 @@ func (p *Peer) ShutDown() {
 
 func (p *Peer) startElection() {
 	p.currentTerm += 1
+	p.startRequestVote()
 }
 
 func (p *Peer) runTimer() {
