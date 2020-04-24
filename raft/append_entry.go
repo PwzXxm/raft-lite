@@ -40,77 +40,83 @@ func (p *Peer) consitencyCheck(req appendEntriesReq) bool {
 	return true
 }
 
-//iteratively call appendEntry RPC until getting success result or no longer being leader
-func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) bool {
-	appendSuccess := false
+//iteratively call appendEntry RPC until the follower is up to date with leader.
+func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 	p.mutex.Lock()
-	nextIndex := p.nextIndex[target]
-	prevLogTerm := p.log[nextIndex-1].term
+	p.appendingEntries[target] = true
+	leaderID := p.node.NodeID()
 	p.mutex.Unlock()
+	defer func() {
+		p.mutex.Lock()
+		p.appendingEntries[target] = false
+		p.mutex.Unlock()
+	}()
 	// call append entry RPC
-	req := appendEntriesReq{Term: p.currentTerm, LeaderID: p.node.NodeID(), PrevLogIndex: nextIndex - 1, PrevLogTerm: prevLogTerm, LeaderCommit: p.commitIndex, Entries: p.log[nextIndex:]}
-	res := p.appendEntries(target, req)
 	for true {
+		p.mutex.Lock()
+		nextIndex := p.nextIndex[target]
+		currentTerm := p.currentTerm
+		prevLogTerm := p.log[nextIndex-1].term
+		leaderCommit := p.commitIndex
+		entries := p.log[nextIndex:]
+		p.mutex.Unlock()
+		// if no more entries need to be updated, return
+		if len(entries) == 0 {
+			return
+		}
+		req := appendEntriesReq{Term: currentTerm, LeaderID: leaderID, PrevLogIndex: nextIndex - 1, PrevLogTerm: prevLogTerm, LeaderCommit: leaderCommit, Entries: entries}
+		res := p.appendEntries(target, req)
+		// TODO: add other conditions that should stop sending request
+		if p.state != Leader {
+			return
+		}
 		if res == nil {
-			// retry call appendEntries rpc
-			res = p.appendEntries(target, req)
+			// retry call appendEntries rpc if response is nil
+			continue
 		} else if res.Success == false {
 			// update nextIndex for target node
 			p.mutex.Lock()
 			p.nextIndex[target]--
-			// update and resend appendEntry request
-			nextIndex = p.nextIndex[target]
-			req.PrevLogIndex = nextIndex - 1
-			req.PrevLogTerm = p.log[nextIndex-1].term
-			req.Entries = p.log[nextIndex:]
 			p.mutex.Unlock()
-			res = p.appendEntries(target, req)
 		} else {
-			//if success, update nextIndex for the node
+			// if success, update nextIndex for the node
 			p.mutex.Lock()
-			p.nextIndex[target] = p.nextIndex[target] + len(req.Entries)
+			commitIndex := p.commitIndex
+			p.nextIndex[target] = nextIndex + len(entries)
+			// send signal to the channels for index greater than commit index
+			for i := commitIndex + 1; i < p.nextIndex[target]; i++ {
+				p.logIndexMajorityCheckChannel[i] <- target
+			}
 			p.mutex.Unlock()
-			appendSuccess = true
-			break
-		}
-		// TODO: add other conditions that should stop sending request
-		if p.state != Leader {
-			break
 		}
 	}
-	return appendSuccess
 }
 
-func (p *Peer) onReceiveClientRequest(newlog LogEntry) bool {
-	majorityCheckChannel := make(chan bool)
+func (p *Peer) onReceiveClientRequest(newlog LogEntry) {
+	majorityCheckChannel := make(chan rpccore.NodeID)
 	p.mutex.Lock()
 	p.log = append(p.log, newlog)
-	peersIDs := p.rpcPeersIds
+	newLogIndex := len(p.log) - 1
+	p.logIndexMajorityCheckChannel[newLogIndex] = majorityCheckChannel
 	totalPeers := len(p.rpcPeersIds)
 	p.mutex.Unlock()
-	for _, rpcPeerID := range peersIDs {
-		go func() {
-			success := p.callAppendEntryRPC(rpcPeerID)
-			majorityCheckChannel <- success
-		}()
-	}
-	// check channel, while true >= half of peers, return true, when len = len(peers), return false
-	var result bool
-	var totalCount int
-	var agreeCount int
-	for totalPeers > 0 {
-		result = <-majorityCheckChannel
-		if result {
-			agreeCount++
-		}
-		totalCount++
-		if 2*agreeCount >= totalPeers {
-			return true
-		}
-		if totalCount >= totalPeers {
-			return false
+	count := 0
+	for true {
+		<-majorityCheckChannel
+		count++
+		if 2*count > totalPeers {
+			p.mutex.Lock()
+			// update commitIndex, in case commitIndex is already updated by other client request
+			p.commitIndex = utils.Max(p.commitIndex, newLogIndex)
+			// delete channel for the committed index
+			delete(p.logIndexMajorityCheckChannel, newLogIndex)
+			close(majorityCheckChannel)
+			p.mutex.Unlock()
+			p.respondClient(newLogIndex)
+			break
 		}
 	}
-	// if no peers, return true
-	return true
+}
+
+func (p *Peer) respondClient(logIndex int) {
 }

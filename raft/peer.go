@@ -43,6 +43,8 @@ type Peer struct {
 	// leader only
 	nextIndex  map[rpccore.NodeID]int
 	matchIndex map[rpccore.NodeID]int
+	appendingEntries map[rpccore.NodeID]bool
+	logIndexMajorityCheckChannel map[int]chan rpccore.NodeID
 
 	// follower only
 	heardFromLeader bool
