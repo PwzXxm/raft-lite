@@ -92,6 +92,7 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 	}
 }
 
+// this is a blocking function 
 func (p *Peer) onReceiveClientRequest(newlog LogEntry) {
 	majorityCheckChannel := make(chan rpccore.NodeID)
 	p.mutex.Lock()
@@ -100,13 +101,15 @@ func (p *Peer) onReceiveClientRequest(newlog LogEntry) {
 	p.logIndexMajorityCheckChannel[newLogIndex] = majorityCheckChannel
 	totalPeers := len(p.rpcPeersIds)
 	p.mutex.Unlock()
+	// trigger timeout to initialize call appendEntryRPC
+	p.triggerTimeout()
 	count := 0
 	for true {
 		<-majorityCheckChannel
 		count++
 		if 2*count > totalPeers {
 			p.mutex.Lock()
-			// update commitIndex, in case commitIndex is already updated by other client request
+			// update commitIndex, use max in case commitIndex is already updated by other client request
 			p.commitIndex = utils.Max(p.commitIndex, newLogIndex)
 			// delete channel for the committed index
 			delete(p.logIndexMajorityCheckChannel, newLogIndex)
@@ -118,5 +121,6 @@ func (p *Peer) onReceiveClientRequest(newlog LogEntry) {
 	}
 }
 
+// TODO: maybe respond to client and commit change to the state machine later
 func (p *Peer) respondClient(logIndex int) {
 }
