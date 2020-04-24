@@ -168,7 +168,14 @@ func (p *Peer) ShutDown() {
 
 func (p *Peer) startElection() {
 	p.currentTerm += 1
-	p.startRequestVote()
+
+	req := requestVoteReq{Term: p.currentTerm, CandidateID: p.node.NodeID(), LastLogIndex: len(p.log) - 1, LastLogTerm: p.log[len(p.log)-1].term}
+	for _, peerID := range p.rpcPeersIds {
+		go func(peerID rpccore.NodeID) {
+			res := p.requestVote(peerID, req)
+			p.handleRequestVoteRespond(res.Term, res.VoteGranted)
+		}(peerID)
+	}
 }
 
 func (p *Peer) runTimer() {

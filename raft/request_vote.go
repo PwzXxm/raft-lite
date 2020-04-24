@@ -4,17 +4,6 @@ import (
 	"github.com/PwzXxm/raft-lite/rpccore"
 )
 
-func (p *Peer) startRequestVote() {
-	req := requestVoteReq{Term: p.currentTerm, CandidateID: p.node.NodeID(), LastLogIndex: len(p.log) - 1, LastLogTerm: p.log[len(p.log)-1].term}
-
-	for _, peerID := range p.rpcPeersIds {
-		go func(peerID rpccore.NodeID) {
-			res := p.requestVote(peerID, req)
-			p.handleRequestVoteRespond(res.Term, res.VoteGranted)
-		}(peerID)
-	}
-}
-
 func (p *Peer) handleRequestVote(term int, candidateID rpccore.NodeID, lastLogIndex int, lastLogTerm int) requestVoteRes {
 	// check candidate's qualification: 1. Deny if its term is samller than mine 2. or my log is more up to date
 	if term < p.currentTerm || p.logPriorCheck(lastLogIndex, lastLogTerm) {
@@ -35,9 +24,6 @@ func (p *Peer) handleRequestVote(term int, candidateID rpccore.NodeID, lastLogIn
 func (p *Peer) logPriorCheck(lastLogIndex int, lastLogTerm int) bool {
 	myLastLogIndex := len(p.log) - 1
 	myLastLogTerm := p.log[myLastLogIndex].term
-	if myLastLogTerm < lastLogTerm {
-		return false
-	}
 	return myLastLogTerm > lastLogTerm ||
 		(myLastLogTerm == lastLogTerm && myLastLogIndex > lastLogIndex)
 }
