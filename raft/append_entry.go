@@ -55,12 +55,10 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 	for true {
 		// TODO: add other conditions that should stop sending request
 		p.mutex.Lock()
-		state := p.state
-		p.mutex.Unlock()
-		if state != Leader {
+		if p.state != Leader {
+			p.mutex.Unlock()
 			return
 		}
-		p.mutex.Lock()
 		nextIndex := p.nextIndex[target]
 		currentTerm := p.currentTerm
 		prevLogTerm := p.log[nextIndex-1].term
