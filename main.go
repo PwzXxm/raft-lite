@@ -9,4 +9,6 @@ func main() {
 
 	rf := simulation.RunLocally(size)
 	defer rf.StopAll()
+
+	rf.StartReadingCMD()
 }
