@@ -53,6 +53,10 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 	}()
 	// call append entry RPC
 	for true {
+		// TODO: add other conditions that should stop sending request
+		if p.state != Leader {
+			return
+		}
 		p.mutex.Lock()
 		nextIndex := p.nextIndex[target]
 		currentTerm := p.currentTerm
@@ -64,12 +68,9 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 		if len(entries) == 0 {
 			return
 		}
-		req := appendEntriesReq{Term: currentTerm, LeaderID: leaderID, PrevLogIndex: nextIndex - 1, PrevLogTerm: prevLogTerm, LeaderCommit: leaderCommit, Entries: entries}
+		req := appendEntriesReq{Term: currentTerm, LeaderID: leaderID, PrevLogIndex: nextIndex - 1,
+			PrevLogTerm: prevLogTerm, LeaderCommit: leaderCommit, Entries: entries}
 		res := p.appendEntries(target, req)
-		// TODO: add other conditions that should stop sending request
-		if p.state != Leader {
-			return
-		}
 		if res == nil {
 			// retry call appendEntries rpc if response is nil
 			continue
@@ -92,20 +93,19 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 	}
 }
 
-// this is a blocking function 
+// this is a blocking function
 func (p *Peer) onReceiveClientRequest(newlog LogEntry) {
-	majorityCheckChannel := make(chan rpccore.NodeID)
 	p.mutex.Lock()
 	p.log = append(p.log, newlog)
 	newLogIndex := len(p.log) - 1
-	p.logIndexMajorityCheckChannel[newLogIndex] = majorityCheckChannel
 	totalPeers := len(p.rpcPeersIds)
+	majorityCheckChannel := make(chan rpccore.NodeID, totalPeers)
+	p.logIndexMajorityCheckChannel[newLogIndex] = majorityCheckChannel
 	p.mutex.Unlock()
 	// trigger timeout to initialize call appendEntryRPC
 	p.triggerTimeout()
 	count := 0
-	for true {
-		<-majorityCheckChannel
+	for range majorityCheckChannel {
 		count++
 		if 2*count > totalPeers {
 			p.mutex.Lock()
