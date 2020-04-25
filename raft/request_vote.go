@@ -1,23 +1,19 @@
 package raft
 
-import (
-	"github.com/PwzXxm/raft-lite/rpccore"
-)
-
-func (p *Peer) handleRequestVote(term int, candidateID rpccore.NodeID, lastLogIndex int, lastLogTerm int) requestVoteRes {
+func (p *Peer) handleRequestVote(req requestVoteReq) requestVoteRes {
 	// check candidate's qualification: 1. Deny if its term is samller than mine 2. or my log is more up to date
-	if term < p.currentTerm || p.logPriorCheck(lastLogIndex, lastLogTerm) {
+	if req.Term < p.currentTerm || p.logPriorCheck(req.LastLogIndex, req.LastLogTerm) {
 		return requestVoteRes{Term: p.currentTerm, VoteGranted: false}
 	}
 	// check receiver's qualification: Have not voted before, or voted to you before
-	if !(p.votedFor == nil || p.votedFor == &candidateID) {
+	if !(p.votedFor == nil || p.votedFor == &req.CandidateID) {
 		return requestVoteRes{Term: p.currentTerm, VoteGranted: false}
 	}
 	// vote for this candidate
 	// what else should this receiver do?
-	p.votedFor = &candidateID
+	p.votedFor = &req.CandidateID
 	// change its current term to candidate's term
-	p.currentTerm = term
+	p.currentTerm = req.Term
 	return requestVoteRes{Term: p.currentTerm, VoteGranted: true}
 }
 

@@ -173,7 +173,9 @@ func (p *Peer) startElection() {
 	for _, peerID := range p.rpcPeersIds {
 		go func(peerID rpccore.NodeID) {
 			res := p.requestVote(peerID, req)
-			p.handleRequestVoteRespond(res.Term, res.VoteGranted)
+			if res != nil {
+				p.handleRequestVoteRespond(res.Term, res.VoteGranted)
+			}
 		}(peerID)
 	}
 }

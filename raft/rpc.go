@@ -103,7 +103,7 @@ func (p *Peer) handleRPCCall(source rpccore.NodeID, method string, data []byte) 
 			return nil, errors.WithStack(err)
 		}
 		p.mutex.Lock()
-		res := p.handleRequestVote(req.Term, req.CandidateID, req.LastLogIndex, req.LastLogTerm)
+		res := p.handleRequestVote(req)
 		p.mutex.Unlock()
 		var buf bytes.Buffer
 		err = gob.NewEncoder(&buf).Encode(res)
