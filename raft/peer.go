@@ -26,6 +26,7 @@ type Peer struct {
 	mutex       sync.Mutex
 	currentTerm int
 	votedFor    *rpccore.NodeID
+	voteCount   int
 	log         []LogEntry
 
 	commitIndex int
@@ -130,6 +131,8 @@ func (p *Peer) changeState(state PeerState) {
 	case Follower:
 		p.heardFromLeader = false
 	case Candidate:
+		p.voteCount = 1
+		p.startElection()
 	case Leader:
 		p.nextIndex = make(map[rpccore.NodeID]int)
 		p.matchIndex = make(map[rpccore.NodeID]int)
@@ -164,6 +167,17 @@ func (p *Peer) ShutDown() {
 }
 
 func (p *Peer) startElection() {
+	p.currentTerm += 1
+
+	req := requestVoteReq{Term: p.currentTerm, CandidateID: p.node.NodeID(), LastLogIndex: len(p.log) - 1, LastLogTerm: p.log[len(p.log)-1].term}
+	for _, peerID := range p.rpcPeersIds {
+		go func(peerID rpccore.NodeID) {
+			res := p.requestVote(peerID, req)
+			if res != nil {
+				p.handleRequestVoteRespond(*res)
+			}
+		}(peerID)
+	}
 }
 
 func (p *Peer) runTimer() {
