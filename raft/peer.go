@@ -42,8 +42,10 @@ type Peer struct {
 	timeoutLoopChan chan (bool)
 
 	// leader only
-	nextIndex  map[rpccore.NodeID]int
-	matchIndex map[rpccore.NodeID]int
+	nextIndex                    map[rpccore.NodeID]int
+	matchIndex                   map[rpccore.NodeID]int
+	appendingEntries             map[rpccore.NodeID]bool
+	logIndexMajorityCheckChannel map[int]chan rpccore.NodeID
 
 	// follower only
 	heardFromLeader bool
@@ -103,6 +105,12 @@ func (p *Peer) timeoutLoop() {
 					// TODO: change to candidate?
 				} else {
 					p.heardFromLeader = false
+				}
+			case Leader:
+				for peerID, appendingEntry := range p.appendingEntries {
+					if !appendingEntry {
+						go p.callAppendEntryRPC(peerID)
+					}
 				}
 			}
 

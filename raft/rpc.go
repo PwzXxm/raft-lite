@@ -16,7 +16,7 @@ const (
 
 type appendEntriesReq struct {
 	Term         int
-	LeaderID     int
+	LeaderID     rpccore.NodeID
 	PrevLogIndex int
 	PrevLogTerm  int
 	LeaderCommit int

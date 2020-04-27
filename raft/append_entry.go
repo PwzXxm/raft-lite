@@ -1,6 +1,9 @@
 package raft
 
-import "github.com/PwzXxm/raft-lite/utils"
+import (
+	"github.com/PwzXxm/raft-lite/rpccore"
+	"github.com/PwzXxm/raft-lite/utils"
+)
 
 func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
 	// consistency check
@@ -35,4 +38,90 @@ func (p *Peer) consitencyCheck(req appendEntriesReq) bool {
 		return false
 	}
 	return true
+}
+
+//iteratively call appendEntry RPC until the follower is up to date with leader.
+func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
+	p.mutex.Lock()
+	p.appendingEntries[target] = true
+	leaderID := p.node.NodeID()
+	p.mutex.Unlock()
+	defer func() {
+		p.mutex.Lock()
+		p.appendingEntries[target] = false
+		p.mutex.Unlock()
+	}()
+	// call append entry RPC
+	for true {
+		// TODO: add other conditions that should stop sending request
+		p.mutex.Lock()
+		if p.state != Leader {
+			p.mutex.Unlock()
+			return
+		}
+		nextIndex := p.nextIndex[target]
+		currentTerm := p.currentTerm
+		prevLogTerm := p.log[nextIndex-1].term
+		leaderCommit := p.commitIndex
+		entries := p.log[nextIndex:]
+		p.mutex.Unlock()
+		// if no more entries need to be updated, return
+		if len(entries) == 0 {
+			return
+		}
+		req := appendEntriesReq{Term: currentTerm, LeaderID: leaderID, PrevLogIndex: nextIndex - 1,
+			PrevLogTerm: prevLogTerm, LeaderCommit: leaderCommit, Entries: entries}
+		res := p.appendEntries(target, req)
+		if res == nil {
+			// retry call appendEntries rpc if response is nil
+			continue
+		} else if res.Success == false {
+			// update nextIndex for target node
+			p.mutex.Lock()
+			p.nextIndex[target]--
+			p.mutex.Unlock()
+		} else {
+			// if success, update nextIndex for the node
+			p.mutex.Lock()
+			commitIndex := p.commitIndex
+			p.nextIndex[target] = nextIndex + len(entries)
+			// send signal to the channels for index greater than commit index
+			for i := commitIndex + 1; i < p.nextIndex[target]; i++ {
+				p.logIndexMajorityCheckChannel[i] <- target
+			}
+			p.mutex.Unlock()
+		}
+	}
+}
+
+// this is a blocking function
+func (p *Peer) onReceiveClientRequest(newlog LogEntry) {
+	p.mutex.Lock()
+	p.log = append(p.log, newlog)
+	newLogIndex := len(p.log) - 1
+	totalPeers := len(p.rpcPeersIds)
+	majorityCheckChannel := make(chan rpccore.NodeID, totalPeers)
+	p.logIndexMajorityCheckChannel[newLogIndex] = majorityCheckChannel
+	p.mutex.Unlock()
+	// trigger timeout to initialize call appendEntryRPC
+	p.triggerTimeout()
+	count := 0
+	for range majorityCheckChannel {
+		count++
+		if 2*count > totalPeers {
+			p.mutex.Lock()
+			// update commitIndex, use max in case commitIndex is already updated by other client request
+			p.commitIndex = utils.Max(p.commitIndex, newLogIndex)
+			// delete channel for the committed index
+			delete(p.logIndexMajorityCheckChannel, newLogIndex)
+			close(majorityCheckChannel)
+			p.mutex.Unlock()
+			p.respondClient(newLogIndex)
+			break
+		}
+	}
+}
+
+// TODO: maybe respond to client and commit change to the state machine later
+func (p *Peer) respondClient(logIndex int) {
 }
