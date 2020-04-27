@@ -174,7 +174,7 @@ func (p *Peer) startElection() {
 		go func(peerID rpccore.NodeID) {
 			res := p.requestVote(peerID, req)
 			if res != nil {
-				p.handleRequestVoteRespond(res)
+				p.handleRequestVoteRespond(*res)
 			}
 		}(peerID)
 	}
