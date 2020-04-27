@@ -25,11 +25,11 @@ func (p *Peer) logPriorCheck(lastLogIndex int, lastLogTerm int) bool {
 }
 
 // Called by go routine, plz check lock status first
-func (p *Peer) handleRequestVoteRespond(term int, success bool) {
+func (p *Peer) handleRequestVoteRespond(res requestVoteRes) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
-	if success && term == p.currentTerm {
+	if res.VoteGranted && res.Term == p.currentTerm {
 		p.voteCount += 1
 
 		totalPeers := len(p.rpcPeersIds)
@@ -38,8 +38,8 @@ func (p *Peer) handleRequestVoteRespond(term int, success bool) {
 			p.changeState(Leader)
 		}
 	} else {
-		if term > p.currentTerm {
-			p.currentTerm = term
+		if res.Term > p.currentTerm {
+			p.currentTerm = res.Term
 			p.changeState(Follower)
 		}
 	}

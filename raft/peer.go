@@ -131,7 +131,7 @@ func (p *Peer) changeState(state PeerState) {
 	case Follower:
 		p.heardFromLeader = false
 	case Candidate:
-		p.voteCount = 0
+		p.voteCount = 1
 		p.startElection()
 	case Leader:
 		p.nextIndex = make(map[rpccore.NodeID]int)
@@ -174,7 +174,7 @@ func (p *Peer) startElection() {
 		go func(peerID rpccore.NodeID) {
 			res := p.requestVote(peerID, req)
 			if res != nil {
-				p.handleRequestVoteRespond(res.Term, res.VoteGranted)
+				p.handleRequestVoteRespond(res)
 			}
 		}(peerID)
 	}
