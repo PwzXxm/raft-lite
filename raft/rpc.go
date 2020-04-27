@@ -30,7 +30,7 @@ type appendEntriesRes struct {
 
 type requestVoteReq struct {
 	Term         int
-	CandidateID  int
+	CandidateID  rpccore.NodeID
 	LastLogIndex int
 	LastLogTerm  int
 }
@@ -102,8 +102,9 @@ func (p *Peer) handleRPCCall(source rpccore.NodeID, method string, data []byte) 
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
-		// TODO: add handler here.
-		var res requestVoteRes
+		p.mutex.Lock()
+		res := p.handleRequestVote(req)
+		p.mutex.Unlock()
 		var buf bytes.Buffer
 		err = gob.NewEncoder(&buf).Encode(res)
 		return buf.Bytes(), errors.WithStack(err)
