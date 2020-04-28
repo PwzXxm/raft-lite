@@ -49,7 +49,7 @@ func newLocal(n int) (*local, error) {
 
 	rf := new(local)
 	rf.n = n
-	rf.network = rpccore.NewChanNetwork()
+	rf.network = rpccore.NewChanNetwork(4 * time.Second)
 	rf.rpcPeers = make(map[rpccore.NodeID]*rpccore.ChanNode)
 	rf.raftPeers = make(map[rpccore.NodeID]*raft.Peer)
 	rf.loggers = make(map[rpccore.NodeID]*logrus.Logger)

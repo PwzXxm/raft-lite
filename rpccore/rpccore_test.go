@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/pkg/errors"
 )
@@ -22,7 +23,7 @@ func TestNewChanAddress(t *testing.T) {
 }
 
 func TestNewNode(t *testing.T) {
-	network := NewChanNetwork()
+	network := NewChanNetwork(time.Second)
 
 	addrA := NewChanAddress("node")
 	addrB := NewChanAddress("node")
@@ -40,7 +41,7 @@ func TestNewNode(t *testing.T) {
 }
 
 func TestCommunication(t *testing.T) {
-	network := NewChanNetwork()
+	network := NewChanNetwork(time.Second)
 
 	addrA := NewChanAddress("nodeA")
 	addrB := NewChanAddress("nodeB")
@@ -61,7 +62,7 @@ func TestCommunication(t *testing.T) {
 	data := []byte("Test: A -> B")
 	_, err := nodeA.SendRawRequest(NodeID("nodeB"), "test", data)
 	if err != nil {
-		t.Errorf("Node A should receive callback")
+		t.Errorf("Node A should receive callback.\n%+v", err)
 	}
 
 	data = []byte("Test: C -> B")
@@ -71,8 +72,43 @@ func TestCommunication(t *testing.T) {
 	}
 }
 
+func TestTimeoutAndDelayGenerator(t *testing.T) {
+	addrA := NewChanAddress("nodeA")
+	addrB := NewChanAddress("nodeB")
+	addrC := NewChanAddress("nodeC")
+
+	network := NewChanNetwork(time.Second)
+	network.SetDelayGenerator(func(source, target NodeID) time.Duration {
+		// block all message from/to node A
+		if source == addrA.NodeID() || target == addrA.NodeID() {
+			return 2 * time.Second
+		}
+		return 0
+	})
+
+	nodeA, _ := network.NewNode(addrA)
+	nodeB, _ := network.NewNode(addrB)
+	nodeC, _ := network.NewNode(addrC)
+
+	callback := func(source NodeID, method string, data []byte) ([]byte, error) {
+		return []byte("OK"), nil
+	}
+	nodeA.RegisterRawRequestCallback(callback)
+	nodeB.RegisterRawRequestCallback(callback)
+
+	_, err := nodeC.SendRawRequest(addrA.NodeID(), "", nil)
+	if err == nil {
+		t.Errorf("Send raw request to A should fail.")
+	}
+
+	_, err = nodeC.SendRawRequest(addrB.NodeID(), "", nil)
+	if err != nil {
+		t.Errorf("Send raw request to B shouldn't fail.\n%+v", err)
+	}
+}
+
 func BenchmarkCommunication(b *testing.B) {
-	network := NewChanNetwork()
+	network := NewChanNetwork(time.Second)
 
 	addrA := NewChanAddress("nodeA")
 	addrB := NewChanAddress("nodeB")
