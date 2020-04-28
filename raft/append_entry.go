@@ -95,8 +95,9 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 }
 
 // this is a blocking function
-func (p *Peer) onReceiveClientRequest(newlog LogEntry) {
+func (p *Peer) onReceiveClientRequest(cmd interface{}) {
 	p.mutex.Lock()
+	newlog := LogEntry{term: p.currentTerm, cmd: cmd}
 	p.log = append(p.log, newlog)
 	newLogIndex := len(p.log) - 1
 	totalPeers := len(p.rpcPeersIds)
@@ -124,4 +125,20 @@ func (p *Peer) onReceiveClientRequest(newlog LogEntry) {
 
 // TODO: maybe respond to client and commit change to the state machine later
 func (p *Peer) respondClient(logIndex int) {
+}
+
+func (p *Peer) HandleClientRequest(cmd interface{}) bool {
+	p.mutex.Lock()
+	if p.state != Leader {
+		p.mutex.Unlock()
+		return false
+	}
+
+	p.mutex.Unlock()
+
+	// add time out
+
+	p.onReceiveClientRequest(cmd)
+
+	return false
 }

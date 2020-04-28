@@ -107,6 +107,9 @@ func (rf *local) StopAll() {
 }
 
 func (rf *local) Request(cmd interface{}) {
+	for _, p := range rf.raftPeers {
+		p.HandleClientRequest(cmd)
+	}
 }
 
 func (rf *local) ShutDownPeer(id rpccore.NodeID) {
