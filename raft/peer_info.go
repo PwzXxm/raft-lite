@@ -2,8 +2,10 @@ package raft
 
 import (
 	"fmt"
+	"os"
 	"reflect"
 	"strconv"
+	"strings"
 )
 
 // GetInfo
@@ -15,84 +17,82 @@ func (p *Peer) GetInfo() map[string]string {
 	v := reflect.Indirect(reflect.ValueOf(p))
 	t := v.Type()
 	for i := 0; i < v.NumField(); i++ {
-		field := v.Field(i)
 		fieldName := t.Field(i).Name
-
-		switch field.Kind() {
-		case reflect.Int:
-			mp[fieldName] = strconv.FormatInt(field.Int(), 10)
-			break
-		case reflect.Bool:
-			mp[fieldName] = strconv.FormatBool(field.Bool())
-			break
-		case reflect.Ptr:
-			if fieldName == "votedFor" {
-				if field.IsNil() {
-					mp[fieldName] = "nil"
-				} else {
-					mp[fieldName] = reflect.Indirect(field).String()
-				}
-			}
-			break
-		case reflect.Map:
-			mp[fieldName] = getMapStr(field)
-			break
-		case reflect.Slice:
-			mp[fieldName] = getSliceStr(field)
-			break
+		if fieldName == "mutex" || fieldName == "logger" {
+			continue
 		}
+		mp[fieldName] = getFieldStr(v.Field(i), 2)
 	}
 
 	return mp
 }
 
-func getMapStr(field reflect.Value) string {
+func getFieldStr(v reflect.Value, lvl int) string {
+	lvl += 2
+
+	switch v.Kind() {
+	case reflect.Int:
+		return strconv.FormatInt(v.Int(), 10)
+	case reflect.Bool:
+		return strconv.FormatBool(v.Bool())
+	case reflect.Chan:
+		// ignore channel
+		return "chan(ignored)"
+	case reflect.Ptr:
+		if v.IsNil() {
+			return "nil"
+		} else {
+			return reflect.Indirect(v).String()
+		}
+	case reflect.String:
+		return v.String()
+	case reflect.Map:
+		return getMapStr(v, lvl)
+	case reflect.Slice:
+		return getSliceStr(v, lvl)
+	case reflect.Interface:
+		return fmt.Sprintf("%v", v.Elem())
+	case reflect.Struct:
+		var rst string = ""
+		rst += "{"
+		for j := 0; j < v.NumField(); j++ {
+			if j != 0 {
+				rst += ", "
+			}
+
+			subField := v.Field(j)
+			subFieldName := v.Type().Field(j).Name
+
+			rst += subFieldName + ": "
+			rst += getFieldStr(subField, lvl)
+		}
+		rst += "}"
+		return rst
+	}
+
+	fmt.Fprintf(os.Stderr, "Unrecognized type %v", v.Type().String())
+	return ""
+}
+
+func getMapStr(field reflect.Value, lvl int) string {
 	var rst string = "{"
 	it := field.MapRange()
 	for it.Next() {
 		key, val := it.Key(), it.Value()
-		rst += "\n\t" + key.String() + ": " + strconv.FormatInt(val.Int(), 10)
+		rst += "\n" + strings.Repeat(" ", lvl) + getFieldStr(key, lvl) + ": " + getFieldStr(val, lvl)
 	}
-	rst += "}"
+	rst += "\n" + strings.Repeat(" ", lvl-2) + "}"
 	return rst
 }
 
-func getSliceStr(field reflect.Value) string {
+func getSliceStr(field reflect.Value, lvl int) string {
 	var rst string = "["
 	for i := 0; i < field.Len(); i++ {
 		val := field.Index(i)
-
 		if i != 0 {
 			rst += ", "
 		}
-
-		switch val.Kind() {
-		case reflect.String:
-			rst += val.String()
-			break
-		case reflect.Struct:
-			rst += "{"
-			for j := 0; j < val.NumField(); j++ {
-				if j != 0 {
-					rst += ", "
-				}
-
-				subField := val.Field(j)
-				subFieldName := val.Type().Field(j).Name
-
-				rst += subFieldName + ": "
-				switch subField.Kind() {
-				case reflect.Int:
-					rst += strconv.FormatInt(subField.Int(), 10)
-					break
-				case reflect.Interface:
-					rst += fmt.Sprintf("%v", subField.Elem())
-					break
-				}
-			}
-			rst += "}"
-			break
-		}
+		rst += getFieldStr(val, lvl)
 	}
 	rst += "]"
 	return rst

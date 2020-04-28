@@ -25,10 +25,11 @@ const (
 var usageMp = map[string]string{
 	cmdID:       "",
 	cmdNodeInfo: "<node_id_1> <node_id_2> ...",
-	cmdReq:      "<node_id> <log>",
+	cmdReq:      "<log>",
 	cmdStopAll:  "",
 	cmdShutdown: "<node_id_1> <node_id_2> ...",
 	cmdWait:     "<seconds>",
+	cmdHelp:     "",
 }
 
 var scanner *bufio.Scanner
@@ -63,16 +64,11 @@ func (rf *local) StartReadingCMD() {
 				switch cmd[0] {
 				case cmdID:
 					rf.printIDs()
-					break
 				case cmdStopAll:
 					rf.StopAll()
-					break
 				case cmdHelp:
 					printUsage()
-					break
 				}
-
-				break
 			case cmdNodeInfo, cmdShutdown:
 				if l < 2 {
 					err = combineErrorUsage(invalidCommandError, cmd[0])
@@ -93,25 +89,27 @@ func (rf *local) StartReadingCMD() {
 						rf.ShutDownPeer(node)
 					}
 				}
-			case cmdReq:
-				// TODO: add request cmd
-				break
-			case cmdWait:
+			case cmdWait, cmdReq:
 				if l != 2 {
 					err = combineErrorUsage(invalidCommandError, cmd[0])
 					break
 				}
 
-				sec, e := rf.getSeconds(cmd[1])
-				if e != nil {
-					err = e
-					break
-				}
+				switch cmd[0] {
+				case cmdWait:
+					sec, e := rf.getSeconds(cmd[1])
+					if e != nil {
+						err = e
+						break
+					}
 
-				rf.Wait(sec)
+					rf.Wait(sec)
+				case cmdReq:
+					// handle log as string at this time
+					rf.Request(cmd[1])
+				}
 			default:
 				err = invalidCommandError
-				break
 			}
 		}
 
@@ -185,7 +183,8 @@ func (rf *local) printIDs() {
 
 func (rf *local) printNodeInfo(node rpccore.NodeID) {
 	p := rf.raftPeers[node]
+	fmt.Printf("Node info of [%v]\n", node)
 	for k, v := range p.GetInfo() {
-		fmt.Printf("%v: %v\n", k, v)
+		fmt.Printf("  %v: %v\n", k, v)
 	}
 }
