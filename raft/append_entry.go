@@ -1,9 +1,13 @@
 package raft
 
 import (
+	"time"
+
 	"github.com/PwzXxm/raft-lite/rpccore"
 	"github.com/PwzXxm/raft-lite/utils"
 )
+
+const clientRequestTimeout = 5 * time.Second
 
 func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
 	// consistency check
@@ -136,9 +140,19 @@ func (p *Peer) HandleClientRequest(cmd interface{}) bool {
 
 	p.mutex.Unlock()
 
-	// add time out
+	p.logger.Infof("Node[%v] is the leader and got new request to append %v", p.node.NodeID(), cmd)
 
-	p.onReceiveClientRequest(cmd)
+	// use timeout to chec
+	c := make(chan bool)
+	go func() {
+		p.onReceiveClientRequest(cmd)
+		c <- true
+	}()
 
-	return false
+	select {
+	case done := <-c:
+		return done
+	case <-time.After(clientRequestTimeout):
+		return false
+	}
 }
