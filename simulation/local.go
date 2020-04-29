@@ -109,15 +109,13 @@ func (rf *local) StopAll() {
 }
 
 func (rf *local) Request(cmd interface{}) {
-
 	for _, p := range rf.raftPeers {
 		if p.HandleClientRequest(cmd) {
-			log.Infof("New log %v with log index %v has been committed", p.log[logIndex], logIndex)
 			return
 		}
 	}
 
-	log.Warning("Request failed")
+	log.Warnf("Request failed")
 }
 
 func (rf *local) ShutDownPeer(id rpccore.NodeID) {

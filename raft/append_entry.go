@@ -129,6 +129,7 @@ func (p *Peer) onReceiveClientRequest(cmd interface{}) {
 
 // TODO: maybe respond to client and commit change to the state machine later
 func (p *Peer) respondClient(logIndex int) {
+	p.logger.Infof("New log %v has been commited with log index %v", p.log[logIndex], logIndex)
 }
 
 func (p *Peer) HandleClientRequest(cmd interface{}) bool {
@@ -140,7 +141,7 @@ func (p *Peer) HandleClientRequest(cmd interface{}) bool {
 
 	p.mutex.Unlock()
 
-	p.logger.Infof("Node[%v] is the leader and got new request to append %v", p.node.NodeID(), cmd)
+	p.logger.Infof("Received new request to append %v", cmd)
 
 	// use timeout to chec
 	c := make(chan bool)
