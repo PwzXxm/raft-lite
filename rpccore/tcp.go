@@ -3,6 +3,7 @@ package rpccore
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/valyala/gorpc"
@@ -14,11 +15,13 @@ import (
 type TCPNetwork struct {
 	lock        sync.RWMutex
 	nodeAddrMap map[NodeID]string
+	timeout     time.Duration
 }
 
-func NewTCPNetwork() *TCPNetwork {
+func NewTCPNetwork(timeout time.Duration) *TCPNetwork {
 	n := new(TCPNetwork)
 	n.nodeAddrMap = make(map[NodeID]string)
+	n.timeout = timeout
 	return n
 }
 
@@ -99,7 +102,7 @@ func (node *TCPNode) SendRawRequest(target NodeID, method string, data []byte) (
 			addr, ok := node.network.nodeAddrMap[target]
 			node.network.lock.RUnlock()
 			if ok {
-				client = &gorpc.Client{Addr: addr}
+				client = &gorpc.Client{Addr: addr, RequestTimeout: node.network.timeout}
 				client.Start()
 				node.clientMap[target] = client
 			} else {
