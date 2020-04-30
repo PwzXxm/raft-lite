@@ -155,6 +155,7 @@ func (p *Peer) Start() {
 	defer p.mutex.Unlock()
 	if p.shutdown {
 		p.logger.Info("Starting peer.")
+		p.shutdown = false
 		go p.timeoutLoop()
 	} else {
 		p.logger.Warning("This peer is already running.")
@@ -186,12 +187,4 @@ func (p *Peer) startElection() {
 			}
 		}(peerID)
 	}
-}
-
-func (p *Peer) runTimer() {
-	// checkout Ticker
-}
-
-func (p *Peer) sendHeartBeats() {
-	// send heartbeats to all peers
 }

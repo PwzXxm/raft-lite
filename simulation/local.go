@@ -17,10 +17,6 @@ type local struct {
 	rpcPeers  map[rpccore.NodeID]*rpccore.ChanNode
 	raftPeers map[rpccore.NodeID]*raft.Peer
 	loggers   map[rpccore.NodeID]*logrus.Logger
-
-	// TODO: add rpc network
-	// rpc network may simulate long delays and unreliable communications
-	// add a random waiting time?
 }
 
 var log *logrus.Logger
@@ -31,12 +27,12 @@ func init() {
 }
 
 func RunLocally(n int) *local {
-	rf, err := new_local(n)
+	log.Info("Starting simulation locally ...")
+
+	rf, err := newLocal(n)
 	if err != nil {
 		log.Panicln(err)
 	}
-
-	log.Info("Starting simulation locally ...")
 
 	for _, node := range rf.raftPeers {
 		node.Start()
@@ -45,7 +41,7 @@ func RunLocally(n int) *local {
 	return rf
 }
 
-func new_local(n int) (*local, error) {
+func newLocal(n int) (*local, error) {
 	if n <= 0 {
 		err := errors.Errorf("The number of peers should be positive, but got %v", n)
 		return nil, err
@@ -90,7 +86,6 @@ func new_local(n int) (*local, error) {
 		idxMap[nodeIDs[i]] = i
 		idxMap[id] = j
 
-		// TODO: implement NewPeer func
 		rf.raftPeers[id] = raft.NewPeer(node, nodeIDs[:n-1], rf.loggers[id].WithFields(logrus.Fields{
 			"nodeID": node.NodeID(),
 		}))
@@ -109,10 +104,31 @@ func (rf *local) Request(cmd interface{}) {
 }
 
 func (rf *local) ShutDownPeer(id rpccore.NodeID) {
+	rf.raftPeers[id].ShutDown()
 }
 
 func (rf *local) ConnectPeer(id rpccore.NodeID) {
 }
 
 func (rf *local) DisconnectPeer(id rpccore.NodeID) {
+}
+
+func (rf *local) Wait(sec int) {
+	if sec <= 0 {
+		log.Warnf("Seconds to wait should be positive integer, not %v", sec)
+		return
+	}
+
+	log.Infof("Sleeping for %v second(s)", sec)
+	time.Sleep(time.Duration(sec) * time.Second)
+}
+
+func (rf *local) getAllNodeIDs() []rpccore.NodeID {
+	rst := make([]rpccore.NodeID, len(rf.rpcPeers))
+	i := 0
+	for _, rpcNode := range rf.rpcPeers {
+		rst[i] = rpcNode.NodeID()
+		i++
+	}
+	return rst
 }
