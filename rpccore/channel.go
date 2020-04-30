@@ -9,20 +9,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-type ChanAddress struct {
-	nodeID NodeID
-}
-
-func NewChanAddress(nodeID string) ChanAddress {
-	addr := ChanAddress{}
-	addr.nodeID = NodeID(nodeID)
-	return addr
-}
-
-func (addr ChanAddress) NodeID() NodeID {
-	return addr.nodeID
-}
-
 type ChanNode struct {
 	id       NodeID
 	network  *ChanNetwork
@@ -82,17 +68,17 @@ func NewChanNetwork(timeout time.Duration) *ChanNetwork {
 	return n
 }
 
-func (n *ChanNetwork) NewNode(addr ChanAddress) (*ChanNode, error) {
+func (n *ChanNetwork) NewNode(nodeID NodeID) (*ChanNode, error) {
 	n.lock.Lock()
 	defer n.lock.Unlock()
-	if _, ok := n.nodeChannelMap[addr.NodeID()]; ok {
+	if _, ok := n.nodeChannelMap[nodeID]; ok {
 		err := errors.New(fmt.Sprintf(
-			"Node with same ID already exists. NodeID: %v.", addr.NodeID()))
+			"Node with same ID already exists. NodeID: %v.", nodeID))
 		return nil, err
 	}
 	node := new(ChanNode)
 	node.network = n
-	node.id = addr.NodeID()
+	node.id = nodeID
 	// don't need buffer here since the send is blocking anyway.
 	nodeChannel := make(chan *reqMsg)
 	n.nodeChannelMap[node.id] = nodeChannel
@@ -107,7 +93,7 @@ func (n *ChanNetwork) NewNode(addr ChanAddress) (*ChanNode, error) {
 			go func(req *reqMsg) {
 				// delay (sender to receiver)
 				n.lock.RLock()
-				delay := n.delayGenerator(req.source, addr.NodeID())
+				delay := n.delayGenerator(req.source, nodeID)
 				n.lock.RUnlock()
 				time.Sleep(delay)
 				remainingTime := req.deadline.Sub(time.Now())
@@ -119,7 +105,7 @@ func (n *ChanNetwork) NewNode(addr ChanAddress) (*ChanNode, error) {
 					data, err := node.callback(req.source, req.method, req.data)
 					// delay (receiver to sender)
 					n.lock.RLock()
-					delay := n.delayGenerator(addr.NodeID(), req.source)
+					delay := n.delayGenerator(nodeID, req.source)
 					n.lock.RUnlock()
 					if delay <= remainingTime {
 						time.Sleep(delay)
