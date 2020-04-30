@@ -2,7 +2,6 @@ package rpccore
 
 import (
 	"fmt"
-	"log"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -67,7 +66,7 @@ func (n *TCPNetwork) NewLocalNode(nodeID NodeID, remoteAddr, listenAddr string) 
 		},
 	}
 	if err := s.Serve(); err != nil {
-		log.Fatalf("Cannot start rpc server: %s", err)
+		return nil, err
 	}
 
 	// TODO: support graceful shutdown or at least clean shutdown
