@@ -18,7 +18,7 @@ type TCPNetwork struct {
 
 func NewTCPNetwork() *TCPNetwork {
 	n := new(TCPNetwork)
-	n.lock = sync.RWMutex{}
+	n.nodeAddrMap = make(map[NodeID]string)
 	return n
 }
 
@@ -51,7 +51,6 @@ func (n *TCPNetwork) NewLocalNode(nodeID NodeID, remoteAddr, listenAddr string) 
 		network:   n,
 		callback:  defaultCallback,
 		clientMap: make(map[NodeID]*gorpc.Client),
-		lock:      sync.RWMutex{},
 	}
 
 	s := &gorpc.Server{

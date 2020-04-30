@@ -62,7 +62,6 @@ type ChanNetwork struct {
 
 func NewChanNetwork(timeout time.Duration) *ChanNetwork {
 	n := new(ChanNetwork)
-	n.lock = sync.RWMutex{}
 	n.nodeChannelMap = make(map[NodeID](chan *chanReqMsg))
 	n.timeout = timeout
 	n.delayGenerator = func(source, target NodeID) time.Duration {
@@ -81,7 +80,6 @@ func (n *ChanNetwork) NewNode(nodeID NodeID) (*ChanNode, error) {
 	}
 	node := new(ChanNode)
 	node.network = n
-	node.lock = sync.RWMutex{}
 	node.id = nodeID
 	node.callback = func(source NodeID, method string, data []byte) ([]byte, error) {
 		return nil, errors.New("No callback function provided.")
