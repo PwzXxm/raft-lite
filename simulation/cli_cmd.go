@@ -130,9 +130,9 @@ func combineErrorUsage(e error, cmd string) error {
 func (rf *local) validateNodeIds(nodes []string, l, r int) ([]rpccore.NodeID, error) {
 	rst := make([]rpccore.NodeID, 0)
 	for i := l; i < r && i < len(nodes); i++ {
-		addr := rpccore.NewChanAddress(nodes[i])
-		if _, ok := rf.raftPeers[addr.NodeID()]; ok {
-			rst = append(rst, addr.NodeID())
+		nodeID := rpccore.NodeID(nodes[i])
+		if _, ok := rf.raftPeers[nodeID]; ok {
+			rst = append(rst, nodeID)
 		} else {
 			return nil, errors.New("Unable to find node in the current list")
 		}
