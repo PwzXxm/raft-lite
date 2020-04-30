@@ -2,7 +2,6 @@ package simulation
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -10,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/PwzXxm/raft-lite/rpccore"
+	"github.com/pkg/errors"
 )
 
 const (

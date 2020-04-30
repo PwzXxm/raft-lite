@@ -1,12 +1,12 @@
 package main
 
 import (
-	"errors"
 	"log"
 	"os"
 
 	"github.com/PwzXxm/raft-lite/functests"
 	"github.com/PwzXxm/raft-lite/simulation"
+	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
 
@@ -27,7 +27,7 @@ func main() {
 					if c.Int("n") == 0 {
 						return errors.New("please provide -n")
 					}
-					return local_simulation(c.Int("n"))
+					return localSimulation(c.Int("n"))
 				},
 			},
 		},
@@ -78,7 +78,7 @@ func main() {
 
 }
 
-func local_simulation(n int) error {
+func localSimulation(n int) error {
 	rf := simulation.RunLocally(n)
 	defer rf.StopAll()
 

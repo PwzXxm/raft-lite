@@ -29,16 +29,16 @@ func init() {
 func RunLocally(n int) *local {
 	log.Info("Starting simulation locally ...")
 
-	rf, err := newLocal(n)
+	l, err := newLocal(n)
 	if err != nil {
 		log.Panicln(err)
 	}
 
-	for _, node := range rf.raftPeers {
+	for _, node := range l.raftPeers {
 		node.Start()
 	}
 
-	return rf
+	return l
 }
 
 func newLocal(n int) (*local, error) {
@@ -47,73 +47,73 @@ func newLocal(n int) (*local, error) {
 		return nil, err
 	}
 
-	rf := new(local)
-	rf.n = n
-	rf.network = rpccore.NewChanNetwork(4 * time.Second)
-	rf.rpcPeers = make(map[rpccore.NodeID]*rpccore.ChanNode)
-	rf.raftPeers = make(map[rpccore.NodeID]*raft.Peer)
-	rf.loggers = make(map[rpccore.NodeID]*logrus.Logger)
+	l := new(local)
+	l.n = n
+	l.network = rpccore.NewChanNetwork(4 * time.Second)
+	l.rpcPeers = make(map[rpccore.NodeID]*rpccore.ChanNode)
+	l.raftPeers = make(map[rpccore.NodeID]*raft.Peer)
+	l.loggers = make(map[rpccore.NodeID]*logrus.Logger)
 
 	// create rpc nodes
 	for i := 0; i < n; i++ {
-		node, err := rf.network.NewNode(rpccore.NodeID(strconv.Itoa(i)))
+		node, err := l.network.NewNode(rpccore.NodeID(strconv.Itoa(i)))
 		if err != nil {
-			errors.Errorf("Failed to allocate a new node with node id %v", node.NodeID())
+			err = errors.Errorf("Failed to allocate a new node with node id %v", node.NodeID())
 			return nil, err
 		}
-		rf.rpcPeers[node.NodeID()] = node
+		l.rpcPeers[node.NodeID()] = node
 
 		logger := logrus.New()
 		logger.Out = os.Stdout
-		rf.loggers[node.NodeID()] = logger
+		l.loggers[node.NodeID()] = logger
 	}
 
 	// gather nodeIDs and a map (nodeID -> idex in nodeIDs slice)
 	nodeIDs := make([]rpccore.NodeID, n)
 	idxMap := make(map[rpccore.NodeID]int)
 	var i int = 0
-	for k := range rf.rpcPeers {
+	for k := range l.rpcPeers {
 		nodeIDs[i] = k
 		idxMap[k] = i
 		i++
 	}
 
 	// create raft nodes
-	for id, node := range rf.rpcPeers {
+	for id, node := range l.rpcPeers {
 		// move current nodeID to the last of the nodeIDs slice
 		i, j := idxMap[id], n-1
 		nodeIDs[i], nodeIDs[j] = nodeIDs[j], nodeIDs[i]
 		idxMap[nodeIDs[i]] = i
 		idxMap[id] = j
 
-		rf.raftPeers[id] = raft.NewPeer(node, nodeIDs[:n-1], rf.loggers[id].WithFields(logrus.Fields{
+		l.raftPeers[id] = raft.NewPeer(node, nodeIDs[:n-1], l.loggers[id].WithFields(logrus.Fields{
 			"nodeID": node.NodeID(),
 		}))
 	}
 
-	return rf, nil
+	return l, nil
 }
 
-func (rf *local) StopAll() {
-	for _, node := range rf.raftPeers {
+func (l *local) StopAll() {
+	for _, node := range l.raftPeers {
 		node.ShutDown()
 	}
 }
 
-func (rf *local) Request(cmd interface{}) {
+func (l *local) Request(cmd interface{}) {
 }
 
-func (rf *local) ShutDownPeer(id rpccore.NodeID) {
-	rf.raftPeers[id].ShutDown()
+func (l *local) ShutDownPeer(id rpccore.NodeID) {
+	l.raftPeers[id].ShutDown()
 }
 
-func (rf *local) ConnectPeer(id rpccore.NodeID) {
+func (l *local) ConnectPeer(id rpccore.NodeID) {
 }
 
-func (rf *local) DisconnectPeer(id rpccore.NodeID) {
+func (l *local) DisconnectPeer(id rpccore.NodeID) {
 }
 
-func (rf *local) Wait(sec int) {
+func (l *local) Wait(sec int) {
 	if sec <= 0 {
 		log.Warnf("Seconds to wait should be positive integer, not %v", sec)
 		return
@@ -123,12 +123,53 @@ func (rf *local) Wait(sec int) {
 	time.Sleep(time.Duration(sec) * time.Second)
 }
 
-func (rf *local) getAllNodeIDs() []rpccore.NodeID {
-	rst := make([]rpccore.NodeID, len(rf.rpcPeers))
+func (l *local) getAllNodeIDs() []rpccore.NodeID {
+	rst := make([]rpccore.NodeID, len(l.rpcPeers))
 	i := 0
-	for _, rpcNode := range rf.rpcPeers {
+	for _, rpcNode := range l.rpcPeers {
 		rst[i] = rpcNode.NodeID()
 		i++
 	}
 	return rst
+}
+
+func (l *local) getAllNodeInfo() map[rpccore.NodeID]map[string]string {
+	m := make(map[rpccore.NodeID]map[string]string)
+	for nodeID, peer := range l.raftPeers {
+		m[nodeID] = peer.GetInfo()
+	}
+	return m
+}
+
+func (l *local) AgreeOnLeader() (*rpccore.NodeID, error) {
+	var leaderID *rpccore.NodeID
+	for nodeID, peer := range l.raftPeers {
+		if peer.GetState() == raft.Leader {
+			if leaderID == nil {
+				leaderID = &nodeID
+			} else {
+				return nil, errors.Errorf("Failed to agree on leader.\n\n%v\n",
+					l.getAllNodeInfo())
+			}
+		}
+	}
+	if leaderID == nil {
+		return nil, errors.Errorf("Unable to find leader.\n\n%v\n", l.getAllNodeInfo())
+	}
+	return leaderID, nil
+}
+
+func (l *local) AgreeOnTerm() (int, error) {
+	term := -1
+	for _, peer := range l.raftPeers {
+		if term == -1 {
+			term = peer.GetTerm()
+		} else {
+			if term != peer.GetTerm() {
+				return 0, errors.Errorf("Failed to agree on leader.\n\n%v\n",
+					l.getAllNodeInfo())
+			}
+		}
+	}
+	return term, nil
 }

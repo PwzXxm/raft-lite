@@ -188,3 +188,15 @@ func (p *Peer) startElection() {
 		}(peerID)
 	}
 }
+
+func (p *Peer) GetTerm() int {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+	return p.currentTerm
+}
+
+func (p *Peer) GetState() PeerState {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+	return p.state
+}

@@ -1,9 +1,10 @@
 package functests
 
 import (
-	"errors"
 	"fmt"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 type testCase struct {
@@ -13,8 +14,8 @@ type testCase struct {
 
 var testCases = []testCase{
 	{
-		name:   "test",
-		action: func() error { return nil },
+		name:   "initial leader election",
+		action: caseInitLeaderElection,
 	},
 }
 
