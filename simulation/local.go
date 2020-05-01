@@ -155,7 +155,8 @@ func (l *local) AgreeOnLeader() (*rpccore.NodeID, error) {
 	for nodeID, peer := range l.raftPeers {
 		if peer.GetState() == raft.Leader {
 			if leaderID == nil {
-				leaderID = &nodeID
+				n := nodeID
+				leaderID = &n
 			} else {
 				return nil, errors.Errorf("Failed to agree on leader.\n\n%v\n",
 					l.getAllNodeInfo())

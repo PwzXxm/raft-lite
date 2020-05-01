@@ -26,7 +26,7 @@ func caseInitLeaderElection() (err error) {
 	fmt.Println("First check passed, leader is selected.")
 
 	// after a while, since the network is fine, it should be the same
-	time.Sleep(60 * time.Second)
+	time.Sleep(20 * time.Second)
 	leader2, err := sl.AgreeOnLeader()
 	if err != nil {
 		return
