@@ -7,19 +7,19 @@ import (
 	"github.com/PwzXxm/raft-lite/functests"
 	"github.com/PwzXxm/raft-lite/simulation"
 	"github.com/pkg/errors"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 )
 
 func main() {
-	cmd_simulation := cli.Command{
+	cmd_simulation := &cli.Command{
 		Name:  "simulation",
 		Usage: "commands for running simulation",
-		Subcommands: []cli.Command{
+		Subcommands: []*cli.Command{
 			{
 				Name:  "local",
 				Usage: "start a local simulation",
 				Flags: []cli.Flag{
-					cli.Int64Flag{Name: "n", Usage: "number of peers", Required: true},
+					&cli.Int64Flag{Name: "n", Usage: "number of peers", Required: true},
 				},
 				Action: func(c *cli.Context) error {
 					// TODO: not sure why the [Required: true] above
@@ -32,10 +32,10 @@ func main() {
 			},
 		},
 	}
-	cmd_functional := cli.Command{
+	cmd_functional := &cli.Command{
 		Name:  "functionaltest",
 		Usage: "commands for running functional tests",
-		Subcommands: []cli.Command{
+		Subcommands: []*cli.Command{
 			{
 				Name:  "list",
 				Usage: "list all avaliable tests",
@@ -56,7 +56,7 @@ func main() {
 				Name:  "run",
 				Usage: "run a specific tests",
 				Flags: []cli.Flag{
-					cli.Int64Flag{Name: "n", Usage: "test id", Required: true},
+					&cli.Int64Flag{Name: "n", Usage: "test id", Required: true},
 				},
 				Action: func(c *cli.Context) error {
 					return functests.Run(c.Int("n"))
@@ -65,7 +65,7 @@ func main() {
 		},
 	}
 	app := &cli.App{
-		Commands: []cli.Command{
+		Commands: []*cli.Command{
 			cmd_simulation,
 			cmd_functional,
 		},
