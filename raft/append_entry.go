@@ -26,7 +26,7 @@ func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
 	newLogIndex := 0
 	// find the index that the peer is consistent with the new entries
 	for len(p.log) > (prevLogIndex+newLogIndex+1) &&
-		p.log[prevLogIndex+newLogIndex+1].term == req.Entries[newLogIndex].term {
+		p.log[prevLogIndex+newLogIndex+1].Term == req.Entries[newLogIndex].Term {
 		newLogIndex++
 	}
 	p.log = append(p.log[0:prevLogIndex+newLogIndex+1], req.Entries[newLogIndex:]...)
@@ -34,7 +34,7 @@ func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
 	// consistency check ensure that req.Term >= p.currentTerm
 	p.updateTerm(req.Term)
 	if req.LeaderCommit > p.commitIndex {
-		p.commitIndex = utils.Min(req.LeaderCommit, req.Entries[len(req.Entries)-1].term)
+		p.commitIndex = utils.Min(req.LeaderCommit, req.Entries[len(req.Entries)-1].Term)
 	}
 	return &appendEntriesRes{Term: p.currentTerm, Success: true}
 }
@@ -43,7 +43,7 @@ func (p *Peer) consitencyCheck(req appendEntriesReq) bool {
 	if req.Term < p.currentTerm {
 		return false
 	}
-	if len(p.log) <= req.PrevLogIndex || p.log[req.PrevLogIndex].term != req.PrevLogTerm {
+	if len(p.log) <= req.PrevLogIndex || p.log[req.PrevLogIndex].Term != req.PrevLogTerm {
 		return false
 	}
 	return true
@@ -64,6 +64,7 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 		p.appendingEntries[target] = false
 		p.mutex.Unlock()
 	}()
+	isFirstTime := true
 	// call append entry RPC
 	for {
 		// TODO: add other conditions that should stop sending request
@@ -74,14 +75,15 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 		}
 		nextIndex := p.nextIndex[target]
 		currentTerm := p.currentTerm
-		prevLogTerm := p.log[nextIndex-1].term
+		prevLogTerm := p.log[nextIndex-1].Term
 		leaderCommit := p.commitIndex
 		entries := p.log[nextIndex:]
 		p.mutex.Unlock()
 		// if no more entries need to be updated, return
-		if len(entries) == 0 {
+		if len(entries) == 0 && !isFirstTime {
 			return
 		}
+		isFirstTime = false
 		req := appendEntriesReq{Term: currentTerm, LeaderID: leaderID, PrevLogIndex: nextIndex - 1,
 			PrevLogTerm: prevLogTerm, LeaderCommit: leaderCommit, Entries: entries}
 		res := p.appendEntries(target, req)
@@ -110,7 +112,7 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 // this is a blocking function
 func (p *Peer) onReceiveClientRequest(cmd interface{}) {
 	p.mutex.Lock()
-	newlog := LogEntry{term: p.currentTerm, cmd: cmd}
+	newlog := LogEntry{Term: p.currentTerm, Cmd: cmd}
 	p.log = append(p.log, newlog)
 	newLogIndex := len(p.log) - 1
 	totalPeers := len(p.rpcPeersIds)

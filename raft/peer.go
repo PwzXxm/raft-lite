@@ -18,8 +18,8 @@ const (
 )
 
 type LogEntry struct {
-	cmd  interface{}
-	term int
+	Cmd  interface{}
+	Term int
 }
 
 type Peer struct {
@@ -60,7 +60,7 @@ func NewPeer(node rpccore.Node, peers []rpccore.NodeID, logger *logrus.Entry) *P
 	// initialise leader only fields (nextIndex, matchIndex) when becoming leader
 	p.currentTerm = 0
 	p.votedFor = nil
-	p.log = []LogEntry{{cmd: nil, term: 0}}
+	p.log = []LogEntry{{Cmd: nil, Term: 0}}
 
 	p.commitIndex = 0
 	p.lastApplied = 0
@@ -209,7 +209,7 @@ func (p *Peer) startElection() {
 	p.updateTerm(p.currentTerm + 1)
 	p.votedFor = &voteID
 
-	req := requestVoteReq{Term: p.currentTerm, CandidateID: p.node.NodeID(), LastLogIndex: len(p.log) - 1, LastLogTerm: p.log[len(p.log)-1].term}
+	req := requestVoteReq{Term: p.currentTerm, CandidateID: p.node.NodeID(), LastLogIndex: len(p.log) - 1, LastLogTerm: p.log[len(p.log)-1].Term}
 	for _, peerID := range p.rpcPeersIds {
 		go func(peerID rpccore.NodeID) {
 			res := p.requestVote(peerID, req)

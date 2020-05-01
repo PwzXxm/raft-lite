@@ -21,7 +21,7 @@ func (p *Peer) handleRequestVote(req requestVoteReq) requestVoteRes {
 
 func (p *Peer) logPriorCheck(lastLogIndex int, lastLogTerm int) bool {
 	myLastLogIndex := len(p.log) - 1
-	myLastLogTerm := p.log[myLastLogIndex].term
+	myLastLogTerm := p.log[myLastLogIndex].Term
 	return myLastLogTerm > lastLogTerm ||
 		(myLastLogTerm == lastLogTerm && myLastLogIndex > lastLogIndex)
 }
