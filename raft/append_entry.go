@@ -10,6 +10,10 @@ import (
 const clientRequestTimeout = 5 * time.Second
 
 func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
+	if p.state == Candidate && req.Term >= p.currentTerm {
+		p.changeState(Follower)
+	}
+
 	// consistency check
 	consistent := p.consitencyCheck(req)
 	if !consistent {
@@ -21,15 +25,17 @@ func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
 	newLogIndex := 0
 	// find the index that the peer is consistent with the new entries
 	for len(p.log) > (prevLogIndex+newLogIndex+1) &&
-		p.log[prevLogIndex+newLogIndex+1].term == req.Entries[newLogIndex].term {
+		p.log[prevLogIndex+newLogIndex+1].Term == req.Entries[newLogIndex].Term {
 		newLogIndex++
 	}
 	p.log = append(p.log[0:prevLogIndex+newLogIndex+1], req.Entries[newLogIndex:]...)
-	p.logger.Infof("Delete and append new logs from index %v", prevLogIndex+newLogIndex+1)
+	if len(req.Entries) > newLogIndex {
+		p.logger.Infof("Delete and append new logs from index %v", prevLogIndex+newLogIndex+1)
+	}
 	// consistency check ensure that req.Term >= p.currentTerm
-	p.currentTerm = req.Term
+	p.updateTerm(req.Term)
 	if req.LeaderCommit > p.commitIndex {
-		p.commitIndex = utils.Min(req.LeaderCommit, req.Entries[len(req.Entries)-1].term)
+		p.commitIndex = utils.Min(req.LeaderCommit, req.Entries[len(req.Entries)-1].Term)
 	}
 	return &appendEntriesRes{Term: p.currentTerm, Success: true}
 }
@@ -38,7 +44,7 @@ func (p *Peer) consitencyCheck(req appendEntriesReq) bool {
 	if req.Term < p.currentTerm {
 		return false
 	}
-	if len(p.log) <= req.PrevLogIndex || p.log[req.PrevLogIndex].term != req.PrevLogTerm {
+	if len(p.log) <= req.PrevLogIndex || p.log[req.PrevLogIndex].Term != req.PrevLogTerm {
 		return false
 	}
 	return true
@@ -47,6 +53,10 @@ func (p *Peer) consitencyCheck(req appendEntriesReq) bool {
 //iteratively call appendEntry RPC until the follower is up to date with leader.
 func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 	p.mutex.Lock()
+	if p.appendingEntries[target] {
+		p.mutex.Unlock()
+		return
+	}
 	p.appendingEntries[target] = true
 	leaderID := p.node.NodeID()
 	p.mutex.Unlock()
@@ -55,8 +65,9 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 		p.appendingEntries[target] = false
 		p.mutex.Unlock()
 	}()
+	isFirstTime := true
 	// call append entry RPC
-	for true {
+	for {
 		// TODO: add other conditions that should stop sending request
 		p.mutex.Lock()
 		if p.state != Leader {
@@ -65,21 +76,22 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 		}
 		nextIndex := p.nextIndex[target]
 		currentTerm := p.currentTerm
-		prevLogTerm := p.log[nextIndex-1].term
+		prevLogTerm := p.log[nextIndex-1].Term
 		leaderCommit := p.commitIndex
 		entries := p.log[nextIndex:]
 		p.mutex.Unlock()
 		// if no more entries need to be updated, return
-		if len(entries) == 0 {
+		if len(entries) == 0 && !isFirstTime {
 			return
 		}
+		isFirstTime = false
 		req := appendEntriesReq{Term: currentTerm, LeaderID: leaderID, PrevLogIndex: nextIndex - 1,
 			PrevLogTerm: prevLogTerm, LeaderCommit: leaderCommit, Entries: entries}
 		res := p.appendEntries(target, req)
 		if res == nil {
 			// retry call appendEntries rpc if response is nil
 			continue
-		} else if res.Success == false {
+		} else if !res.Success {
 			// update nextIndex for target node
 			p.mutex.Lock()
 			p.nextIndex[target]--
@@ -101,15 +113,15 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 // this is a blocking function
 func (p *Peer) onReceiveClientRequest(cmd interface{}) {
 	p.mutex.Lock()
-	newlog := LogEntry{term: p.currentTerm, cmd: cmd}
+	newlog := LogEntry{Term: p.currentTerm, Cmd: cmd}
 	p.log = append(p.log, newlog)
 	newLogIndex := len(p.log) - 1
 	totalPeers := len(p.rpcPeersIds)
 	majorityCheckChannel := make(chan rpccore.NodeID, totalPeers)
 	p.logIndexMajorityCheckChannel[newLogIndex] = majorityCheckChannel
-	p.mutex.Unlock()
 	// trigger timeout to initialize call appendEntryRPC
 	p.triggerTimeout()
+	p.mutex.Unlock()
 	count := 0
 	for range majorityCheckChannel {
 		count++
