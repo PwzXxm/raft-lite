@@ -10,7 +10,6 @@ import (
 const clientRequestTimeout = 5 * time.Second
 
 func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
-	p.logger.Info("Receive append entry.")
 	if p.state == Candidate && req.Term >= p.currentTerm {
 		p.changeState(Follower)
 	}
@@ -30,7 +29,9 @@ func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
 		newLogIndex++
 	}
 	p.log = append(p.log[0:prevLogIndex+newLogIndex+1], req.Entries[newLogIndex:]...)
-	p.logger.Infof("Delete and append new logs from index %v", prevLogIndex+newLogIndex+1)
+	if len(req.Entries) > newLogIndex {
+		p.logger.Infof("Delete and append new logs from index %v", prevLogIndex+newLogIndex+1)
+	}
 	// consistency check ensure that req.Term >= p.currentTerm
 	p.updateTerm(req.Term)
 	if req.LeaderCommit > p.commitIndex {
