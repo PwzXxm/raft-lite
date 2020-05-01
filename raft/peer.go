@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/PwzXxm/raft-lite/rpccore"
+	"github.com/PwzXxm/raft-lite/utils"
 	"github.com/sirupsen/logrus"
 )
 
@@ -58,7 +59,7 @@ func NewPeer(node rpccore.Node, peers []rpccore.NodeID, logger *logrus.Entry) *P
 	// initialise leader only fields (nextIndex, matchIndex) when becoming leader
 	p.currentTerm = 0
 	p.votedFor = nil
-	p.log = make([]LogEntry, 0)
+	p.log = []LogEntry{{cmd: nil, term: 0}}
 
 	p.commitIndex = 0
 	p.lastApplied = 0
@@ -87,8 +88,16 @@ func (p *Peer) timeoutLoop() {
 		currentState := p.state
 		p.mutex.Unlock()
 
-		// TODO: get timeout based on state
-		timeout := time.Duration(1000)
+		// timeout based on state
+		var timeout time.Duration
+		switch currentState {
+		case Follower:
+			timeout = time.Duration(utils.Random(200, 400))
+		case Candidate:
+			timeout = time.Duration(utils.Random(200, 400))
+		case Leader:
+			timeout = 50
+		}
 
 		execute := true
 		select {
@@ -102,7 +111,9 @@ func (p *Peer) timeoutLoop() {
 			switch p.state {
 			case Follower:
 				if !p.heardFromLeader {
-					// TODO: change to candidate?
+					if p.votedFor == nil {
+						p.changeState(Candidate)
+					}
 				} else {
 					p.heardFromLeader = false
 				}
@@ -176,6 +187,9 @@ func (p *Peer) ShutDown() {
 }
 
 func (p *Peer) startElection() {
+	p.logger.Info("Start election.")
+	voteID := p.node.NodeID()
+	p.votedFor = &voteID
 	p.currentTerm += 1
 
 	req := requestVoteReq{Term: p.currentTerm, CandidateID: p.node.NodeID(), LastLogIndex: len(p.log) - 1, LastLogTerm: p.log[len(p.log)-1].term}

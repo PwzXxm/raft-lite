@@ -10,6 +10,12 @@ import (
 const clientRequestTimeout = 5 * time.Second
 
 func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
+	p.mutex.Lock()
+	if p.state == Candidate {
+		p.state = Follower
+	}
+	p.mutex.Unlock()
+
 	// consistency check
 	consistent := p.consitencyCheck(req)
 	if !consistent {

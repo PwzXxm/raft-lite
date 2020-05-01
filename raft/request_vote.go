@@ -35,6 +35,7 @@ func (p *Peer) handleRequestVoteRespond(res requestVoteRes) {
 		totalPeers := len(p.rpcPeersIds)
 		// received majority votes, become leader
 		if p.voteCount > totalPeers/2 && p.state == Candidate {
+			p.logger.Info("Change to leader.")
 			p.changeState(Leader)
 		}
 	} else {

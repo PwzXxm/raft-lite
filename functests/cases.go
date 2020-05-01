@@ -1,6 +1,7 @@
 package functests
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/PwzXxm/raft-lite/simulation"
@@ -22,6 +23,8 @@ func caseInitLeaderElection() (err error) {
 		return
 	}
 
+	fmt.Println("First check passed, leader is selected.")
+
 	// after a while, since the network is fine, it should be the same
 	time.Sleep(60 * time.Second)
 	leader2, err := sl.AgreeOnLeader()
@@ -33,9 +36,9 @@ func caseInitLeaderElection() (err error) {
 		return
 	}
 
-	if leader2 != leader1 || term2 != term1 {
-		return errors.Errorf("Leader amd/or term changed. l1:%v, l2:%v, t1:%v, t2:%v",
-			leader1, leader2, term1, term2)
+	if *leader2 != *leader1 || term2 != term1 {
+		return errors.Errorf("Leader and/or term changed. l1:%v, l2:%v, t1:%v, t2:%v",
+			*leader1, *leader2, term1, term2)
 	}
 
 	return nil
