@@ -95,6 +95,7 @@ func (p *Peer) handleRPCCallAndLogError(source rpccore.NodeID, method string, da
 }
 
 func (p *Peer) handleRPCCall(source rpccore.NodeID, method string, data []byte) ([]byte, error) {
+	p.logger.Infof("XXXXXX %v", method)
 	switch method {
 	case rpcMethodRequestVote:
 		var req requestVoteReq

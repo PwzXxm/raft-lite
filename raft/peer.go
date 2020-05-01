@@ -73,9 +73,12 @@ func NewPeer(node rpccore.Node, peers []rpccore.NodeID, logger *logrus.Entry) *P
 	p.shutdown = true
 	p.logger = logger
 	// this channel can't be blocking, otherwise it will cause a dead lock
-	p.timeoutLoopChan = make(chan bool, 1)
+	p.timeoutLoopChan = make(chan bool, 1000)
 
-	p.appendingEntries = make(map[rpccore.NodeID]bool)
+	p.appendingEntries = make(map[rpccore.NodeID]bool, len(peers))
+	for _, peer := range peers {
+		p.appendingEntries[peer] = false
+	}
 
 	p.changeState(Follower)
 
@@ -217,7 +220,9 @@ func (p *Peer) GetTerm() int {
 }
 
 func (p *Peer) GetState() PeerState {
+	p.logger.Info("AAA")
 	p.mutex.Lock()
+	p.logger.Info("BBB")
 	defer p.mutex.Unlock()
 	return p.state
 }

@@ -53,17 +53,23 @@ func (p *Peer) consitencyCheck(req appendEntriesReq) bool {
 func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 	p.logger.Info("Call append entry.")
 	p.mutex.Lock()
+	if p.appendingEntries[target] {
+		p.mutex.Unlock()
+		return
+	}
 	p.appendingEntries[target] = true
 	leaderID := p.node.NodeID()
 	p.mutex.Unlock()
 	defer func() {
+		p.logger.Info("Append entry loop end.")
 		p.mutex.Lock()
 		p.appendingEntries[target] = false
 		p.mutex.Unlock()
 	}()
 	// call append entry RPC
-	for true {
+	for {
 		// TODO: add other conditions that should stop sending request
+		p.logger.Info("Append entry loop.")
 		p.mutex.Lock()
 		if p.state != Leader {
 			p.mutex.Unlock()
@@ -85,7 +91,7 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 		if res == nil {
 			// retry call appendEntries rpc if response is nil
 			continue
-		} else if res.Success == false {
+		} else if !res.Success {
 			// update nextIndex for target node
 			p.mutex.Lock()
 			p.nextIndex[target]--
