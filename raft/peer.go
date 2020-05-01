@@ -156,11 +156,13 @@ func (p *Peer) changeState(state PeerState) {
 		p.startElection()
 	case Leader:
 		p.nextIndex = make(map[rpccore.NodeID]int)
+		p.matchIndex = make(map[rpccore.NodeID]int)
 		for _, peers := range p.rpcPeersIds {
 			p.nextIndex[peers] = len(p.log)
-		}
 
-		p.matchIndex = make(map[rpccore.NodeID]int)
+			// TODO: grind in the furture
+			p.matchIndex[peers] = 0
+		}
 	}
 	p.resetTimeout()
 }
