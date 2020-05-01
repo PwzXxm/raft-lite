@@ -235,9 +235,7 @@ func (p *Peer) GetTerm() int {
 }
 
 func (p *Peer) GetState() PeerState {
-	p.logger.Info("AAA")
 	p.mutex.Lock()
-	p.logger.Info("BBB")
 	defer p.mutex.Unlock()
 	return p.state
 }
