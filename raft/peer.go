@@ -38,9 +38,10 @@ type Peer struct {
 	shutdown    bool
 	logger      *logrus.Entry
 
-	// [false] for reset and [true] for trigger
 	// don't use this one directly, use [triggerTimeout] or [resetTimeout]
-	timeoutLoopChan chan (bool)
+	// the value in it can only be [nil]
+	timeoutLoopChan          chan (interface{})
+	timeoutLoopSkipThisRound bool
 
 	// leader only
 	nextIndex                    map[rpccore.NodeID]int
@@ -72,8 +73,9 @@ func NewPeer(node rpccore.Node, peers []rpccore.NodeID, logger *logrus.Entry) *P
 
 	p.shutdown = true
 	p.logger = logger
-	// this channel can't be blocking, otherwise it will cause a dead lock
-	p.timeoutLoopChan = make(chan bool, 1000)
+
+	p.timeoutLoopChan = make(chan interface{}, 1)
+	p.timeoutLoopSkipThisRound = false
 
 	p.appendingEntries = make(map[rpccore.NodeID]bool, len(peers))
 	for _, peer := range peers {
@@ -104,15 +106,13 @@ func (p *Peer) timeoutLoop() {
 			timeout = 50
 		}
 
-		execute := true
 		select {
 		case <-time.After(timeout * time.Millisecond):
-		case execute = <-p.timeoutLoopChan:
+		case <-p.timeoutLoopChan:
 		}
 		p.mutex.Lock()
 		// ignore this round if the state has been changed.
-		if currentState == p.state && execute {
-			// TODO: handle timeout here
+		if currentState == p.state && !p.timeoutLoopSkipThisRound {
 			switch p.state {
 			case Follower:
 				if !p.heardFromLeader {
@@ -128,6 +128,7 @@ func (p *Peer) timeoutLoop() {
 				}
 			}
 		}
+		p.timeoutLoopSkipThisRound = false
 		shutdown := p.shutdown
 		p.mutex.Unlock()
 		if shutdown {
@@ -137,11 +138,19 @@ func (p *Peer) timeoutLoop() {
 }
 
 func (p *Peer) triggerTimeout() {
-	p.timeoutLoopChan <- true
+	select {
+	case p.timeoutLoopChan <- nil:
+	default: // message dropped
+	}
+	p.timeoutLoopSkipThisRound = false
 }
 
 func (p *Peer) resetTimeout() {
-	p.timeoutLoopChan <- false
+	select {
+	case p.timeoutLoopChan <- nil:
+	default: // message dropped
+	}
+	p.timeoutLoopSkipThisRound = true
 }
 
 func (p *Peer) changeState(state PeerState) {
@@ -179,7 +188,7 @@ func (p *Peer) Start() {
 func (p *Peer) ShutDown() {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
-	if p.shutdown == false {
+	if !p.shutdown {
 		p.shutdown = true
 		p.logger.Info("Stopping peer.")
 		p.resetTimeout()

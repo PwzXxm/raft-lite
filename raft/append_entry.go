@@ -119,9 +119,9 @@ func (p *Peer) onReceiveClientRequest(cmd interface{}) {
 	totalPeers := len(p.rpcPeersIds)
 	majorityCheckChannel := make(chan rpccore.NodeID, totalPeers)
 	p.logIndexMajorityCheckChannel[newLogIndex] = majorityCheckChannel
-	p.mutex.Unlock()
 	// trigger timeout to initialize call appendEntryRPC
 	p.triggerTimeout()
+	p.mutex.Unlock()
 	count := 0
 	for range majorityCheckChannel {
 		count++
