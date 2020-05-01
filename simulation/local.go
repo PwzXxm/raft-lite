@@ -11,6 +11,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const clientRequestTimeout = 5 * time.Second
+
 type local struct {
 	n         int
 	network   *rpccore.ChanNetwork
@@ -100,7 +102,14 @@ func (l *local) StopAll() {
 	}
 }
 
-func (l *local) Request(cmd interface{}) {
+func (rf *local) Request(cmd interface{}) {
+	for _, p := range rf.raftPeers {
+		if p.HandleClientRequest(cmd) {
+			return
+		}
+	}
+
+	log.Warnf("Request failed")
 }
 
 func (l *local) ShutDownPeer(id rpccore.NodeID) {
