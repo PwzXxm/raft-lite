@@ -13,27 +13,15 @@ func init() {
 	fmt.Println("* rpc core test *")
 }
 
-func TestNewChanAddress(t *testing.T) {
-	nodeID := "test"
-	addr := NewChanAddress(nodeID)
-
-	if addr.NodeID() != NodeID(nodeID) {
-		t.Errorf("ChanAddress NodeID is %v; want %v", addr.NodeID(), nodeID)
-	}
-}
-
 func TestNewNode(t *testing.T) {
 	network := NewChanNetwork(time.Second)
 
-	addrA := NewChanAddress("node")
-	addrB := NewChanAddress("node")
-
-	_, err := network.NewNode(addrA)
+	_, err := network.NewNode(NodeID("node"))
 	if err != nil {
 		t.Errorf("Node A should have no error")
 	}
 
-	_, err = network.NewNode(addrB)
+	_, err = network.NewNode(NodeID("node"))
 
 	if err == nil {
 		t.Errorf("Node B should have same ID with A")
@@ -43,13 +31,9 @@ func TestNewNode(t *testing.T) {
 func TestCommunication(t *testing.T) {
 	network := NewChanNetwork(time.Second)
 
-	addrA := NewChanAddress("nodeA")
-	addrB := NewChanAddress("nodeB")
-	addrC := NewChanAddress("nodeC")
-
-	nodeA, _ := network.NewNode(addrA)
-	nodeB, _ := network.NewNode(addrB)
-	nodeC, _ := network.NewNode(addrC)
+	nodeA, _ := network.NewNode("nodeA")
+	nodeB, _ := network.NewNode("nodeB")
+	nodeC, _ := network.NewNode("nodeC")
 
 	nodeB.RegisterRawRequestCallback(func(source NodeID, method string, data []byte) ([]byte, error) {
 		if string(data) == "Test: A -> B" {
@@ -60,35 +44,32 @@ func TestCommunication(t *testing.T) {
 	})
 
 	data := []byte("Test: A -> B")
-	_, err := nodeA.SendRawRequest(NodeID("nodeB"), "test", data)
+	_, err := nodeA.SendRawRequest(nodeB.NodeID(), "test", data)
 	if err != nil {
 		t.Errorf("Node A should receive callback.\n%+v", err)
 	}
 
 	data = []byte("Test: C -> B")
-	_, err = nodeC.SendRawRequest(NodeID("nodeB"), "test", data)
+	_, err = nodeC.SendRawRequest(nodeB.NodeID(), "test", data)
 	if err == nil {
 		t.Errorf("Node C should receive error")
 	}
 }
 
 func TestTimeoutAndDelayGenerator(t *testing.T) {
-	addrA := NewChanAddress("nodeA")
-	addrB := NewChanAddress("nodeB")
-	addrC := NewChanAddress("nodeC")
-
 	network := NewChanNetwork(time.Second)
+
+	nodeA, _ := network.NewNode("nodeA")
+	nodeB, _ := network.NewNode("nodeB")
+	nodeC, _ := network.NewNode("nodeC")
+
 	network.SetDelayGenerator(func(source, target NodeID) time.Duration {
 		// block all message from/to node A
-		if source == addrA.NodeID() || target == addrA.NodeID() {
+		if source == nodeA.NodeID() || target == nodeA.NodeID() {
 			return 2 * time.Second
 		}
 		return 0
 	})
-
-	nodeA, _ := network.NewNode(addrA)
-	nodeB, _ := network.NewNode(addrB)
-	nodeC, _ := network.NewNode(addrC)
 
 	callback := func(source NodeID, method string, data []byte) ([]byte, error) {
 		return []byte("OK"), nil
@@ -96,12 +77,12 @@ func TestTimeoutAndDelayGenerator(t *testing.T) {
 	nodeA.RegisterRawRequestCallback(callback)
 	nodeB.RegisterRawRequestCallback(callback)
 
-	_, err := nodeC.SendRawRequest(addrA.NodeID(), "", nil)
+	_, err := nodeC.SendRawRequest(nodeA.NodeID(), "", nil)
 	if err == nil {
 		t.Errorf("Send raw request to A should fail.")
 	}
 
-	_, err = nodeC.SendRawRequest(addrB.NodeID(), "", nil)
+	_, err = nodeC.SendRawRequest(nodeB.NodeID(), "", nil)
 	if err != nil {
 		t.Errorf("Send raw request to B shouldn't fail.\n%+v", err)
 	}
@@ -110,13 +91,9 @@ func TestTimeoutAndDelayGenerator(t *testing.T) {
 func BenchmarkCommunication(b *testing.B) {
 	network := NewChanNetwork(time.Second)
 
-	addrA := NewChanAddress("nodeA")
-	addrB := NewChanAddress("nodeB")
-	addrC := NewChanAddress("nodeC")
-
-	nodeA, _ := network.NewNode(addrA)
-	nodeB, _ := network.NewNode(addrB)
-	nodeC, _ := network.NewNode(addrC)
+	nodeA, _ := network.NewNode("nodeA")
+	nodeB, _ := network.NewNode("nodeB")
+	nodeC, _ := network.NewNode("nodeC")
 
 	callbackHandler := func(source NodeID, method string, data []byte) ([]byte, error) {
 		return []byte(string(source)), nil
@@ -137,11 +114,11 @@ func BenchmarkCommunication(b *testing.B) {
 			for j := 0; j < b.N*1000000; j++ {
 				switch {
 				case i < 2:
-					nodeA.SendRawRequest(NodeID("nodeB"), "test", []byte("Test: A -> B"))
+					nodeA.SendRawRequest(nodeB.NodeID(), "test", []byte("Test: A -> B"))
 				case i < 4:
-					nodeB.SendRawRequest(NodeID("nodeC"), "test", []byte("Test: B -> C"))
+					nodeB.SendRawRequest(nodeC.NodeID(), "test", []byte("Test: B -> C"))
 				case i < 6:
-					nodeC.SendRawRequest(NodeID("nodeA"), "test", []byte("Test: C -> A"))
+					nodeC.SendRawRequest(nodeA.NodeID(), "test", []byte("Test: C -> A"))
 				}
 			}
 			fmt.Printf("Worker %d done\n", i)

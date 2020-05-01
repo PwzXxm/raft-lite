@@ -10,16 +10,8 @@ package rpccore
 type NodeID string
 type Callback func(source NodeID, method string, data []byte) ([]byte, error)
 
-type Address interface {
-	NodeID() NodeID
-}
-
 type Node interface {
 	NodeID() NodeID
 	SendRawRequest(target NodeID, method string, data []byte) ([]byte, error)
 	RegisterRawRequestCallback(callback Callback)
-}
-
-type Network interface {
-	NewNode(addr Address) (*Node, error)
 }
