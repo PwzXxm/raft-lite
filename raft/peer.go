@@ -99,11 +99,11 @@ func (p *Peer) timeoutLoop() {
 		var timeout time.Duration
 		switch currentState {
 		case Follower:
-			timeout = time.Duration(utils.Random(200, 400))
+			timeout = time.Duration(utils.Random(2000, 4000))
 		case Candidate:
-			timeout = time.Duration(utils.Random(200, 400))
+			timeout = time.Duration(utils.Random(2000, 4000))
 		case Leader:
-			timeout = 50
+			timeout = 500
 		}
 
 		select {
