@@ -51,7 +51,6 @@ func (p *Peer) consitencyCheck(req appendEntriesReq) bool {
 
 //iteratively call appendEntry RPC until the follower is up to date with leader.
 func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
-	p.logger.Info("Call append entry.")
 	p.mutex.Lock()
 	if p.appendingEntries[target] {
 		p.mutex.Unlock()
@@ -61,7 +60,6 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 	leaderID := p.node.NodeID()
 	p.mutex.Unlock()
 	defer func() {
-		p.logger.Info("Append entry loop end.")
 		p.mutex.Lock()
 		p.appendingEntries[target] = false
 		p.mutex.Unlock()
@@ -69,7 +67,6 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 	// call append entry RPC
 	for {
 		// TODO: add other conditions that should stop sending request
-		p.logger.Info("Append entry loop.")
 		p.mutex.Lock()
 		if p.state != Leader {
 			p.mutex.Unlock()
