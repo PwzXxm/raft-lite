@@ -75,6 +75,8 @@ func NewPeer(node rpccore.Node, peers []rpccore.NodeID, logger *logrus.Entry) *P
 	// this channel can't be blocking, otherwise it will cause a dead lock
 	p.timeoutLoopChan = make(chan bool, 1)
 
+	p.appendingEntries = make(map[rpccore.NodeID]bool)
+
 	p.changeState(Follower)
 
 	return p
@@ -111,9 +113,7 @@ func (p *Peer) timeoutLoop() {
 			switch p.state {
 			case Follower:
 				if !p.heardFromLeader {
-					if p.votedFor == nil {
-						p.changeState(Candidate)
-					}
+					p.changeState(Candidate)
 				} else {
 					p.heardFromLeader = false
 				}
@@ -124,7 +124,6 @@ func (p *Peer) timeoutLoop() {
 					}
 				}
 			}
-
 		}
 		shutdown := p.shutdown
 		p.mutex.Unlock()
@@ -189,8 +188,8 @@ func (p *Peer) ShutDown() {
 func (p *Peer) startElection() {
 	p.logger.Info("Start election.")
 	voteID := p.node.NodeID()
+	p.updateTerm(p.currentTerm + 1)
 	p.votedFor = &voteID
-	p.currentTerm += 1
 
 	req := requestVoteReq{Term: p.currentTerm, CandidateID: p.node.NodeID(), LastLogIndex: len(p.log) - 1, LastLogTerm: p.log[len(p.log)-1].term}
 	for _, peerID := range p.rpcPeersIds {
@@ -200,6 +199,14 @@ func (p *Peer) startElection() {
 				p.handleRequestVoteRespond(*res)
 			}
 		}(peerID)
+	}
+}
+
+func (p *Peer) updateTerm(term int) {
+	if term > p.currentTerm {
+		p.logger.Infof("Term is incremented from %v to %v.", p.currentTerm, term)
+		p.currentTerm = term
+		p.votedFor = nil
 	}
 }
 

@@ -10,11 +10,10 @@ import (
 const clientRequestTimeout = 5 * time.Second
 
 func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
-	p.mutex.Lock()
-	if p.state == Candidate {
-		p.state = Follower
+	p.logger.Info("Receive append entry.")
+	if p.state == Candidate && req.Term >= p.currentTerm {
+		p.changeState(Follower)
 	}
-	p.mutex.Unlock()
 
 	// consistency check
 	consistent := p.consitencyCheck(req)
@@ -33,7 +32,7 @@ func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
 	p.log = append(p.log[0:prevLogIndex+newLogIndex+1], req.Entries[newLogIndex:]...)
 	p.logger.Infof("Delete and append new logs from index %v", prevLogIndex+newLogIndex+1)
 	// consistency check ensure that req.Term >= p.currentTerm
-	p.currentTerm = req.Term
+	p.updateTerm(req.Term)
 	if req.LeaderCommit > p.commitIndex {
 		p.commitIndex = utils.Min(req.LeaderCommit, req.Entries[len(req.Entries)-1].term)
 	}
@@ -52,6 +51,7 @@ func (p *Peer) consitencyCheck(req appendEntriesReq) bool {
 
 //iteratively call appendEntry RPC until the follower is up to date with leader.
 func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
+	p.logger.Info("Call append entry.")
 	p.mutex.Lock()
 	p.appendingEntries[target] = true
 	leaderID := p.node.NodeID()

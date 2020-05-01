@@ -1,19 +1,21 @@
 package raft
 
 func (p *Peer) handleRequestVote(req requestVoteReq) requestVoteRes {
-	// check candidate's qualification: 1. Deny if its term is samller than mine 2. or my log is more up to date
+	// check candidate's qualification:
+	// 1. Deny if its term is samller than mine
+	// 2. or my log is more up to date
 	if req.Term < p.currentTerm || p.logPriorCheck(req.LastLogIndex, req.LastLogTerm) {
 		return requestVoteRes{Term: p.currentTerm, VoteGranted: false}
 	}
-	// check receiver's qualification: Have not voted before, or voted to you before
+	p.updateTerm(req.Term)
+	// check receiver's qualification:
+	// 1. Have not voted before, or voted to you before
 	if !(p.votedFor == nil || p.votedFor == &req.CandidateID) {
 		return requestVoteRes{Term: p.currentTerm, VoteGranted: false}
 	}
-	// vote for this candidate
-	// what else should this receiver do?
 	p.votedFor = &req.CandidateID
-	// change its current term to candidate's term
-	p.currentTerm = req.Term
+	// TODO: double check with paper
+	p.resetTimeout()
 	return requestVoteRes{Term: p.currentTerm, VoteGranted: true}
 }
 
@@ -40,7 +42,7 @@ func (p *Peer) handleRequestVoteRespond(res requestVoteRes) {
 		}
 	} else {
 		if res.Term > p.currentTerm {
-			p.currentTerm = res.Term
+			p.updateTerm(res.Term)
 			p.changeState(Follower)
 		}
 	}
