@@ -17,6 +17,10 @@ var testCases = []testCase{
 		name:   "initial leader election",
 		action: caseInitLeaderElection,
 	},
+	{
+		name:   "recovery leader election",
+		action: caseRecoverLeaderElection,
+	},
 }
 
 func List() {
