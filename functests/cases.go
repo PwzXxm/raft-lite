@@ -22,17 +22,17 @@ func caseRecoverLeaderElection() (err error) {
 	if err != nil {
 		return
 	}
-	fmt.Println("Initial election finished, leader:%v, term:%v", *leader1, term1)
+	fmt.Printf("Initial election finished, leader:%v, term:%v\n", *leader1, term1)
 
 	// mess up the network
 	fmt.Println("Mess up the network for 10 secs...")
-	sl.SetNetworkReliability(2, 4, 0.5)
+	sl.SetNetworkReliability(6, 6, 0.5)
 	time.Sleep(10 * time.Second)
 
 	// process second election normally
 	fmt.Println("Network back to normal...")
 	sl.SetNetworkReliability(0, 0, 0.0)
-	time.Sleep(5 * time.Second)
+	time.Sleep(10 * time.Second)
 	leader2, err := sl.AgreeOnLeader()
 	if err != nil {
 		return
@@ -41,7 +41,7 @@ func caseRecoverLeaderElection() (err error) {
 	if err != nil {
 		return
 	}
-	fmt.Println("Second election finished, leader:%v, term:%v", *leader2, term2)
+	fmt.Printf("Second election finished, leader:%v, term:%v\n", *leader2, term2)
 	return
 
 }
