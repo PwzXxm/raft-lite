@@ -3,15 +3,20 @@ package simulation
 import (
 	"os"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/PwzXxm/raft-lite/raft"
 	"github.com/PwzXxm/raft-lite/rpccore"
+	"github.com/PwzXxm/raft-lite/utils"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
-const clientRequestTimeout = 5 * time.Second
+const (
+	clientRequestTimeout = 5 * time.Second
+	rpcTimeout           = 4 * time.Second
+)
 
 type local struct {
 	n         int
@@ -19,6 +24,14 @@ type local struct {
 	rpcPeers  map[rpccore.NodeID]*rpccore.ChanNode
 	raftPeers map[rpccore.NodeID]*raft.Peer
 	loggers   map[rpccore.NodeID]*logrus.Logger
+
+	// network related
+	netLock          sync.RWMutex
+	offlineNodes     map[rpccore.NodeID]bool
+	nodePartition    map[rpccore.NodeID]int
+	oneWayLatencyMin time.Duration
+	oneWayLatencyMax time.Duration
+	packetLossRate   float64
 }
 
 var log *logrus.Logger
@@ -43,6 +56,23 @@ func RunLocally(n int) *local {
 	return l
 }
 
+// TODO: Current limitation:
+// 		1. latency is uniform distribution
+// 		2. don't support one way connection lost (packet lost is one way)
+// 		2. all nodes share the same latency and packet lost rate
+func (l *local) delayGenerator(source, target rpccore.NodeID) time.Duration {
+	l.netLock.RLock()
+	defer l.netLock.RUnlock()
+	if !l.offlineNodes[source] && !l.offlineNodes[target] {
+		if l.nodePartition[source] == l.nodePartition[target] {
+			if !utils.RandomBool(l.packetLossRate) {
+				return utils.RandomTime(l.oneWayLatencyMin, l.oneWayLatencyMax)
+			}
+		}
+	}
+	return rpcTimeout + time.Second
+}
+
 func newLocal(n int) (*local, error) {
 	if n <= 0 {
 		err := errors.Errorf("The number of peers should be positive, but got %v", n)
@@ -51,7 +81,8 @@ func newLocal(n int) (*local, error) {
 
 	l := new(local)
 	l.n = n
-	l.network = rpccore.NewChanNetwork(4 * time.Second)
+	l.network = rpccore.NewChanNetwork(rpcTimeout)
+	l.network.SetDelayGenerator(l.delayGenerator)
 	l.rpcPeers = make(map[rpccore.NodeID]*rpccore.ChanNode)
 	l.raftPeers = make(map[rpccore.NodeID]*raft.Peer)
 	l.loggers = make(map[rpccore.NodeID]*logrus.Logger)
@@ -93,6 +124,15 @@ func newLocal(n int) (*local, error) {
 		}))
 	}
 
+	l.offlineNodes = make(map[rpccore.NodeID]bool, n)
+	l.nodePartition = make(map[rpccore.NodeID]int, n)
+	for k := range l.rpcPeers {
+		l.offlineNodes[k] = false
+		l.nodePartition[k] = 0
+	}
+	l.oneWayLatencyMin = 0
+	l.oneWayLatencyMax = 0
+	l.packetLossRate = 0
 	return l, nil
 }
 
@@ -182,4 +222,26 @@ func (l *local) AgreeOnTerm() (int, error) {
 		}
 	}
 	return term, nil
+}
+
+func (l *local) SetNetworkReliability(oneWayLatencyMin, oneWayLatencyMax time.Duration, packetLossRate float64) {
+	l.netLock.Lock()
+	defer l.netLock.Unlock()
+	l.oneWayLatencyMin = oneWayLatencyMin
+	l.oneWayLatencyMax = oneWayLatencyMax
+	l.packetLossRate = packetLossRate
+}
+
+func (l *local) SetNodeNetworkStatus(nodeID rpccore.NodeID, online bool) {
+	l.netLock.Lock()
+	defer l.netLock.Unlock()
+	l.offlineNodes[nodeID] = !online
+}
+
+func (l *local) SetNetworkPartition(pMap map[rpccore.NodeID]int) {
+	l.netLock.Lock()
+	defer l.netLock.Unlock()
+	for k := range l.rpcPeers {
+		l.nodePartition[k] = pMap[k]
+	}
 }
