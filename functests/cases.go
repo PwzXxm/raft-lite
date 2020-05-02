@@ -23,7 +23,7 @@ func caseEvenPartitionLeaderElection() (err error) {
 		"5": 1,
 	}
 	sl.SetNetworkPartition(pmap)
-	time.Sleep(10 * time.Second)
+	time.Sleep(5 * time.Second)
 
 	// no leader should be elected
 	leader1, err := sl.AgreeOnLeader()
@@ -41,7 +41,7 @@ func caseEvenPartitionLeaderElection() (err error) {
 		"5": 0,
 	}
 	sl.SetNetworkPartition(pmap)
-	time.Sleep(10 * time.Second)
+	time.Sleep(20 * time.Second)
 	leader2, err := sl.AgreeOnLeader()
 	if err != nil {
 		return
