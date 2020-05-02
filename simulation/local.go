@@ -184,25 +184,25 @@ func (l *local) AgreeOnTerm() (int, error) {
 	return term, nil
 }
 
-func (l *local) AgreeOnLogEntries() error {
+func (l *local) IdenticalLogEntries() error {
 	var leaderLogs []raft.LogEntry
-	for _,peer := range l.raftPeers {
+	for _, peer := range l.raftPeers {
 		if peer.GetState() == raft.Leader {
 			leaderLogs = peer.GetLog()
 			break
 		}
 	}
-	for _,peer := range l.raftPeers {
+	for _, peer := range l.raftPeers {
 		if peer.GetState() != raft.Leader {
-			peerLog := peer.GetLog()
-			if len(peerLog) != len(leaderLogs) {
-				return errors.Errorf("Failed to agree on log entries.\n\n%v\n",
-				l.getAllNodeInfo())
-			}
-			for i, log := range peerLog {
-				if log != leaderLogs[i] {
-					return errors.Errorf("Failed to agree on log entries.\n\n%v\n",
+			peerLogs := peer.GetLog()
+			if len(peerLogs) != len(leaderLogs) {
+				return errors.Errorf("not identical log entries.\n\n%v\n",
 					l.getAllNodeInfo())
+			}
+			for i, peerLog := range peerLogs {
+				if peerLog != leaderLogs[i] {
+					return errors.Errorf("not identical log entries.\n\n%v\n",
+						l.getAllNodeInfo())
 				}
 			}
 		}

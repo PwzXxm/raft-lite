@@ -1,7 +1,6 @@
 package raft
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/PwzXxm/raft-lite/rpccore"
@@ -16,7 +15,7 @@ func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
 	}
 	p.heardFromLeader = true
 	// if the request is heartbeat, return true
-	if (len(req.Entries) == 0){
+	if len(req.Entries) == 0 {
 		return &appendEntriesRes{Term: p.currentTerm, Success: true}
 	}
 

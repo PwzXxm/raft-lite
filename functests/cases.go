@@ -59,8 +59,8 @@ func caseAppendLogEntry() (err error) {
 
 	// after 5 seconds, the peers should agree on log entries
 	time.Sleep(5 * time.Second)
-	err = sl.AgreeOnLogEntries()
-	if (err != nil){
+	err = sl.IdenticalLogEntries()
+	if err != nil {
 		return
 	}
 	fmt.Print("Agree on log entry test passed\n")

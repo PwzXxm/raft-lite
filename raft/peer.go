@@ -243,10 +243,10 @@ func (p *Peer) GetState() PeerState {
 
 func (p *Peer) GetLog() []LogEntry {
 	p.mutex.Lock()
+	defer p.mutex.Unlock()
 	var peerLog = make([]LogEntry, len(p.log))
 	for i, v := range p.log {
 		peerLog[i] = v
 	}
-	defer p.mutex.Unlock()
 	return peerLog
 }
