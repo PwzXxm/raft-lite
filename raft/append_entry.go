@@ -10,19 +10,15 @@ import (
 const clientRequestTimeout = 5 * time.Second
 
 func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
-	if p.state == Candidate && req.Term >= p.currentTerm {
-		p.changeState(Follower)
+	// consistency check
+	consistent := p.consitencyCheck(req)
+	if !consistent {
+		return &appendEntriesRes{Term: p.currentTerm, Success: false}
 	}
 	p.heardFromLeader = true
 	// if the request is heartbeat, return true
 	if len(req.Entries) == 0 {
 		return &appendEntriesRes{Term: p.currentTerm, Success: true}
-	}
-
-	// consistency check
-	consistent := p.consitencyCheck(req)
-	if !consistent {
-		return &appendEntriesRes{Term: p.currentTerm, Success: false}
 	}
 	// TODO: check this.
 	prevLogIndex := req.PrevLogIndex
@@ -44,9 +40,15 @@ func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
 	return &appendEntriesRes{Term: p.currentTerm, Success: true}
 }
 
+// check consitency, update state and term if necessary
 func (p *Peer) consitencyCheck(req appendEntriesReq) bool {
 	if req.Term < p.currentTerm {
 		return false
+	} else {
+		p.currentTerm = req.Term
+		if p.state == Candidate {
+			p.changeState(Follower)
+		}
 	}
 	if len(p.log) <= req.PrevLogIndex || p.log[req.PrevLogIndex].Term != req.PrevLogTerm {
 		return false
@@ -80,6 +82,9 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 		}
 		nextIndex := p.nextIndex[target]
 		currentTerm := p.currentTerm
+		if nextIndex <= 0 {
+			p.logger.Warn("nextIndex out of range")
+		}
 		prevLogTerm := p.log[nextIndex-1].Term
 		leaderCommit := p.commitIndex
 		entries := p.log[nextIndex:]
@@ -98,7 +103,11 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 		} else if !res.Success {
 			// update nextIndex for target node
 			p.mutex.Lock()
-			p.nextIndex[target]--
+			if res.Term > currentTerm {
+				p.updateTerm(res.Term)
+			} else {
+				p.nextIndex[target]--
+			}
 			p.mutex.Unlock()
 		} else {
 			// if success, update nextIndex for the node

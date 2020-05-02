@@ -18,6 +18,10 @@ var testCases = []testCase{
 		action: caseInitLeaderElection,
 	},
 	{
+		name:   "recovery leader election",
+		action: caseRecoverLeaderElection,
+	},
+	{
 		name:   "Append log entries",
 		action: caseAppendLogEntry,
 	},

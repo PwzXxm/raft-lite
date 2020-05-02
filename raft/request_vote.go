@@ -19,6 +19,8 @@ func (p *Peer) handleRequestVote(req requestVoteReq) requestVoteRes {
 	return requestVoteRes{Term: p.currentTerm, VoteGranted: true}
 }
 
+// TODO: [4], [1][2][3], which log is more up-to-date?
+// Consider case one node seprate from others and increase its term to high number sololy.
 func (p *Peer) logPriorCheck(lastLogIndex int, lastLogTerm int) bool {
 	myLastLogIndex := len(p.log) - 1
 	myLastLogTerm := p.log[myLastLogIndex].Term

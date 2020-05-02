@@ -8,6 +8,44 @@ import (
 	"github.com/pkg/errors"
 )
 
+func caseRecoverLeaderElection() (err error) {
+	sl := simulation.RunLocally(5)
+	defer sl.StopAll()
+
+	// process inital election normally
+	time.Sleep(5 * time.Second)
+	leader1, err := sl.AgreeOnLeader()
+	if err != nil {
+		return
+	}
+	term1, err := sl.AgreeOnTerm()
+	if err != nil {
+		return
+	}
+	fmt.Printf("Initial election finished, leader:%v, term:%v\n", *leader1, term1)
+
+	// mess up the network
+	fmt.Println("Mess up the network for 10 secs...")
+	sl.SetNetworkReliability(time.Duration(6*time.Second), time.Duration(6*time.Second), 0.0)
+	time.Sleep(10 * time.Second)
+
+	// process second election normally
+	fmt.Println("Network back to normal...")
+	sl.SetNetworkReliability(time.Duration(0*time.Second), time.Duration(0*time.Second), 0.0)
+	time.Sleep(10 * time.Second)
+	leader2, err := sl.AgreeOnLeader()
+	if err != nil {
+		return
+	}
+	term2, err := sl.AgreeOnTerm()
+	if err != nil {
+		return
+	}
+	fmt.Printf("Second election finished, leader:%v, term:%v\n", *leader2, term2)
+	return
+
+}
+
 func caseInitLeaderElection() (err error) {
 	sl := simulation.RunLocally(5)
 	defer sl.StopAll()
