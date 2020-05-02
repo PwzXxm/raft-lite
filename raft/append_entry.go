@@ -1,7 +1,6 @@
 package raft
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/PwzXxm/raft-lite/rpccore"
