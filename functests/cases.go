@@ -51,12 +51,14 @@ func caseAppendLogEntry() (err error) {
 	// after initial election
 	time.Sleep(5 * time.Second)
 
+	// continually send client request with 1 second interval
 	for i := 0; i < 5; i++ {
 		sl.Request(i)
 		time.Sleep(1 * time.Second)
 	}
 
-	time.Sleep(10 * time.Second)
+	// after 5 seconds, the peers should agree on log entries
+	time.Sleep(5 * time.Second)
 	err = sl.AgreeOnLogEntries()
 	if (err != nil){
 		return
