@@ -26,13 +26,13 @@ func caseRecoverLeaderElection() (err error) {
 
 	// mess up the network
 	fmt.Println("Mess up the network for 10 secs...")
-	sl.SetNetworkReliability(6, 6, 0.5)
+	sl.SetNetworkReliability(time.Duration(6*time.Second), time.Duration(6*time.Second), 0.0)
 	time.Sleep(10 * time.Second)
 
 	// process second election normally
 	fmt.Println("Network back to normal...")
-	sl.SetNetworkReliability(0, 0, 0.0)
-	time.Sleep(10 * time.Second)
+	sl.SetNetworkReliability(time.Duration(0*time.Second), time.Duration(0*time.Second), 0.0)
+	time.Sleep(60 * time.Second)
 	leader2, err := sl.AgreeOnLeader()
 	if err != nil {
 		return
