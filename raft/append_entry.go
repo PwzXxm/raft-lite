@@ -41,12 +41,10 @@ func (p *Peer) consitencyCheck(req appendEntriesReq) bool {
 	if req.Term < p.currentTerm {
 		return false
 	} else {
-		p.mutex.Lock()
 		p.currentTerm = req.Term
 		if p.state == Candidate {
 			p.changeState(Follower)
 		}
-		p.mutex.Unlock()
 	}
 	if len(p.log) <= req.PrevLogIndex || p.log[req.PrevLogIndex].Term != req.PrevLogTerm {
 		return false
