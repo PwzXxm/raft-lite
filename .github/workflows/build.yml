@@ -32,5 +32,8 @@ jobs:
     - name: Build
       run: go build -v .
 
-    - name: Test
+    - name: Union Test
       run: go test ./...
+
+    - name: Functional Test
+      run: python3 functional_tests.py --parallel 4 --timeout 120 --times 4
