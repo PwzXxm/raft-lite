@@ -183,3 +183,29 @@ func (l *local) AgreeOnTerm() (int, error) {
 	}
 	return term, nil
 }
+
+func (l *local) AgreeOnLogEntries() error {
+	var leaderLogs []raft.LogEntry
+	for _,peer := range l.raftPeers {
+		if peer.GetState() == raft.Leader {
+			leaderLogs = peer.GetLog()
+			break
+		}
+	}
+	for _,peer := range l.raftPeers {
+		if peer.GetState() != raft.Leader {
+			peerLog := peer.GetLog()
+			if len(peerLog) != len(leaderLogs) {
+				return errors.Errorf("Failed to agree on log entries.\n\n%v\n",
+				l.getAllNodeInfo())
+			}
+			for i, log := range peerLog {
+				if log != leaderLogs[i] {
+					return errors.Errorf("Failed to agree on log entries.\n\n%v\n",
+					l.getAllNodeInfo())
+				}
+			}
+		}
+	}
+	return nil
+}

@@ -43,3 +43,24 @@ func caseInitLeaderElection() (err error) {
 
 	return nil
 }
+
+func caseAppendLogEntry() (err error) {
+	sl := simulation.RunLocally(5)
+	defer sl.StopAll()
+
+	// after initial election
+	time.Sleep(5 * time.Second)
+
+	for i := 0; i < 5; i++ {
+		sl.Request(i)
+		time.Sleep(1 * time.Second)
+	}
+
+	time.Sleep(10 * time.Second)
+	err = sl.AgreeOnLogEntries()
+	if (err != nil){
+		return
+	}
+	fmt.Print("Agree on log entry test passed\n")
+	return nil
+}

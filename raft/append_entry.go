@@ -1,6 +1,7 @@
 package raft
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/PwzXxm/raft-lite/rpccore"
@@ -13,6 +14,11 @@ func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
 	if p.state == Candidate && req.Term >= p.currentTerm {
 		p.changeState(Follower)
 	}
+	p.heardFromLeader = true
+	// if the request is heartbeat, return true
+	if (len(req.Entries) == 0){
+		return &appendEntriesRes{Term: p.currentTerm, Success: true}
+	}
 
 	// consistency check
 	consistent := p.consitencyCheck(req)
@@ -20,7 +26,6 @@ func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
 		return &appendEntriesRes{Term: p.currentTerm, Success: false}
 	}
 	// TODO: check this.
-	p.heardFromLeader = true
 	prevLogIndex := req.PrevLogIndex
 	newLogIndex := 0
 	// find the index that the peer is consistent with the new entries
@@ -112,6 +117,7 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 
 // this is a blocking function
 func (p *Peer) onReceiveClientRequest(cmd interface{}) {
+	fmt.Print("*********************************\n")
 	p.mutex.Lock()
 	newlog := LogEntry{Term: p.currentTerm, Cmd: cmd}
 	p.log = append(p.log, newlog)

@@ -166,6 +166,7 @@ func (p *Peer) changeState(state PeerState) {
 	case Leader:
 		p.nextIndex = make(map[rpccore.NodeID]int)
 		p.matchIndex = make(map[rpccore.NodeID]int)
+		p.logIndexMajorityCheckChannel = make(map[int]chan rpccore.NodeID)
 		for _, peers := range p.rpcPeersIds {
 			p.nextIndex[peers] = len(p.log)
 
@@ -238,4 +239,14 @@ func (p *Peer) GetState() PeerState {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 	return p.state
+}
+
+func (p *Peer) GetLog() []LogEntry {
+	p.mutex.Lock()
+	var peerLog = make([]LogEntry, len(p.log))
+	for i, v := range p.log {
+		peerLog[i] = v
+	}
+	defer p.mutex.Unlock()
+	return peerLog
 }
