@@ -1,6 +1,7 @@
 package raft
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/PwzXxm/raft-lite/rpccore"
@@ -78,6 +79,9 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 		}
 		nextIndex := p.nextIndex[target]
 		currentTerm := p.currentTerm
+		if nextIndex <= 0 {
+			p.logger.Warn("nextIndex out of range")
+		}
 		prevLogTerm := p.log[nextIndex-1].Term
 		leaderCommit := p.commitIndex
 		entries := p.log[nextIndex:]
@@ -96,8 +100,8 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 		} else if !res.Success {
 			// update nextIndex for target node
 			p.mutex.Lock()
-			if res.Term > p.currentTerm {
-				p.currentTerm = res.Term
+			if res.Term > currentTerm {
+				p.currentTerm = utils.Max(p.currentTerm, res.Term)
 			} else {
 				p.nextIndex[target]--
 			}
