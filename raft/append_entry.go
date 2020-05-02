@@ -10,16 +10,15 @@ import (
 const clientRequestTimeout = 5 * time.Second
 
 func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
-	p.heardFromLeader = true
-	// if the request is heartbeat, return true
-	if len(req.Entries) == 0 {
-		return &appendEntriesRes{Term: p.currentTerm, Success: true}
-	}
-
 	// consistency check
 	consistent := p.consitencyCheck(req)
 	if !consistent {
 		return &appendEntriesRes{Term: p.currentTerm, Success: false}
+	}
+	p.heardFromLeader = true
+	// if the request is heartbeat, return true
+	if len(req.Entries) == 0 {
+		return &appendEntriesRes{Term: p.currentTerm, Success: true}
 	}
 	// TODO: check this.
 	prevLogIndex := req.PrevLogIndex
