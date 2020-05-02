@@ -36,7 +36,8 @@ func (p *Peer) handleRequestVoteRespond(res requestVoteRes) {
 	if res.VoteGranted && res.Term == p.currentTerm {
 		p.voteCount += 1
 
-		totalPeers := len(p.rpcPeersIds)
+		// Note that p.rpcPeersIds dose not include itself
+		totalPeers := len(p.rpcPeersIds) + 1
 		// received majority votes, become leader
 		if p.voteCount > totalPeers/2 && p.state == Candidate {
 			p.logger.Info("Change to leader.")
