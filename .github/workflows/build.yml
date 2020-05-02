@@ -32,7 +32,7 @@ jobs:
     - name: Build
       run: go build -v .
 
-    - name: Union Test
+    - name: Unit Test
       run: go test ./...
 
     - name: Functional Test
