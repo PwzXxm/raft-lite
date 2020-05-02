@@ -43,3 +43,26 @@ func caseInitLeaderElection() (err error) {
 
 	return nil
 }
+
+func caseAppendLogEntry() (err error) {
+	sl := simulation.RunLocally(5)
+	defer sl.StopAll()
+
+	// after initial election
+	time.Sleep(5 * time.Second)
+
+	// continually send client request with 1 second interval
+	for i := 0; i < 5; i++ {
+		sl.Request(i)
+		time.Sleep(1 * time.Second)
+	}
+
+	// after 5 seconds, the peers should agree on log entries
+	time.Sleep(5 * time.Second)
+	err = sl.IdenticalLogEntries()
+	if err != nil {
+		return
+	}
+	fmt.Print("Agree on log entry test passed\n")
+	return nil
+}

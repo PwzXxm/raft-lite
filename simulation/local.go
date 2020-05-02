@@ -224,6 +224,32 @@ func (l *local) AgreeOnTerm() (int, error) {
 	return term, nil
 }
 
+func (l *local) IdenticalLogEntries() error {
+	var leaderLogs []raft.LogEntry
+	for _, peer := range l.raftPeers {
+		if peer.GetState() == raft.Leader {
+			leaderLogs = peer.GetLog()
+			break
+		}
+	}
+	for _, peer := range l.raftPeers {
+		if peer.GetState() != raft.Leader {
+			peerLogs := peer.GetLog()
+			if len(peerLogs) != len(leaderLogs) {
+				return errors.Errorf("not identical log entries.\n\n%v\n",
+					l.getAllNodeInfo())
+			}
+			for i, peerLog := range peerLogs {
+				if peerLog != leaderLogs[i] {
+					return errors.Errorf("not identical log entries.\n\n%v\n",
+						l.getAllNodeInfo())
+				}
+			}
+		}
+	}
+	return nil
+}
+
 func (l *local) SetNetworkReliability(oneWayLatencyMin, oneWayLatencyMax time.Duration, packetLossRate float64) {
 	l.netLock.Lock()
 	defer l.netLock.Unlock()
