@@ -10,10 +10,6 @@ import (
 const clientRequestTimeout = 5 * time.Second
 
 func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
-	if p.state == Candidate && req.Term >= p.currentTerm {
-		p.changeState(Follower)
-	}
-
 	// consistency check
 	consistent := p.consitencyCheck(req)
 	if !consistent {
@@ -40,9 +36,17 @@ func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
 	return &appendEntriesRes{Term: p.currentTerm, Success: true}
 }
 
+// check consitency, update state and term if necessary
 func (p *Peer) consitencyCheck(req appendEntriesReq) bool {
 	if req.Term < p.currentTerm {
 		return false
+	} else {
+		p.mutex.Lock()
+		p.currentTerm = req.Term
+		if p.state == Candidate {
+			p.changeState(Follower)
+		}
+		p.mutex.Unlock()
 	}
 	if len(p.log) <= req.PrevLogIndex || p.log[req.PrevLogIndex].Term != req.PrevLogTerm {
 		return false
@@ -94,7 +98,11 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 		} else if !res.Success {
 			// update nextIndex for target node
 			p.mutex.Lock()
-			p.nextIndex[target]--
+			if res.Term > p.currentTerm {
+				p.currentTerm = res.Term
+			} else {
+				p.nextIndex[target]--
+			}
 			p.mutex.Unlock()
 		} else {
 			// if success, update nextIndex for the node
