@@ -100,7 +100,7 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 			// update nextIndex for target node
 			p.mutex.Lock()
 			if res.Term > currentTerm {
-				p.currentTerm = utils.Max(p.currentTerm, res.Term)
+				p.updateTerm(res.Term)
 			} else {
 				p.nextIndex[target]--
 			}
