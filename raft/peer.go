@@ -251,6 +251,12 @@ func (p *Peer) GetLog() []LogEntry {
 	return peerLog
 }
 
+func (p *Peer) GetVoteCount() int {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+	return p.voteCount
+}
+
 func (p *Peer) getTotalPeers() int {
 	return len(p.rpcPeersIds) + 1
 }

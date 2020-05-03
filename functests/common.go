@@ -26,6 +26,18 @@ var testCases = []testCase{
 		action: caseAppendLogEntry,
 	},
 	{
+		name:   "check vote count",
+		action: caseCheckVoteCount,
+	},
+	{
+		name:   "leader offline",
+		action: caseLeaderOffline,
+	},
+	{
+		name:   "high packet loss rate",
+		action: caseHighPacketLossRate,
+  },
+  {
 		name:   "Even partition leader election",
 		action: caseEvenPartitionLeaderElection,
 	},

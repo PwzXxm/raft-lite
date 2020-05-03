@@ -224,6 +224,18 @@ func (l *local) AgreeOnTerm() (int, error) {
 	return term, nil
 }
 
+func (l *local) AgreeOnVoteCount() (int, error) {
+	voteCount, peerCount := 0, 0
+	for _, peer := range l.raftPeers {
+		peerCount += 1
+		voteCount += peer.GetVoteCount()
+	}
+	if voteCount != peerCount {
+		return 0, errors.Errorf("Failed to agree on vote count.\n\n%v\n", l.getAllNodeInfo())
+	}
+	return voteCount, nil
+}
+
 func (l *local) IdenticalLogEntries() error {
 	var leaderLogs []raft.LogEntry
 	for _, peer := range l.raftPeers {
