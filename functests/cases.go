@@ -61,6 +61,11 @@ func caseInitLeaderElection() (err error) {
 		return
 	}
 
+	// at least 1 as the initial election happens
+	if term1 < 1 {
+		return errors.Errorf("Term should be at least 1. t1: %v", term1)
+	}
+
 	fmt.Println("First check passed, leader is selected.")
 
 	// after a while, since the network is fine, it should be the same
@@ -102,5 +107,18 @@ func caseAppendLogEntry() (err error) {
 		return
 	}
 	fmt.Print("Agree on log entry test passed\n")
+	return nil
+}
+
+func caseCheckVoteCount() (err error) {
+	sl := simulation.RunLocally(6)
+	defer sl.StopAll()
+
+	time.Sleep(10 * time.Second)
+	voteCount, err := sl.AgreeOnVoteCount()
+	if voteCount != 6 {
+		return errors.Errorf("Vote count changed from %v to %v.", 6, voteCount)
+	}
+	fmt.Printf("Vote count is checked. v:%v\n", voteCount)
 	return nil
 }

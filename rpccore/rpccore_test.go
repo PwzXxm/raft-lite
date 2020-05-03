@@ -10,7 +10,7 @@ import (
 )
 
 func init() {
-	fmt.Println("* rpc core test *")
+	fmt.Println("* rpc core unit test *")
 }
 
 func TestNewNode(t *testing.T) {
@@ -85,6 +85,13 @@ func TestTimeoutAndDelayGenerator(t *testing.T) {
 	_, err = nodeC.SendRawRequest(nodeB.NodeID(), "", nil)
 	if err != nil {
 		t.Errorf("Send raw request to B shouldn't fail.\n%+v", err)
+	}
+}
+
+func TestNewTCPNetwork(t *testing.T) {
+	tcpNetwork := NewTCPNetwork(time.Second)
+	if tcpNetwork.timeout != time.Second {
+		t.Errorf("TCPNetwork timeout should have the same value")
 	}
 }
 

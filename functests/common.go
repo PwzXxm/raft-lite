@@ -25,6 +25,10 @@ var testCases = []testCase{
 		name:   "Append log entries",
 		action: caseAppendLogEntry,
 	},
+	{
+		name:   "check vote count",
+		action: caseCheckVoteCount,
+	},
 }
 
 func List() {
