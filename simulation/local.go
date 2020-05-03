@@ -263,9 +263,19 @@ func (l *local) agreeOnTwoLogEntries(logEntry1, logEntry2 []raft.LogEntry) error
 		}
 	}
 	return nil
-} 
+}
 
-func (l *local) agreeOnLogEntries(logEntries [][]raft.LogEntry) error {
+func (l *local) agreeOnLogEntries(logEntriesMap map[rpccore.NodeID][]raft.LogEntry) error {
+	for peer1, logEntry1 := range logEntriesMap {
+		for peer2, logEntry2 := range logEntriesMap {
+			if peer1 != peer2 {
+				err := l.agreeOnTwoLogEntries(logEntry1, logEntry2)
+				if err != nil {
+					return errors.Errorf("node %v and %v not agree on log entries. \n", peer1, peer2)
+				}
+			}
+		}
+	}
 	return nil
 }
 
