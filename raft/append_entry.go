@@ -34,6 +34,9 @@ func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
 	}
 	// consistency check ensure that req.Term >= p.currentTerm
 	p.updateTerm(req.Term)
+	if p.state != Follower {
+		p.changeState(Follower)
+	}
 	if req.LeaderCommit > p.commitIndex {
 		p.commitIndex = utils.Min(req.LeaderCommit, req.Entries[len(req.Entries)-1].Term)
 	}
