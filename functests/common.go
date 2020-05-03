@@ -36,6 +36,14 @@ var testCases = []testCase{
 	{
 		name:   "high packet loss rate",
 		action: caseHighPacketLossRate,
+  },
+  {
+		name:   "Even partition leader election",
+		action: caseEvenPartitionLeaderElection,
+	},
+	{
+		name:   "Skewed partition leader election",
+		action: caseSkewedPartitionLeaderElection,
 	},
 }
 

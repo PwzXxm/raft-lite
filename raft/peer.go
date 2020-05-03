@@ -256,3 +256,7 @@ func (p *Peer) GetVoteCount() int {
 	defer p.mutex.Unlock()
 	return p.voteCount
 }
+
+func (p *Peer) getTotalPeers() int {
+	return len(p.rpcPeersIds) + 1
+}

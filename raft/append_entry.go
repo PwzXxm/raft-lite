@@ -132,8 +132,9 @@ func (p *Peer) onReceiveClientRequest(cmd interface{}) {
 	newlog := LogEntry{Term: p.currentTerm, Cmd: cmd}
 	p.log = append(p.log, newlog)
 	newLogIndex := len(p.log) - 1
-	totalPeers := len(p.rpcPeersIds)
+	totalPeers := p.getTotalPeers()
 	majorityCheckChannel := make(chan rpccore.NodeID, totalPeers)
+	majorityCheckChannel <- p.node.NodeID()
 	p.logIndexMajorityCheckChannel[newLogIndex] = majorityCheckChannel
 	// trigger timeout to initialize call appendEntryRPC
 	p.triggerTimeout()
