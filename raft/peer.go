@@ -250,3 +250,7 @@ func (p *Peer) GetLog() []LogEntry {
 	}
 	return peerLog
 }
+
+func (p *Peer) GetTotalPeers() int {
+	return len(p.rpcPeersIds) + 1
+}
