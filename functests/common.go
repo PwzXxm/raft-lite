@@ -25,6 +25,14 @@ var testCases = []testCase{
 		name:   "Append log entries",
 		action: caseAppendLogEntry,
 	},
+	{
+		name:   "Even partition leader election",
+		action: caseEvenPartitionLeaderElection,
+	},
+	{
+		name:   "Skewed partition leader election",
+		action: caseSkewedPartitionLeaderElection,
+	},
 }
 
 func List() {
