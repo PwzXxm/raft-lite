@@ -250,6 +250,25 @@ func (l *local) IdenticalLogEntries() error {
 	return nil
 }
 
+func (l *local) agreeOnTwoLogEntries(logEntry1, logEntry2 []raft.LogEntry) error {
+	cmdIdentical := true
+	for i := 0; i < utils.Min(len(logEntry1), len(logEntry2)); i++ {
+		if logEntry1[i].Cmd != logEntry2[i].Cmd{
+			cmdIdentical = false
+		}
+		if logEntry1[i].Term == logEntry2[i].Term {
+			if cmdIdentical == false {
+				return errors.Errorf("not agree on log entries .\n\n%v\n",l.getAllNodeInfo())
+			}
+		}
+	}
+	return nil
+} 
+
+func (l *local) agreeOnLogEntries(logEntries [][]raft.LogEntry) error {
+	return nil
+}
+
 func (l *local) SetNetworkReliability(oneWayLatencyMin, oneWayLatencyMax time.Duration, packetLossRate float64) {
 	l.netLock.Lock()
 	defer l.netLock.Unlock()
