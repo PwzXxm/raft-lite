@@ -45,8 +45,8 @@ func (p *Peer) consitencyCheck(req appendEntriesReq) bool {
 	if req.Term < p.currentTerm {
 		return false
 	} else {
-		p.currentTerm = req.Term
-		if p.state == Candidate {
+		p.updateTerm(req.Term)
+		if p.state != Follower {
 			p.changeState(Follower)
 		}
 	}

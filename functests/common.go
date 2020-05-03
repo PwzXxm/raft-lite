@@ -29,6 +29,14 @@ var testCases = []testCase{
 		name:   "check vote count",
 		action: caseCheckVoteCount,
 	},
+	{
+		name:   "leader offline",
+		action: caseLeaderOffline,
+	},
+	{
+		name:   "high packet loss rate",
+		action: caseHighPacketLossRate,
+	},
 }
 
 func List() {

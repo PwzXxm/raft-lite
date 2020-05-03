@@ -42,8 +42,8 @@ func caseRecoverLeaderElection() (err error) {
 		return
 	}
 	fmt.Printf("Second election finished, leader:%v, term:%v\n", *leader2, term2)
-	return
 
+	return nil
 }
 
 func caseInitLeaderElection() (err error) {
@@ -111,14 +111,115 @@ func caseAppendLogEntry() (err error) {
 }
 
 func caseCheckVoteCount() (err error) {
-	sl := simulation.RunLocally(6)
+	n := 6
+	sl := simulation.RunLocally(n)
 	defer sl.StopAll()
 
-	time.Sleep(10 * time.Second)
-	voteCount, err := sl.AgreeOnVoteCount()
-	if voteCount != 6 {
-		return errors.Errorf("Vote count changed from %v to %v.", 6, voteCount)
+	// process inital election normally
+	time.Sleep(5 * time.Second)
+	leader1, err := sl.AgreeOnLeader()
+	if err != nil {
+		return
 	}
-	fmt.Printf("Vote count is checked. v:%v\n", voteCount)
+	term1, err := sl.AgreeOnTerm()
+	if err != nil {
+		return
+	}
+
+	if leader1 == nil {
+		return errors.Errorf("No leader is selected.")
+	}
+	// at least 1 as the initial election happens
+	if term1 < 1 {
+		return errors.Errorf("Term 1 should be at least 1. t1: %v", term1)
+	}
+
+	voteCount, err := sl.AgreeOnVoteCount()
+	if voteCount != n {
+		return errors.Errorf("Vote count changed from %v to %v.", n, voteCount)
+	}
+	fmt.Printf("Vote count check is succeed. v: %v\n", voteCount)
+	return nil
+}
+
+func caseLeaderOffline() (err error) {
+	sl := simulation.RunLocally(5)
+	defer sl.StopAll()
+
+	// process inital election normally
+	time.Sleep(5 * time.Second)
+	leader1, err := sl.AgreeOnLeader()
+	if err != nil {
+		return
+	}
+	term1, err := sl.AgreeOnTerm()
+	if err != nil {
+		return
+	}
+	fmt.Printf("Initial election finished, leader: %v, term: %v\n", *leader1, term1)
+
+	// set the leader to be offline
+	sl.SetNodeNetworkStatus(*leader1, false)
+	fmt.Println("Leader goes offline.")
+
+	time.Sleep(10 * time.Second)
+	sl.SetNodeNetworkStatus(*leader1, true)
+	fmt.Println("Leader goes online.")
+
+	time.Sleep(10 * time.Second)
+	fmt.Println("Start the check.")
+
+	leader2, err := sl.AgreeOnLeader()
+	if err != nil {
+		return
+	}
+	term2, err := sl.AgreeOnTerm()
+	if err != nil {
+		return
+	}
+
+	if *leader2 == *leader1 || term2 == term1 {
+		return errors.Errorf("Leader and term need to be different. l1: %v, l2: %v, t1: %v, t2: %v",
+			*leader1, *leader2, term1, term2)
+	}
+
+	return nil
+}
+
+func caseHighPacketLossRate() (err error) {
+	sl := simulation.RunLocally(5)
+	defer sl.StopAll()
+
+	// process inital election normally
+	time.Sleep(5 * time.Second)
+	leader1, err := sl.AgreeOnLeader()
+	if err != nil {
+		return
+	}
+	term1, err := sl.AgreeOnTerm()
+	if err != nil {
+		return
+	}
+	fmt.Printf("Initial election finished, leader: %v, term: %v\n", *leader1, term1)
+
+	fmt.Println("High packet loss rate mode...")
+	sl.SetNetworkReliability(time.Duration(0*time.Second), time.Duration(0*time.Second), 0.5)
+
+	time.Sleep(10 * time.Second)
+
+	fmt.Println("Network back to normal...")
+	sl.SetNetworkReliability(time.Duration(0*time.Second), time.Duration(0*time.Second), 0.0)
+
+	time.Sleep(10 * time.Second)
+	leader2, err := sl.AgreeOnLeader()
+	if err != nil {
+		return
+	}
+	term2, err := sl.AgreeOnTerm()
+	if err != nil {
+		return
+	}
+	fmt.Printf("Second election finished, leader: %v, term: %v\n", *leader2, term2)
+
 	return nil
 }
