@@ -34,6 +34,9 @@ func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
 	}
 	// consistency check ensure that req.Term >= p.currentTerm
 	p.updateTerm(req.Term)
+	if p.state != Follower {
+		p.changeState(Follower)
+	}
 	if req.LeaderCommit > p.commitIndex {
 		p.commitIndex = utils.Min(req.LeaderCommit, req.Entries[len(req.Entries)-1].Term)
 	}
@@ -45,8 +48,8 @@ func (p *Peer) consitencyCheck(req appendEntriesReq) bool {
 	if req.Term < p.currentTerm {
 		return false
 	} else {
-		p.currentTerm = req.Term
-		if p.state == Candidate {
+		p.updateTerm(req.Term)
+		if p.state != Follower {
 			p.changeState(Follower)
 		}
 	}
@@ -129,8 +132,9 @@ func (p *Peer) onReceiveClientRequest(cmd interface{}) {
 	newlog := LogEntry{Term: p.currentTerm, Cmd: cmd}
 	p.log = append(p.log, newlog)
 	newLogIndex := len(p.log) - 1
-	totalPeers := len(p.rpcPeersIds)
+	totalPeers := p.getTotalPeers()
 	majorityCheckChannel := make(chan rpccore.NodeID, totalPeers)
+	majorityCheckChannel <- p.node.NodeID()
 	p.logIndexMajorityCheckChannel[newLogIndex] = majorityCheckChannel
 	// trigger timeout to initialize call appendEntryRPC
 	p.triggerTimeout()

@@ -216,12 +216,24 @@ func (l *local) AgreeOnTerm() (int, error) {
 			term = peer.GetTerm()
 		} else {
 			if term != peer.GetTerm() {
-				return 0, errors.Errorf("Failed to agree on leader.\n\n%v\n",
+				return 0, errors.Errorf("Failed to agree on term.\n\n%v\n",
 					l.getAllNodeInfo())
 			}
 		}
 	}
 	return term, nil
+}
+
+func (l *local) AgreeOnVoteCount() (int, error) {
+	voteCount, peerCount := 0, 0
+	for _, peer := range l.raftPeers {
+		peerCount += 1
+		voteCount += peer.GetVoteCount()
+	}
+	if voteCount != peerCount {
+		return 0, errors.Errorf("Failed to agree on vote count.\n\n%v\n", l.getAllNodeInfo())
+	}
+	return voteCount, nil
 }
 
 func (l *local) IdenticalLogEntries() error {
@@ -294,6 +306,7 @@ func (l *local) SetNodeNetworkStatus(nodeID rpccore.NodeID, online bool) {
 }
 
 func (l *local) SetNetworkPartition(pMap map[rpccore.NodeID]int) {
+	log.Info("Set network partition...")
 	l.netLock.Lock()
 	defer l.netLock.Unlock()
 	for k := range l.rpcPeers {
