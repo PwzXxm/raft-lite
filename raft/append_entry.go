@@ -1,6 +1,7 @@
 package raft
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/PwzXxm/raft-lite/rpccore"
@@ -15,7 +16,6 @@ func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
 	if !consistent {
 		return &appendEntriesRes{Term: p.currentTerm, Success: false}
 	}
-	p.heardFromLeader = true
 	// if the request is heartbeat, return true
 	if len(req.Entries) == 0 {
 		return &appendEntriesRes{Term: p.currentTerm, Success: true}
@@ -48,6 +48,7 @@ func (p *Peer) consitencyCheck(req appendEntriesReq) bool {
 	if req.Term < p.currentTerm {
 		return false
 	} else {
+		p.heardFromLeader = true
 		p.updateTerm(req.Term)
 		if p.state != Follower {
 			p.changeState(Follower)
@@ -128,6 +129,7 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 
 // this is a blocking function
 func (p *Peer) onReceiveClientRequest(cmd interface{}) {
+	fmt.Println("这里能看到吗？？？？11111")
 	p.mutex.Lock()
 	newlog := LogEntry{Term: p.currentTerm, Cmd: cmd}
 	p.log = append(p.log, newlog)
@@ -135,6 +137,7 @@ func (p *Peer) onReceiveClientRequest(cmd interface{}) {
 	totalPeers := p.getTotalPeers()
 	majorityCheckChannel := make(chan rpccore.NodeID, totalPeers)
 	majorityCheckChannel <- p.node.NodeID()
+	fmt.Println("new log index is: ", newLogIndex)
 	p.logIndexMajorityCheckChannel[newLogIndex] = majorityCheckChannel
 	// trigger timeout to initialize call appendEntryRPC
 	p.triggerTimeout()

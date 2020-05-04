@@ -406,3 +406,44 @@ func caseAgreeOnLogEntryWithPartitionAndLeaderReselection() (err error) {
 	return nil
 
 }
+
+func caseLeaderInOtherPartition() (err error) {
+	sl := simulation.RunLocally(5)
+	defer sl.StopAll()
+
+	time.Sleep(5 * time.Second)
+
+	leader1, err := sl.AgreeOnLeader()
+	if err != nil {
+		return
+	}
+	fmt.Printf("first leader selected: %v\n", *leader1)
+
+	for i := 0; i < 5; i++ {
+		sl.Request(i)
+		time.Sleep(1 * time.Second)
+	}
+
+	// 10 seconds
+	// make partition [0, 1, 2] and [3, 4]
+	pmap := map[rpccore.NodeID]int{
+		"0": 0,
+		"1": 0,
+		"2": 0,
+		"3": 0,
+		"4": 0,
+	}
+	pmap[*leader1] = 1
+	fmt.Println(pmap)
+	sl.SetNetworkPartition(pmap)
+	time.Sleep(5 * time.Second)
+
+	fmt.Println("-------------------------这是哪")
+	for i := 5; i < 10; i++ {
+		fmt.Println("------------------值是", i)
+		sl.Request(i)
+		time.Sleep(1 * time.Second)
+	}
+	fmt.Println("------------------------not get stuck")
+	return nil
+}

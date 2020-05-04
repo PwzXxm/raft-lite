@@ -49,6 +49,10 @@ var testCases = []testCase{
 		name: "agree on log entry with partition and leader reselection",
 		action: caseAgreeOnLogEntryWithPartitionAndLeaderReselection,
 	},
+	{
+		name: "leader in other partition",
+		action: caseLeaderInOtherPartition,
+	},
 }
 
 func List() {
