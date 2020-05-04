@@ -190,6 +190,14 @@ func (l *local) getAllNodeInfo() map[rpccore.NodeID]map[string]string {
 	return m
 }
 
+func (l *local) getAllNodeLogs() map[rpccore.NodeID][]raft.LogEntry {
+	m := make(map[rpccore.NodeID][]raft.LogEntry)
+	for nodeID, peer := range l.raftPeers {
+		m[nodeID] = peer.GetLog()
+	}
+	return m
+}
+
 func (l *local) AgreeOnLeader() (*rpccore.NodeID, error) {
 	var leaderID *rpccore.NodeID
 	for nodeID, peer := range l.raftPeers {
@@ -265,19 +273,20 @@ func (l *local) IdenticalLogEntries() error {
 func (l *local) agreeOnTwoLogEntries(logEntry1, logEntry2 []raft.LogEntry) error {
 	cmdIdentical := true
 	for i := 0; i < utils.Min(len(logEntry1), len(logEntry2)); i++ {
-		if logEntry1[i].Cmd != logEntry2[i].Cmd{
+		if logEntry1[i].Cmd != logEntry2[i].Cmd {
 			cmdIdentical = false
 		}
 		if logEntry1[i].Term == logEntry2[i].Term {
 			if cmdIdentical == false {
-				return errors.Errorf("not agree on log entries .\n\n%v\n",l.getAllNodeInfo())
+				return errors.Errorf("not agree on log entries .\n\n%v\n", l.getAllNodeInfo())
 			}
 		}
 	}
 	return nil
 }
 
-func (l *local) agreeOnLogEntries(logEntriesMap map[rpccore.NodeID][]raft.LogEntry) error {
+func (l *local) AgreeOnLogEntries() error {
+	logEntriesMap := l.getAllNodeLogs()
 	for peer1, logEntry1 := range logEntriesMap {
 		for peer2, logEntry2 := range logEntriesMap {
 			if peer1 != peer2 {
