@@ -1,7 +1,6 @@
 package simulation
 
 import (
-	"fmt"
 	"os"
 	"strconv"
 	"sync"
@@ -294,9 +293,7 @@ func (l *local) agreeOnTwoLogEntries(logEntry1, logEntry2 []raft.LogEntry) error
 }
 
 func (l *local) AgreeOnLogEntries() error {
-	fmt.Println("-------------------------1")
 	logEntriesMap := l.getAllNodeLogs()
-	fmt.Println("-------------------------2")
 	for peer1, logEntry1 := range logEntriesMap {
 		for peer2, logEntry2 := range logEntriesMap {
 			if peer1 != peer2 {
