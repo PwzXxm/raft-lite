@@ -442,7 +442,7 @@ func caseLeaderInOtherPartition() (err error) {
 	time.Sleep(5 * time.Second)
 
 	for i := 5; i < 10; i++ {
-		// sl.Request(i)
+		sl.Request(i)
 		time.Sleep(1 * time.Second)
 	}
 

@@ -18,28 +18,25 @@ func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
 		p.logger.Info("failed consistent check")
 		return &appendEntriesRes{Term: p.currentTerm, Success: false}
 	}
-	// if the request is heartbeat, return true
-	if len(req.Entries) == 0 {
-		return &appendEntriesRes{Term: p.currentTerm, Success: true}
-	}
-	// TODO: check this.
-	prevLogIndex := req.PrevLogIndex
-	newLogIndex := 0
-	// find the index that the peer is consistent with the new entries
-	for len(p.log) > (prevLogIndex+newLogIndex+1) &&
-		p.log[prevLogIndex+newLogIndex+1].Term == req.Entries[newLogIndex].Term {
-		newLogIndex++
-	}
-	p.log = append(p.log[0:prevLogIndex+newLogIndex+1], req.Entries[newLogIndex:]...)
-	if len(req.Entries) > newLogIndex {
-		p.logger.Infof("Delete and append new logs from index %v", prevLogIndex+newLogIndex+1)
-	}
+
 	// consistency check ensure that req.Term >= p.currentTerm
-	p.updateTerm(req.Term)
-	if p.state != Follower {
-		p.changeState(Follower)
+	if len(req.Entries) != 0 {
+		// TODO: check this.
+		prevLogIndex := req.PrevLogIndex
+		newLogIndex := 0
+		// find the index that the peer is consistent with the new entries
+		for len(p.log) > (prevLogIndex+newLogIndex+1) &&
+			p.log[prevLogIndex+newLogIndex+1].Term == req.Entries[newLogIndex].Term {
+			newLogIndex++
+		}
+		p.log = append(p.log[0:prevLogIndex+newLogIndex+1], req.Entries[newLogIndex:]...)
+		if len(req.Entries) > newLogIndex {
+			p.logger.Infof("Delete and append new logs from index %v", prevLogIndex+newLogIndex+1)
+		}
 	}
+
 	if req.LeaderCommit > p.commitIndex {
+		// if the request is heartbeat, return true
 		p.commitIndex = utils.Min(req.LeaderCommit, len(p.log)-1)
 	}
 	return &appendEntriesRes{Term: p.currentTerm, Success: true}
