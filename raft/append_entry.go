@@ -105,6 +105,9 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 			p.mutex.Lock()
 			if res.Term > currentTerm {
 				p.updateTerm(res.Term)
+				if p.state != Follower {
+					p.changeState(Follower)
+				}
 			} else {
 				p.nextIndex[target]--
 			}
