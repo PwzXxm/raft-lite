@@ -21,7 +21,7 @@ func (p *Peer) GetInfo() map[string]string {
 		if fieldName == "mutex" || fieldName == "logger" {
 			continue
 		}
-		mp[fieldName] = getFieldStr(v.Field(i), 2)
+		mp[fieldName] = getFieldStr(v.Field(i), 2) + "\n"
 	}
 
 	return mp

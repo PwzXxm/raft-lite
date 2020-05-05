@@ -155,8 +155,21 @@ func (p *Peer) resetTimeout() {
 
 func (p *Peer) changeState(state PeerState) {
 	p.logger.Infof("Change from state: %v to state: %v.", p.state, state)
+
+	if state == p.state {
+		return
+	}
+
+	switch p.state {
+	case Leader:
+		for _, c := range p.logIndexMajorityCheckChannel {
+			close(c)
+		}
+		p.logIndexMajorityCheckChannel = nil
+	}
+
 	p.state = state
-	// TODO: init state here
+
 	switch state {
 	case Follower:
 		p.heardFromLeader = false
@@ -249,6 +262,12 @@ func (p *Peer) GetLog() []LogEntry {
 		peerLog[i] = v
 	}
 	return peerLog
+}
+
+func (p *Peer) GetNodeID() rpccore.NodeID {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+	return p.node.NodeID()
 }
 
 func (p *Peer) GetVoteCount() int {

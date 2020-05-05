@@ -320,3 +320,124 @@ func caseHighPacketLossRate() (err error) {
 
 	return nil
 }
+
+func caseAgreeOnLogEntryWithPartitionAndLeaderReselection() (err error) {
+	sl := simulation.RunLocally(5)
+	defer sl.StopAll()
+
+	time.Sleep(5 * time.Second)
+
+	leader1, err := sl.AgreeOnLeader()
+	if err != nil {
+		return
+	}
+
+	fmt.Printf("first leader selected: %v\n", *leader1)
+
+	for i := 0; i < 5; i++ {
+		sl.Request(i)
+		time.Sleep(500 * time.Millisecond)
+	}
+
+	// make partition [0, 1, 2] and [3, 4]
+	pmap := map[rpccore.NodeID]int{
+		"0": 0,
+		"1": 0,
+		"2": 0,
+		"3": 1,
+		"4": 1,
+	}
+	sl.SetNetworkPartition(pmap)
+	time.Sleep(3 * time.Second)
+
+	// only node in the leader's partition should append entries
+	for i := 5; i < 10; i++ {
+		sl.Request(i)
+		time.Sleep(500 * time.Millisecond)
+	}
+	time.Sleep(3 * time.Second)
+
+	// should agree on log entries
+	err = sl.AgreeOnLogEntries()
+	if err != nil {
+		return
+	}
+	fmt.Println("first logs check finished, agree on log entries")
+
+	// set the followers into same partition and leader to the other partition
+	for nodeID := range pmap {
+		pmap[nodeID] = 0
+	}
+	pmap[*leader1] = 1
+	print(pmap)
+	sl.SetNetworkPartition(pmap)
+	time.Sleep(3 * time.Second)
+
+	//leader should be reselected, now append another 5 entries
+	for i := 10; i < 15; i++ {
+		sl.Request(i)
+		time.Sleep(500 * time.Millisecond)
+	}
+	time.Sleep(5 * time.Second)
+
+	// should always agree on log entries
+	err = sl.AgreeOnLogEntries()
+	if err != nil {
+		return
+	}
+	fmt.Println("Second logs check finished, agree on log entries")
+
+	// all nodes back to normal
+	for nodeID := range pmap {
+		pmap[nodeID] = 0
+	}
+	sl.SetNetworkPartition(pmap)
+
+	err = sl.AgreeOnLogEntries()
+	if err != nil {
+		return
+	}
+	fmt.Println("Third logs check finished, agree on log entries")
+	return nil
+
+}
+
+func caseLeaderInOtherPartition() (err error) {
+	sl := simulation.RunLocally(5)
+	defer sl.StopAll()
+
+	time.Sleep(3 * time.Second)
+
+	leader1, err := sl.AgreeOnLeader()
+	if err != nil {
+		return
+	}
+	fmt.Printf("first leader selected: %v\n", *leader1)
+
+	for i := 0; i < 5; i++ {
+		sl.Request(i)
+		time.Sleep(500 * time.Millisecond)
+	}
+
+	// time.Sleep(3 * time.Second)
+	err = sl.AgreeOnLogEntries()
+	if err != nil {
+		return
+	}
+
+	sl.SetNodeNetworkStatus(*leader1, false)
+	time.Sleep(5 * time.Second)
+
+	for i := 5; i < 10; i++ {
+		sl.Request(i)
+		time.Sleep(500 * time.Millisecond)
+	}
+
+	err = sl.AgreeOnLogEntries()
+	if err != nil {
+		return
+	}
+
+	fmt.Println("Finished")
+	return nil
+}

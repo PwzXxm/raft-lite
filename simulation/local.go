@@ -156,12 +156,6 @@ func (l *local) ShutDownPeer(id rpccore.NodeID) {
 	l.raftPeers[id].ShutDown()
 }
 
-func (l *local) ConnectPeer(id rpccore.NodeID) {
-}
-
-func (l *local) DisconnectPeer(id rpccore.NodeID) {
-}
-
 func (l *local) Wait(sec int) {
 	if sec <= 0 {
 		log.Warnf("Seconds to wait should be positive integer, not %v", sec)
@@ -182,10 +176,25 @@ func (l *local) getAllNodeIDs() []rpccore.NodeID {
 	return rst
 }
 
+func (l *local) PrintAllNodeInfo() {
+	m := l.getAllNodeInfo()
+	for k, v := range m {
+		log.Infof("%v:\n%v", k, v)
+	}
+}
+
 func (l *local) getAllNodeInfo() map[rpccore.NodeID]map[string]string {
 	m := make(map[rpccore.NodeID]map[string]string)
 	for nodeID, peer := range l.raftPeers {
 		m[nodeID] = peer.GetInfo()
+	}
+	return m
+}
+
+func (l *local) getAllNodeLogs() map[rpccore.NodeID][]raft.LogEntry {
+	m := make(map[rpccore.NodeID][]raft.LogEntry)
+	for nodeID, peer := range l.raftPeers {
+		m[nodeID] = peer.GetLog()
 	}
 	return m
 }
@@ -255,6 +264,36 @@ func (l *local) IdenticalLogEntries() error {
 				if peerLog != leaderLogs[i] {
 					return errors.Errorf("not identical log entries.\n\n%v\n",
 						l.getAllNodeInfo())
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func (l *local) agreeOnTwoLogEntries(logEntry1, logEntry2 []raft.LogEntry) error {
+	cmdIdentical := true
+	for i := 0; i < utils.Min(len(logEntry1), len(logEntry2)); i++ {
+		if logEntry1[i].Cmd != logEntry2[i].Cmd {
+			cmdIdentical = false
+		}
+		if logEntry1[i].Term == logEntry2[i].Term {
+			if cmdIdentical == false {
+				return errors.Errorf("not agree on log entries .\n\n%v\n", l.getAllNodeInfo())
+			}
+		}
+	}
+	return nil
+}
+
+func (l *local) AgreeOnLogEntries() error {
+	logEntriesMap := l.getAllNodeLogs()
+	for peer1, logEntry1 := range logEntriesMap {
+		for peer2, logEntry2 := range logEntriesMap {
+			if peer1 != peer2 {
+				err := l.agreeOnTwoLogEntries(logEntry1, logEntry2)
+				if err != nil {
+					return errors.Errorf("node %v and %v not agree on log entries. \n", peer1, peer2)
 				}
 			}
 		}

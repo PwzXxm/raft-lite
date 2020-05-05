@@ -15,30 +15,26 @@ func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
 	if !consistent {
 		return &appendEntriesRes{Term: p.currentTerm, Success: false}
 	}
-	p.heardFromLeader = true
-	// if the request is heartbeat, return true
-	if len(req.Entries) == 0 {
-		return &appendEntriesRes{Term: p.currentTerm, Success: true}
-	}
-	// TODO: check this.
-	prevLogIndex := req.PrevLogIndex
-	newLogIndex := 0
-	// find the index that the peer is consistent with the new entries
-	for len(p.log) > (prevLogIndex+newLogIndex+1) &&
-		p.log[prevLogIndex+newLogIndex+1].Term == req.Entries[newLogIndex].Term {
-		newLogIndex++
-	}
-	p.log = append(p.log[0:prevLogIndex+newLogIndex+1], req.Entries[newLogIndex:]...)
-	if len(req.Entries) > newLogIndex {
-		p.logger.Infof("Delete and append new logs from index %v", prevLogIndex+newLogIndex+1)
-	}
+
 	// consistency check ensure that req.Term >= p.currentTerm
-	p.updateTerm(req.Term)
-	if p.state != Follower {
-		p.changeState(Follower)
+	if len(req.Entries) != 0 {
+		// TODO: check this.
+		prevLogIndex := req.PrevLogIndex
+		newLogIndex := 0
+		// find the index that the peer is consistent with the new entries
+		for len(p.log) > (prevLogIndex+newLogIndex+1) &&
+			p.log[prevLogIndex+newLogIndex+1].Term == req.Entries[newLogIndex].Term {
+			newLogIndex++
+		}
+		p.log = append(p.log[0:prevLogIndex+newLogIndex+1], req.Entries[newLogIndex:]...)
+		if len(req.Entries) > newLogIndex {
+			p.logger.Infof("Delete and append new logs from index %v", prevLogIndex+newLogIndex+1)
+		}
 	}
+
 	if req.LeaderCommit > p.commitIndex {
-		p.commitIndex = utils.Min(req.LeaderCommit, req.Entries[len(req.Entries)-1].Term)
+		// if the request is heartbeat, return true
+		p.commitIndex = utils.Min(req.LeaderCommit, len(p.log)-1)
 	}
 	return &appendEntriesRes{Term: p.currentTerm, Success: true}
 }
@@ -48,6 +44,7 @@ func (p *Peer) consitencyCheck(req appendEntriesReq) bool {
 	if req.Term < p.currentTerm {
 		return false
 	} else {
+		p.heardFromLeader = true
 		p.updateTerm(req.Term)
 		if p.state != Follower {
 			p.changeState(Follower)
@@ -119,7 +116,10 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 			p.nextIndex[target] = nextIndex + len(entries)
 			// send signal to the channels for index greater than commit index
 			for i := commitIndex + 1; i < p.nextIndex[target]; i++ {
-				p.logIndexMajorityCheckChannel[i] <- target
+				c, ok := p.logIndexMajorityCheckChannel[i]
+				if ok {
+					c <- target
+				}
 			}
 			p.mutex.Unlock()
 		}
