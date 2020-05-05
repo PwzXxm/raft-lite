@@ -325,7 +325,7 @@ func caseAgreeOnLogEntryWithPartitionAndLeaderReselection() (err error) {
 	sl := simulation.RunLocally(5)
 	defer sl.StopAll()
 
-	time.Sleep(2 * time.Second)
+	time.Sleep(5 * time.Second)
 
 	leader1, err := sl.AgreeOnLeader()
 	if err != nil {

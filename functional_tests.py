@@ -31,6 +31,12 @@ def main():
     if not run_tests(args.times, args.parallel, args.timeout):
         sys.exit(1)
 
+def build_executable() -> None:
+    res = subprocess.run(["go", "build", "."],
+                            timeout=20, stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT, encoding="utf-8")
+    if res.returncode != 0:
+        raise RuntimeError("Build Fail"+res.stdout)
 
 # Return values are (passed, timeout, output)
 def execute_raft_lite(args: List[str], timeout: int) -> Tuple[bool, bool, str]:
@@ -60,6 +66,7 @@ def run_single_test(task: Tuple[int, int, int]) -> Tuple[bool, bool, str]:
 
 
 def run_tests(times: int, parallel: int, timeout: int) -> bool:
+    build_executable()
     (ok, _, out) = execute_raft_lite(["functionaltest", "count"], timeout)
     if not ok:
         raise RuntimeError("Unable to load test cases")
