@@ -424,12 +424,12 @@ func caseLeaderInOtherPartition() (err error) {
 		time.Sleep(500 * time.Millisecond)
 	}
 
+	// time.Sleep(3 * time.Second)
 	err = sl.AgreeOnLogEntries()
 	if err != nil {
 		return
 	}
 
-	// make partition [0, 1, 2] and [3, 4]
 	pmap := map[rpccore.NodeID]int{
 		"0": 0,
 		"1": 0,

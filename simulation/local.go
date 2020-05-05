@@ -156,12 +156,6 @@ func (l *local) ShutDownPeer(id rpccore.NodeID) {
 	l.raftPeers[id].ShutDown()
 }
 
-func (l *local) ConnectPeer(id rpccore.NodeID) {
-}
-
-func (l *local) DisconnectPeer(id rpccore.NodeID) {
-}
-
 func (l *local) Wait(sec int) {
 	if sec <= 0 {
 		log.Warnf("Seconds to wait should be positive integer, not %v", sec)

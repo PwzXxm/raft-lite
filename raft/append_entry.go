@@ -116,7 +116,10 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 			p.nextIndex[target] = nextIndex + len(entries)
 			// send signal to the channels for index greater than commit index
 			for i := commitIndex + 1; i < p.nextIndex[target]; i++ {
-				p.logIndexMajorityCheckChannel[i] <- target
+				c, ok := p.logIndexMajorityCheckChannel[i]
+				if ok {
+					c <- target
+				}
 			}
 			p.mutex.Unlock()
 		}
