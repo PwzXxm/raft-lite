@@ -182,10 +182,12 @@ func (p *Peer) HandleClientRequest(cmd interface{}) bool {
 		c <- true
 	}()
 
+	fmt.Println("timeout?????")
 	select {
 	case done := <-c:
 		return done
 	case <-time.After(clientRequestTimeout):
+		fmt.Println("timeout-------------------")
 		return false
 	}
 }
