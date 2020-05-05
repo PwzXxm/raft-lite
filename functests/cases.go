@@ -397,7 +397,7 @@ func caseAgreeOnLogEntryWithPartitionAndLeaderReselection() (err error) {
 		pmap[nodeID] = 0
 	}
 	sl.SetNetworkPartition(pmap)
-	
+
 	err = sl.AgreeOnLogEntries()
 	if err != nil {
 		return
@@ -424,6 +424,9 @@ func caseLeaderInOtherPartition() (err error) {
 		time.Sleep(1 * time.Second)
 	}
 
+	time.Sleep(10 * time.Second)
+	sl.PrintAllNodeInfo()
+
 	// 10 seconds
 	// make partition [0, 1, 2] and [3, 4]
 	pmap := map[rpccore.NodeID]int{
@@ -438,12 +441,11 @@ func caseLeaderInOtherPartition() (err error) {
 	sl.SetNetworkPartition(pmap)
 	time.Sleep(5 * time.Second)
 
-	fmt.Println("-------------------------这是哪")
 	for i := 5; i < 10; i++ {
-		fmt.Println("------------------值是", i)
-		sl.Request(i)
+		// sl.Request(i)
 		time.Sleep(1 * time.Second)
 	}
-	fmt.Println("------------------------not get stuck")
+
+	fmt.Println("Finished")
 	return nil
 }

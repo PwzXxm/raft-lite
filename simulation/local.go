@@ -144,10 +144,7 @@ func (l *local) StopAll() {
 }
 
 func (rf *local) Request(cmd interface{}) {
-	fmt.Println("这里能看到吗？？？？request里面")
 	for _, p := range rf.raftPeers {
-		nodeID := p.GetNodeID()
-		fmt.Println("当前reqeust loop到了 peer：", nodeID)
 		if p.HandleClientRequest(cmd) {
 			return
 		}
@@ -184,6 +181,13 @@ func (l *local) getAllNodeIDs() []rpccore.NodeID {
 		i++
 	}
 	return rst
+}
+
+func (l *local) PrintAllNodeInfo() {
+	m := l.getAllNodeInfo()
+	for k, v := range m {
+		log.Infof("%v:\n%v", k, v)
+	}
 }
 
 func (l *local) getAllNodeInfo() map[rpccore.NodeID]map[string]string {

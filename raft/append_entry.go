@@ -12,8 +12,10 @@ const clientRequestTimeout = 5 * time.Second
 
 func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
 	// consistency check
+	p.logger.Infof("Received ae from %v", req.LeaderID)
 	consistent := p.consitencyCheck(req)
 	if !consistent {
+		p.logger.Info("failed consistent check")
 		return &appendEntriesRes{Term: p.currentTerm, Success: false}
 	}
 	// if the request is heartbeat, return true
@@ -38,7 +40,7 @@ func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
 		p.changeState(Follower)
 	}
 	if req.LeaderCommit > p.commitIndex {
-		p.commitIndex = utils.Min(req.LeaderCommit, req.Entries[len(req.Entries)-1].Term)
+		p.commitIndex = utils.Min(req.LeaderCommit, len(p.log)-1)
 	}
 	return &appendEntriesRes{Term: p.currentTerm, Success: true}
 }
@@ -100,7 +102,9 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 		isFirstTime = false
 		req := appendEntriesReq{Term: currentTerm, LeaderID: leaderID, PrevLogIndex: nextIndex - 1,
 			PrevLogTerm: prevLogTerm, LeaderCommit: leaderCommit, Entries: entries}
+		p.logger.Infof("sending to %v, leaderCommit: %v", target, leaderCommit)
 		res := p.appendEntries(target, req)
+		p.logger.Infof("sent to %v", target)
 		if res == nil {
 			// retry call appendEntries rpc if response is nil
 			continue
@@ -129,7 +133,7 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 
 // this is a blocking function
 func (p *Peer) onReceiveClientRequest(cmd interface{}) {
-	fmt.Println("这里能看到吗？？？？11111")
+	p.logger.Info("received client request: ", cmd)
 	p.mutex.Lock()
 	newlog := LogEntry{Term: p.currentTerm, Cmd: cmd}
 	p.log = append(p.log, newlog)
@@ -137,7 +141,6 @@ func (p *Peer) onReceiveClientRequest(cmd interface{}) {
 	totalPeers := p.getTotalPeers()
 	majorityCheckChannel := make(chan rpccore.NodeID, totalPeers)
 	majorityCheckChannel <- p.node.NodeID()
-	fmt.Println("new log index is: ", newLogIndex)
 	p.logIndexMajorityCheckChannel[newLogIndex] = majorityCheckChannel
 	// trigger timeout to initialize call appendEntryRPC
 	p.triggerTimeout()
