@@ -1,7 +1,6 @@
 package raft
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/PwzXxm/raft-lite/rpccore"
@@ -12,10 +11,8 @@ const clientRequestTimeout = 5 * time.Second
 
 func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
 	// consistency check
-	p.logger.Infof("Received ae from %v", req.LeaderID)
 	consistent := p.consitencyCheck(req)
 	if !consistent {
-		p.logger.Info("failed consistent check")
 		return &appendEntriesRes{Term: p.currentTerm, Success: false}
 	}
 
@@ -99,9 +96,7 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 		isFirstTime = false
 		req := appendEntriesReq{Term: currentTerm, LeaderID: leaderID, PrevLogIndex: nextIndex - 1,
 			PrevLogTerm: prevLogTerm, LeaderCommit: leaderCommit, Entries: entries}
-		p.logger.Infof("sending to %v, leaderCommit: %v", target, leaderCommit)
 		res := p.appendEntries(target, req)
-		p.logger.Infof("sent to %v", target)
 		if res == nil {
 			// retry call appendEntries rpc if response is nil
 			continue
@@ -182,12 +177,10 @@ func (p *Peer) HandleClientRequest(cmd interface{}) bool {
 		c <- true
 	}()
 
-	fmt.Println("timeout?????")
 	select {
 	case done := <-c:
 		return done
 	case <-time.After(clientRequestTimeout):
-		fmt.Println("timeout-------------------")
 		return false
 	}
 }

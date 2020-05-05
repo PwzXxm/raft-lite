@@ -325,7 +325,7 @@ func caseAgreeOnLogEntryWithPartitionAndLeaderReselection() (err error) {
 	sl := simulation.RunLocally(5)
 	defer sl.StopAll()
 
-	time.Sleep(5 * time.Second)
+	time.Sleep(2 * time.Second)
 
 	leader1, err := sl.AgreeOnLeader()
 	if err != nil {
@@ -337,7 +337,7 @@ func caseAgreeOnLogEntryWithPartitionAndLeaderReselection() (err error) {
 
 	for i := 0; i < 5; i++ {
 		sl.Request(i)
-		time.Sleep(1 * time.Second)
+		time.Sleep(500 * time.Millisecond)
 	}
 
 	// 10 seconds
@@ -350,14 +350,14 @@ func caseAgreeOnLogEntryWithPartitionAndLeaderReselection() (err error) {
 		"4": 1,
 	}
 	sl.SetNetworkPartition(pmap)
-	time.Sleep(5 * time.Second)
+	time.Sleep(3 * time.Second)
 
 	// only node in the leader's partition should append entries
 	for i := 5; i < 10; i++ {
 		sl.Request(i)
-		time.Sleep(1 * time.Second)
+		time.Sleep(500 * time.Millisecond)
 	}
-	time.Sleep(5 * time.Second)
+	time.Sleep(3 * time.Second)
 
 	// 25 seconds
 	// should agree on log entries
@@ -374,13 +374,13 @@ func caseAgreeOnLogEntryWithPartitionAndLeaderReselection() (err error) {
 	pmap[*leader1] = 1
 	print(pmap)
 	sl.SetNetworkPartition(pmap)
-	time.Sleep(5 * time.Second)
+	time.Sleep(3 * time.Second)
 
 	// 30 seconds
 	//leader should be reselected, now append another 5 entries
 	for i := 10; i < 15; i++ {
 		sl.Request(i)
-		time.Sleep(1 * time.Second)
+		time.Sleep(500 * time.Millisecond)
 	}
 	time.Sleep(5 * time.Second)
 
@@ -411,7 +411,7 @@ func caseLeaderInOtherPartition() (err error) {
 	sl := simulation.RunLocally(5)
 	defer sl.StopAll()
 
-	time.Sleep(5 * time.Second)
+	time.Sleep(3 * time.Second)
 
 	leader1, err := sl.AgreeOnLeader()
 	if err != nil {
@@ -421,13 +421,14 @@ func caseLeaderInOtherPartition() (err error) {
 
 	for i := 0; i < 5; i++ {
 		sl.Request(i)
-		time.Sleep(1 * time.Second)
+		time.Sleep(500 * time.Millisecond)
 	}
 
-	time.Sleep(10 * time.Second)
-	sl.PrintAllNodeInfo()
+	err = sl.AgreeOnLogEntries()
+	if err != nil {
+		return
+	}
 
-	// 10 seconds
 	// make partition [0, 1, 2] and [3, 4]
 	pmap := map[rpccore.NodeID]int{
 		"0": 0,
@@ -443,7 +444,12 @@ func caseLeaderInOtherPartition() (err error) {
 
 	for i := 5; i < 10; i++ {
 		sl.Request(i)
-		time.Sleep(1 * time.Second)
+		time.Sleep(500 * time.Millisecond)
+	}
+
+	err = sl.AgreeOnLogEntries()
+	if err != nil {
+		return
 	}
 
 	fmt.Println("Finished")

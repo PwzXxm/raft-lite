@@ -111,15 +111,12 @@ func (p *Peer) handleRPCCall(source rpccore.NodeID, method string, data []byte) 
 		err = gob.NewEncoder(&buf).Encode(res)
 		return buf.Bytes(), errors.WithStack(err)
 	case rpcMethodAppendEntries:
-		p.logger.Info("AE")
 		var req appendEntriesReq
 		err := gob.NewDecoder(bytes.NewReader(data)).Decode(&req)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
-		p.logger.Info("AE 1")
 		p.mutex.Lock()
-		p.logger.Info("AE 2")
 		res := p.handleAppendEntries(req)
 		p.mutex.Unlock()
 		var buf bytes.Buffer
