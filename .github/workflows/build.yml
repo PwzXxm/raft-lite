@@ -36,4 +36,4 @@ jobs:
       run: go test ./...
 
     - name: Functional Test
-      run: python3 functional_tests.py --parallel 4 --timeout 120 --times 4
+      run: python3 functional_tests.py --parallel 8 --timeout 120 --times 4

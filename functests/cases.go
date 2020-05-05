@@ -430,16 +430,7 @@ func caseLeaderInOtherPartition() (err error) {
 		return
 	}
 
-	pmap := map[rpccore.NodeID]int{
-		"0": 0,
-		"1": 0,
-		"2": 0,
-		"3": 0,
-		"4": 0,
-	}
-	pmap[*leader1] = 1
-	fmt.Println(pmap)
-	sl.SetNetworkPartition(pmap)
+	sl.SetNodeNetworkStatus(*leader1, false)
 	time.Sleep(5 * time.Second)
 
 	for i := 5; i < 10; i++ {
