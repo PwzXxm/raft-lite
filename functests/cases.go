@@ -332,7 +332,6 @@ func caseAgreeOnLogEntryWithPartitionAndLeaderReselection() (err error) {
 		return
 	}
 
-	// 5 seconds
 	fmt.Printf("first leader selected: %v\n", *leader1)
 
 	for i := 0; i < 5; i++ {
@@ -340,7 +339,6 @@ func caseAgreeOnLogEntryWithPartitionAndLeaderReselection() (err error) {
 		time.Sleep(500 * time.Millisecond)
 	}
 
-	// 10 seconds
 	// make partition [0, 1, 2] and [3, 4]
 	pmap := map[rpccore.NodeID]int{
 		"0": 0,
@@ -359,7 +357,6 @@ func caseAgreeOnLogEntryWithPartitionAndLeaderReselection() (err error) {
 	}
 	time.Sleep(3 * time.Second)
 
-	// 25 seconds
 	// should agree on log entries
 	err = sl.AgreeOnLogEntries()
 	if err != nil {
@@ -376,7 +373,6 @@ func caseAgreeOnLogEntryWithPartitionAndLeaderReselection() (err error) {
 	sl.SetNetworkPartition(pmap)
 	time.Sleep(3 * time.Second)
 
-	// 30 seconds
 	//leader should be reselected, now append another 5 entries
 	for i := 10; i < 15; i++ {
 		sl.Request(i)
@@ -384,7 +380,6 @@ func caseAgreeOnLogEntryWithPartitionAndLeaderReselection() (err error) {
 	}
 	time.Sleep(5 * time.Second)
 
-	// 40 seconds
 	// should always agree on log entries
 	err = sl.AgreeOnLogEntries()
 	if err != nil {
