@@ -125,7 +125,6 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 
 // this is a blocking function
 func (p *Peer) onReceiveClientRequest(cmd interface{}) {
-	p.logger.Info("received client request: ", cmd)
 	p.mutex.Lock()
 	newlog := LogEntry{Term: p.currentTerm, Cmd: cmd}
 	p.log = append(p.log, newlog)
