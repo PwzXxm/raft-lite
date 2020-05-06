@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	clientRequestTimeout = 5 * time.Second
+	clientRequestTimeout = 10 * time.Second
 	rpcTimeout           = 4 * time.Second
 )
 
@@ -142,14 +142,38 @@ func (l *local) StopAll() {
 	}
 }
 
-func (rf *local) Request(cmd interface{}) {
-	for _, p := range rf.raftPeers {
-		if p.HandleClientRequest(cmd) {
-			return
-		}
-	}
+func (l *local) Request(cmd interface{}) bool {
 
-	log.Warnf("Request failed")
+	// use timeout here rather inside to handle
+	// 1. leadership change after for loop, waiting for new leader got elected
+	// 2. request timeout, auto retry
+	c := make(chan bool)
+
+	go func() {
+		for {
+			var leader *raft.Peer = nil
+			for _, p := range l.raftPeers {
+				if p.GetState() == raft.Leader {
+					if leader == nil || leader.GetTerm() < p.GetTerm() {
+						leader = p
+					}
+				}
+			}
+
+			if leader != nil && leader.HandleClientRequest(cmd) {
+				c <- true
+				return
+			}
+		}
+	}()
+
+	select {
+	case done := <-c:
+		return done
+	case <-time.After(clientRequestTimeout):
+		log.Warn("Client request timeout")
+		return false
+	}
 }
 
 func (l *local) ShutDownPeer(id rpccore.NodeID) {
