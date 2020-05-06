@@ -14,10 +14,30 @@ func NewTransactionStateMachine() *TSM {
 	return t
 }
 
-type TSMAction func(t *TSM) error
-
 func (t *TSM) ApplyAction(action interface{}) error {
-	return action.(TSMAction)(t)
+	tsmAction := action.(TSMAction)
+	switch tsmAction.action {
+	case tsmActionSet:
+		t.data[tsmAction.target] = tsmAction.value
+	case tsmActionIncr:
+		v, ok := t.data[tsmAction.target]
+		if !ok {
+			return errors.Errorf("invalid key: %v", tsmAction.target)
+		}
+		t.data[tsmAction.target] = v + tsmAction.value
+	case tsmActionMove:
+		sv, ok := t.data[tsmAction.source]
+		if !ok {
+			return errors.Errorf("invalid key for source: %v", tsmAction.source)
+		}
+		tv, ok := t.data[tsmAction.target]
+		if !ok {
+			return errors.Errorf("invalid key for target: %v", tsmAction.target)
+		}
+		t.data[tsmAction.source] = sv - tsmAction.value
+		t.data[tsmAction.target] = tv + tsmAction.value
+	}
+	return nil
 }
 
 // return the value of the given key.
@@ -31,36 +51,45 @@ func (t *TSM) Query(req interface{}) (interface{}, error) {
 	return v, nil
 }
 
+// I really don't like the non-type-safe approach below, but I couldn't find a
+// better way. There is an another approach that use anonymous functions as
+// [TSMAction] but it can't be serialized.
+
+type TSMAction struct {
+	action tsmActionType
+	target string
+	source string // useless for [tsmActionSet] and [tsmActionIncr]
+	value  int
+}
+
+type tsmActionType int
+
+const (
+	tsmActionSet tsmActionType = iota
+	tsmActionIncr
+	tsmActionMove
+)
+
 func TSMActionSetValue(key string, value int) TSMAction {
-	return func(t *TSM) error {
-		t.data[key] = value
-		return nil
+	return TSMAction{action: tsmActionSet,
+		target: key,
+		value:  value,
 	}
 }
 
 func TSMActionIncrValue(key string, value int) TSMAction {
-	return func(t *TSM) error {
-		v, ok := t.data[key]
-		if !ok {
-			return errors.Errorf("invalid key: %v", key)
-		}
-		t.data[key] = v + value
-		return nil
+	return TSMAction{action: tsmActionIncr,
+		target: key,
+		value:  value,
 	}
 }
 
 func TSMActionMoveValue(source, target string, value int) TSMAction {
-	return func(t *TSM) error {
-		sv, ok := t.data[source]
-		if !ok {
-			return errors.Errorf("invalid key for source: %v", source)
-		}
-		tv, ok := t.data[target]
-		if !ok {
-			return errors.Errorf("invalid key for target: %v", target)
-		}
-		t.data[source] = sv - value
-		t.data[target] = tv + value
-		return nil
+	return TSMAction{action: tsmActionMove,
+		source: source,
+		target: target,
+		value:  value,
 	}
+	// return func(t *TSM) error {
+	// }
 }
