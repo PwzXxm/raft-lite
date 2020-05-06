@@ -155,7 +155,8 @@ func (l *local) Request(cmd interface{}) bool {
 			for _, p := range l.raftPeers {
 				if p.GetState() == raft.Leader {
 					if leader == nil || leader.GetTerm() < p.GetTerm() {
-						leader = p
+						t := p
+						leader = t
 					}
 				}
 			}

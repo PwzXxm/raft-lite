@@ -69,7 +69,7 @@ func caseSkewedPartitionLeaderElection() (err error) {
 	sl.SetNetworkPartition(pmap)
 
 	// leader should be elected in [0, 1, 2]
-	time.Sleep(10 * time.Second)
+	time.Sleep(5 * time.Second)
 	leader1, err := sl.AgreeOnLeader()
 	if err != nil {
 		return
@@ -78,6 +78,11 @@ func caseSkewedPartitionLeaderElection() (err error) {
 	if *leader1 == "3" || *leader1 == "4" {
 		return errors.Errorf("Leader elected in wrong partition, leader:%v", leader1)
 	}
+
+	// send request otherwise the leader might be the same as before
+	rst := sl.Request(1)
+	fmt.Printf("Request sent: %v\n", rst)
+	time.Sleep(5 * time.Second)
 
 	// recovery from partition
 	pmap = map[rpccore.NodeID]int{
@@ -88,7 +93,7 @@ func caseSkewedPartitionLeaderElection() (err error) {
 		"4": 0,
 	}
 	sl.SetNetworkPartition(pmap)
-	time.Sleep(10 * time.Second)
+	time.Sleep(5 * time.Second)
 	leader2, err := sl.AgreeOnLeader()
 	if err != nil {
 		return
@@ -260,6 +265,11 @@ func caseLeaderOffline() (err error) {
 	fmt.Println("Leader goes offline.")
 
 	time.Sleep(10 * time.Second)
+	// send request otherwise the leader might be the same as before
+	rst := sl.Request(1)
+	fmt.Printf("Request sent: %v\n", rst)
+
+	time.Sleep(5 * time.Second)
 	sl.SetNodeNetworkStatus(*leader1, true)
 	fmt.Println("Leader goes online.")
 
@@ -406,7 +416,7 @@ func caseLeaderInOtherPartition() (err error) {
 	sl := simulation.RunLocally(5)
 	defer sl.StopAll()
 
-	time.Sleep(3 * time.Second)
+	time.Sleep(5 * time.Second)
 
 	leader1, err := sl.AgreeOnLeader()
 	if err != nil {
