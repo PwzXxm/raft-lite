@@ -142,7 +142,7 @@ func (l *local) StopAll() {
 	}
 }
 
-func (l *local) Request(cmd interface{}) bool {
+func (l *local) RequestRaw(cmd interface{}) chan bool {
 
 	// use timeout here rather inside to handle
 	// 1. leadership change after for loop, waiting for new leader got elected
@@ -168,6 +168,11 @@ func (l *local) Request(cmd interface{}) bool {
 		}
 	}()
 
+	return c
+}
+
+func (l *local) RequestSync(cmd interface{}) bool {
+	c := l.RequestRaw(cmd)
 	select {
 	case done := <-c:
 		return done

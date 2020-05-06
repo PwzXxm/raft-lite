@@ -80,7 +80,7 @@ func caseSkewedPartitionLeaderElection() (err error) {
 	}
 
 	// send request otherwise the leader might be the same as before
-	rst := sl.Request(1)
+	rst := sl.RequestSync(1)
 	fmt.Printf("Request sent: %v\n", rst)
 	time.Sleep(5 * time.Second)
 
@@ -198,7 +198,7 @@ func caseAppendLogEntry() (err error) {
 
 	// continually send client request with 1 second interval
 	for i := 0; i < 5; i++ {
-		sl.Request(i)
+		sl.RequestSync(i)
 		time.Sleep(1 * time.Second)
 	}
 
@@ -266,7 +266,7 @@ func caseLeaderOffline() (err error) {
 
 	time.Sleep(10 * time.Second)
 	// send request otherwise the leader might be the same as before
-	rst := sl.Request(1)
+	rst := sl.RequestSync(1)
 	fmt.Printf("Request sent: %v\n", rst)
 
 	time.Sleep(5 * time.Second)
@@ -345,7 +345,7 @@ func caseAgreeOnLogEntryWithPartitionAndLeaderReselection() (err error) {
 	fmt.Printf("first leader selected: %v\n", *leader1)
 
 	for i := 0; i < 5; i++ {
-		sl.Request(i)
+		sl.RequestSync(i)
 		time.Sleep(500 * time.Millisecond)
 	}
 
@@ -362,7 +362,7 @@ func caseAgreeOnLogEntryWithPartitionAndLeaderReselection() (err error) {
 
 	// only node in the leader's partition should append entries
 	for i := 5; i < 10; i++ {
-		sl.Request(i)
+		sl.RequestSync(i)
 		time.Sleep(500 * time.Millisecond)
 	}
 	time.Sleep(3 * time.Second)
@@ -385,7 +385,7 @@ func caseAgreeOnLogEntryWithPartitionAndLeaderReselection() (err error) {
 
 	//leader should be reselected, now append another 5 entries
 	for i := 10; i < 15; i++ {
-		sl.Request(i)
+		sl.RequestSync(i)
 		time.Sleep(500 * time.Millisecond)
 	}
 	time.Sleep(5 * time.Second)
@@ -425,7 +425,7 @@ func caseLeaderInOtherPartition() (err error) {
 	fmt.Printf("first leader selected: %v\n", *leader1)
 
 	for i := 0; i < 5; i++ {
-		sl.Request(i)
+		sl.RequestSync(i)
 		time.Sleep(500 * time.Millisecond)
 	}
 
@@ -439,7 +439,7 @@ func caseLeaderInOtherPartition() (err error) {
 	time.Sleep(5 * time.Second)
 
 	for i := 5; i < 10; i++ {
-		sl.Request(i)
+		sl.RequestSync(i)
 		time.Sleep(500 * time.Millisecond)
 	}
 

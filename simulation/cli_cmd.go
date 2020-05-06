@@ -106,7 +106,7 @@ func (rf *local) StartReadingCMD() {
 					rf.Wait(sec)
 				case cmdReq:
 					// handle log as string at this time
-					rf.Request(cmd[1])
+					rf.RequestSync(cmd[1])
 				}
 			default:
 				err = invalidCommandError
