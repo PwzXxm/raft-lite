@@ -71,25 +71,26 @@ const (
 )
 
 func TSMActionSetValue(key string, value int) TSMAction {
-	return TSMAction{action: tsmActionSet,
+	return TSMAction{
+		action: tsmActionSet,
 		target: key,
 		value:  value,
 	}
 }
 
 func TSMActionIncrValue(key string, value int) TSMAction {
-	return TSMAction{action: tsmActionIncr,
+	return TSMAction{
+		action: tsmActionIncr,
 		target: key,
 		value:  value,
 	}
 }
 
 func TSMActionMoveValue(source, target string, value int) TSMAction {
-	return TSMAction{action: tsmActionMove,
+	return TSMAction{
+		action: tsmActionMove,
 		source: source,
 		target: target,
 		value:  value,
 	}
-	// return func(t *TSM) error {
-	// }
 }
