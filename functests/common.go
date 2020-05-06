@@ -36,8 +36,8 @@ var testCases = []testCase{
 	{
 		name:   "high packet loss rate",
 		action: caseHighPacketLossRate,
-  },
-  {
+	},
+	{
 		name:   "Even partition leader election",
 		action: caseEvenPartitionLeaderElection,
 	},
@@ -46,11 +46,11 @@ var testCases = []testCase{
 		action: caseSkewedPartitionLeaderElection,
 	},
 	{
-		name: "agree on log entry with partition and leader reselection",
+		name:   "agree on log entry with partition and leader reselection",
 		action: caseAgreeOnLogEntryWithPartitionAndLeaderReselection,
 	},
 	{
-		name: "leader in other partition",
+		name:   "leader in other partition",
 		action: caseLeaderInOtherPartition,
 	},
 }

@@ -7,7 +7,7 @@ import (
 	"github.com/PwzXxm/raft-lite/utils"
 )
 
-const clientRequestTimeout = 5 * time.Second
+const leaderRequestTimeout = 4 * time.Second
 
 func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
 	// consistency check
@@ -46,9 +46,7 @@ func (p *Peer) consitencyCheck(req appendEntriesReq) bool {
 	} else {
 		p.heardFromLeader = true
 		p.updateTerm(req.Term)
-		if p.state != Follower {
-			p.changeState(Follower)
-		}
+		p.changeState(Follower)
 	}
 	if len(p.log) <= req.PrevLogIndex || p.log[req.PrevLogIndex].Term != req.PrevLogTerm {
 		return false
@@ -105,6 +103,7 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 			p.mutex.Lock()
 			if res.Term > currentTerm {
 				p.updateTerm(res.Term)
+				p.changeState(Follower)
 			} else {
 				p.nextIndex[target]--
 			}
@@ -162,6 +161,7 @@ func (p *Peer) respondClient(logIndex int) {
 }
 
 func (p *Peer) HandleClientRequest(cmd interface{}) bool {
+	// double check leader status
 	p.mutex.Lock()
 	if p.state != Leader {
 		p.mutex.Unlock()
@@ -182,7 +182,7 @@ func (p *Peer) HandleClientRequest(cmd interface{}) bool {
 	select {
 	case done := <-c:
 		return done
-	case <-time.After(clientRequestTimeout):
+	case <-time.After(leaderRequestTimeout):
 		return false
 	}
 }

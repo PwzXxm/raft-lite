@@ -154,11 +154,11 @@ func (p *Peer) resetTimeout() {
 }
 
 func (p *Peer) changeState(state PeerState) {
-	p.logger.Infof("Change from state: %v to state: %v.", p.state, state)
-
 	if state == p.state {
 		return
 	}
+
+	p.logger.Infof("Change from state: %v to state: %v.", p.state, state)
 
 	switch p.state {
 	case Leader:

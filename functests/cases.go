@@ -69,7 +69,7 @@ func caseSkewedPartitionLeaderElection() (err error) {
 	sl.SetNetworkPartition(pmap)
 
 	// leader should be elected in [0, 1, 2]
-	time.Sleep(10 * time.Second)
+	time.Sleep(5 * time.Second)
 	leader1, err := sl.AgreeOnLeader()
 	if err != nil {
 		return
@@ -78,6 +78,11 @@ func caseSkewedPartitionLeaderElection() (err error) {
 	if *leader1 == "3" || *leader1 == "4" {
 		return errors.Errorf("Leader elected in wrong partition, leader:%v", leader1)
 	}
+
+	// send request otherwise the leader might be the same as before
+	rst := sl.RequestSync(1)
+	fmt.Printf("Request sent: %v\n", rst)
+	time.Sleep(5 * time.Second)
 
 	// recovery from partition
 	pmap = map[rpccore.NodeID]int{
@@ -88,7 +93,7 @@ func caseSkewedPartitionLeaderElection() (err error) {
 		"4": 0,
 	}
 	sl.SetNetworkPartition(pmap)
-	time.Sleep(10 * time.Second)
+	time.Sleep(5 * time.Second)
 	leader2, err := sl.AgreeOnLeader()
 	if err != nil {
 		return
@@ -98,8 +103,8 @@ func caseSkewedPartitionLeaderElection() (err error) {
 		return
 	}
 	fmt.Printf("Recovery from partition, leader:%v, term:%v\n", *leader2, term2)
-	if *leader1 != *leader2 {
-		return errors.Errorf("Leader changed after recovery. l1:%v, l2:%v, t:%v",
+	if *leader2 == "3" || *leader2 == "4" {
+		return errors.Errorf("Leader elected in wrong partition, l1:%v, l2:%v, t:%v",
 			*leader1, *leader2, term2)
 	}
 	return
@@ -193,7 +198,7 @@ func caseAppendLogEntry() (err error) {
 
 	// continually send client request with 1 second interval
 	for i := 0; i < 5; i++ {
-		sl.Request(i)
+		sl.RequestSync(i)
 		time.Sleep(1 * time.Second)
 	}
 
@@ -260,6 +265,11 @@ func caseLeaderOffline() (err error) {
 	fmt.Println("Leader goes offline.")
 
 	time.Sleep(10 * time.Second)
+	// send request otherwise the leader might be the same as before
+	rst := sl.RequestSync(1)
+	fmt.Printf("Request sent: %v\n", rst)
+
+	time.Sleep(5 * time.Second)
 	sl.SetNodeNetworkStatus(*leader1, true)
 	fmt.Println("Leader goes online.")
 
@@ -335,7 +345,7 @@ func caseAgreeOnLogEntryWithPartitionAndLeaderReselection() (err error) {
 	fmt.Printf("first leader selected: %v\n", *leader1)
 
 	for i := 0; i < 5; i++ {
-		sl.Request(i)
+		sl.RequestSync(i)
 		time.Sleep(500 * time.Millisecond)
 	}
 
@@ -352,7 +362,7 @@ func caseAgreeOnLogEntryWithPartitionAndLeaderReselection() (err error) {
 
 	// only node in the leader's partition should append entries
 	for i := 5; i < 10; i++ {
-		sl.Request(i)
+		sl.RequestSync(i)
 		time.Sleep(500 * time.Millisecond)
 	}
 	time.Sleep(3 * time.Second)
@@ -375,7 +385,7 @@ func caseAgreeOnLogEntryWithPartitionAndLeaderReselection() (err error) {
 
 	//leader should be reselected, now append another 5 entries
 	for i := 10; i < 15; i++ {
-		sl.Request(i)
+		sl.RequestSync(i)
 		time.Sleep(500 * time.Millisecond)
 	}
 	time.Sleep(5 * time.Second)
@@ -406,7 +416,7 @@ func caseLeaderInOtherPartition() (err error) {
 	sl := simulation.RunLocally(5)
 	defer sl.StopAll()
 
-	time.Sleep(3 * time.Second)
+	time.Sleep(5 * time.Second)
 
 	leader1, err := sl.AgreeOnLeader()
 	if err != nil {
@@ -415,7 +425,7 @@ func caseLeaderInOtherPartition() (err error) {
 	fmt.Printf("first leader selected: %v\n", *leader1)
 
 	for i := 0; i < 5; i++ {
-		sl.Request(i)
+		sl.RequestSync(i)
 		time.Sleep(500 * time.Millisecond)
 	}
 
@@ -429,7 +439,7 @@ func caseLeaderInOtherPartition() (err error) {
 	time.Sleep(5 * time.Second)
 
 	for i := 5; i < 10; i++ {
-		sl.Request(i)
+		sl.RequestSync(i)
 		time.Sleep(500 * time.Millisecond)
 	}
 
