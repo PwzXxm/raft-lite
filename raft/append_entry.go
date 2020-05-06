@@ -46,9 +46,7 @@ func (p *Peer) consitencyCheck(req appendEntriesReq) bool {
 	} else {
 		p.heardFromLeader = true
 		p.updateTerm(req.Term)
-		if p.state != Follower {
-			p.changeState(Follower)
-		}
+		p.changeState(Follower)
 	}
 	if len(p.log) <= req.PrevLogIndex || p.log[req.PrevLogIndex].Term != req.PrevLogTerm {
 		return false
@@ -105,9 +103,7 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 			p.mutex.Lock()
 			if res.Term > currentTerm {
 				p.updateTerm(res.Term)
-				if p.state != Follower {
-					p.changeState(Follower)
-				}
+				p.changeState(Follower)
 			} else {
 				p.nextIndex[target]--
 			}
