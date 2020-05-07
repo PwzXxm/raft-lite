@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/PwzXxm/raft-lite/rpccore"
-	"github.com/PwzXxm/raft-lite/utils"
 )
 
 const leaderRequestTimeout = 4 * time.Second
@@ -32,10 +31,7 @@ func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
 		}
 	}
 
-	if req.LeaderCommit > p.commitIndex {
-		// if the request is heartbeat, return true
-		p.commitIndex = utils.Min(req.LeaderCommit, len(p.log)-1)
-	}
+	p.updateCommitIndex(req.LeaderCommit)
 	return &appendEntriesRes{Term: p.currentTerm, Success: true}
 }
 
@@ -144,7 +140,7 @@ func (p *Peer) onReceiveClientRequest(cmd interface{}) {
 		if 2*count > totalPeers {
 			p.mutex.Lock()
 			// update commitIndex, use max in case commitIndex is already updated by other client request
-			p.commitIndex = utils.Max(p.commitIndex, newLogIndex)
+			p.updateCommitIndex(newLogIndex)
 			// delete channel for the committed index
 			delete(p.logIndexMajorityCheckChannel, newLogIndex)
 			close(majorityCheckChannel)

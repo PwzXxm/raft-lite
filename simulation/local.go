@@ -8,6 +8,7 @@ import (
 
 	"github.com/PwzXxm/raft-lite/raft"
 	"github.com/PwzXxm/raft-lite/rpccore"
+	"github.com/PwzXxm/raft-lite/sm"
 	"github.com/PwzXxm/raft-lite/utils"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -121,7 +122,7 @@ func newLocal(n int) (*local, error) {
 
 		l.raftPeers[id] = raft.NewPeer(node, nodeIDs[:n-1], l.loggers[id].WithFields(logrus.Fields{
 			"nodeID": node.NodeID(),
-		}))
+		}), sm.NewEmptyStateMachine())
 	}
 
 	l.offlineNodes = make(map[rpccore.NodeID]bool, n)

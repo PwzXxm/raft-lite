@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/PwzXxm/raft-lite/rpccore"
+	"github.com/PwzXxm/raft-lite/sm"
 	"github.com/PwzXxm/raft-lite/utils"
 	"github.com/sirupsen/logrus"
 )
@@ -38,6 +39,9 @@ type Peer struct {
 	shutdown    bool
 	logger      *logrus.Entry
 
+	// state machine
+	stateMachine sm.StateMachine
+
 	// don't use this one directly, use [triggerTimeout] or [resetTimeout]
 	// the value in it can only be [nil]
 	timeoutLoopChan          chan (interface{})
@@ -53,7 +57,7 @@ type Peer struct {
 	heardFromLeader bool
 }
 
-func NewPeer(node rpccore.Node, peers []rpccore.NodeID, logger *logrus.Entry) *Peer {
+func NewPeer(node rpccore.Node, peers []rpccore.NodeID, logger *logrus.Entry, sm sm.StateMachine) *Peer {
 	p := new(Peer)
 
 	// initialisation
@@ -73,6 +77,7 @@ func NewPeer(node rpccore.Node, peers []rpccore.NodeID, logger *logrus.Entry) *P
 
 	p.shutdown = true
 	p.logger = logger
+	p.stateMachine = sm
 
 	p.timeoutLoopChan = make(chan interface{}, 1)
 	p.timeoutLoopSkipThisRound = false
@@ -239,6 +244,21 @@ func (p *Peer) updateTerm(term int) {
 		p.logger.Infof("Term is incremented from %v to %v.", p.currentTerm, term)
 		p.currentTerm = term
 		p.votedFor = nil
+	}
+}
+
+func (p *Peer) updateCommitIndex(idx int) {
+	idx = utils.Min(idx, len(p.log)-1)
+	if idx > p.commitIndex {
+		for i := p.commitIndex + 1; i <= idx; i++ {
+			err := p.stateMachine.ApplyAction(p.log[i])
+			if err != nil {
+				p.logger.Errorf("Error happened during applying actions to "+
+					"state machine, logIdx: %v, err: %v", i, err)
+			}
+		}
+		p.logger.Infof("CommitIndex is incremented from %v to %v.", p.commitIndex, idx)
+		p.commitIndex = idx
 	}
 }
 
