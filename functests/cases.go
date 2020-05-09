@@ -451,3 +451,8 @@ func caseLeaderInOtherPartition() (err error) {
 	fmt.Println("Finished")
 	return nil
 }
+
+func caseComplex() (err error) {
+	complexTest()
+	return nil
+}
