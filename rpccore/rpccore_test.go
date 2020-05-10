@@ -135,17 +135,31 @@ func TestTCPCommunication(t *testing.T) {
 
 	tcpNetwork_ := NewTCPNetwork(1 * time.Second)
 	nodeB, _ := tcpNetwork_.NewLocalNode("nodeB", "127.0.0.1:2222", ":2222")
+	_ = tcpNetwork_.NewRemoteNode("nodeA", "127.0.0.1:1111")
 
 	callback := func(source NodeID, method string, data []byte) ([]byte, error) {
-		return []byte("OK"), nil
+		if string(data) == "Test: A -> B" {
+			return []byte(string(source)), nil
+		} else {
+			return []byte(string(source)), errors.New("Incorrent data")
+		}
 	}
 
 	nodeB.RegisterRawRequestCallback(callback)
 
 	data := []byte("Test: A -> B")
-	res, err := nodeA.SendRawRequest("nodeB", "test", data)
-	t.Log("res: ", res)
-	t.Log("err: ", err)
+	_, err := nodeA.SendRawRequest("nodeB", "test", data)
+	if err != nil {
+		t.Errorf("Node A should receive callback.\n%+v", err)
+	}
+
+	// no callback case
+	data = []byte("Test: B -> A")
+	_, err = nodeB.SendRawRequest("nodeA", "test", data)
+	t.Log(err)
+	if err == nil {
+		t.Errorf("Node B should receive errer.")
+	}
 }
 
 func BenchmarkCommunication(b *testing.B) {
