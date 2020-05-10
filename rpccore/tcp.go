@@ -67,10 +67,9 @@ func (n *TCPNetwork) NewLocalNode(nodeID NodeID, remoteAddr, listenAddr string) 
 			return &tcpResMsg{Data: data, Err: err}
 		},
 	}
-	if err := s.Serve(); err != nil {
+	if err := s.Start(); err != nil {
 		return nil, err
 	}
-
 	// TODO: support graceful shutdown or at least clean shutdown
 	n.nodeAddrMap[nodeID] = remoteAddr
 	return node, nil

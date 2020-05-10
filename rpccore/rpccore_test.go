@@ -28,7 +28,7 @@ func TestNewNode(t *testing.T) {
 	}
 }
 
-func TestCommunication(t *testing.T) {
+func TestChannelCommunication(t *testing.T) {
 	network := NewChanNetwork(time.Second)
 
 	nodeA, _ := network.NewNode("nodeA")
@@ -89,10 +89,63 @@ func TestTimeoutAndDelayGenerator(t *testing.T) {
 }
 
 func TestNewTCPNetwork(t *testing.T) {
-	tcpNetwork := NewTCPNetwork(time.Second)
+	tcpNetwork := NewTCPNetwork(1 * time.Second)
+
 	if tcpNetwork.timeout != time.Second {
-		t.Errorf("TCPNetwork timeout should have the same value")
+		t.Errorf("TCPNetwork timeout should have the same value.")
 	}
+}
+
+func TestNewRemoteNode(t *testing.T) {
+	tcpNetwork := NewTCPNetwork(1 * time.Second)
+	remoteNode := tcpNetwork.NewRemoteNode("node", "addr")
+
+	if remoteNode != nil {
+		t.Errorf("RemoteNode should return nil error value.")
+	}
+
+	remoteNodeB := tcpNetwork.NewRemoteNode("node", "addr")
+	if remoteNodeB == nil {
+		t.Errorf("RemoteNode should return no-nil error value.")
+	}
+}
+
+func TestNewLocalNode(t *testing.T) {
+	tcpNetwork := NewTCPNetwork(1 * time.Second)
+
+	localNode, err := tcpNetwork.NewLocalNode("nodeB", "127.0.0.1:1112", ":1112")
+	if err != nil {
+		t.Errorf("LocalNode should return nil error value.")
+	}
+	if localNode == nil {
+		t.Errorf("LocalNode should return no-nil value.")
+	}
+
+	// check node with same ID already exists
+	localNode_, err_ := tcpNetwork.NewLocalNode("nodeB", "127.0.0.1:1112", ":1112")
+	if localNode_ != nil && err_ == nil {
+		t.Errorf("LocalNode should return error value.")
+	}
+}
+
+func TestTCPCommunication(t *testing.T) {
+	tcpNetwork := NewTCPNetwork(1 * time.Second)
+	nodeA, _ := tcpNetwork.NewLocalNode("nodeA", "127.0.0.1:1111", ":1111")
+	_ = tcpNetwork.NewRemoteNode("nodeB", "127.0.0.1:2222")
+
+	tcpNetwork_ := NewTCPNetwork(1 * time.Second)
+	nodeB, _ := tcpNetwork_.NewLocalNode("nodeB", "127.0.0.1:2222", ":2222")
+
+	callback := func(source NodeID, method string, data []byte) ([]byte, error) {
+		return []byte("OK"), nil
+	}
+
+	nodeB.RegisterRawRequestCallback(callback)
+
+	data := []byte("Test: A -> B")
+	res, err := nodeA.SendRawRequest("nodeB", "test", data)
+	t.Log("res: ", res)
+	t.Log("err: ", err)
 }
 
 func BenchmarkCommunication(b *testing.B) {
