@@ -150,7 +150,7 @@ func TestTCPCommunication(t *testing.T) {
 	data := []byte("Test: A -> B")
 	_, err := nodeA.SendRawRequest("nodeB", "test", data)
 	if err != nil {
-		t.Errorf("Node A should receive callback.\n%+v", err)
+		t.Errorf("Node A should receive a response.\n%+v", err)
 	}
 
 	// no callback case

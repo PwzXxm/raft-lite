@@ -70,7 +70,11 @@ func (n *TCPNetwork) NewLocalNode(nodeID NodeID, remoteAddr, listenAddr string) 
 			node.lock.RUnlock()
 			req := request.(tcpReqMsg)
 			data, err := callback(req.Source, req.Method, req.Data)
-			return &tcpResMsg{Data: data, Err: err}
+			errStr := ""
+			if err != nil {
+				errStr = fmt.Sprintf("%v", err)
+			}
+			return &tcpResMsg{Data: data, Err: errStr}
 		},
 	}
 	if err := s.Start(); err != nil {
@@ -125,7 +129,11 @@ func (node *TCPNode) SendRawRequest(target NodeID, method string, data []byte) (
 	if err != nil {
 		return nil, err
 	} else {
-		return res.(tcpResMsg).Data, res.(tcpResMsg).Err
+		var err error = nil
+		if res.(tcpResMsg).Err != "" {
+			err = errors.New(res.(tcpResMsg).Err)
+		}
+		return res.(tcpResMsg).Data, err
 	}
 }
 
@@ -142,6 +150,6 @@ type tcpReqMsg struct {
 }
 
 type tcpResMsg struct {
-	Err  error
+	Err  string
 	Data []byte
 }
