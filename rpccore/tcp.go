@@ -1,6 +1,7 @@
 package rpccore
 
 import (
+	"encoding/gob"
 	"fmt"
 	"sync"
 	"time"
@@ -11,6 +12,11 @@ import (
 
 // TODO: github.com/valyala/gorpc looks pretty good, but the last commit of it
 // is four years ago
+
+func init() {
+	gob.Register(tcpReqMsg{})
+	gob.Register(tcpResMsg{})
+}
 
 type TCPNetwork struct {
 	lock        sync.RWMutex
@@ -61,7 +67,7 @@ func (n *TCPNetwork) NewLocalNode(nodeID NodeID, remoteAddr, listenAddr string) 
 		Handler: func(clientAddr string, request interface{}) interface{} {
 			node.lock.RLock()
 			callback := node.callback
-			node.lock.Unlock()
+			node.lock.RUnlock()
 			req := request.(tcpReqMsg)
 			data, err := callback(req.Source, req.Method, req.Data)
 			return &tcpResMsg{Data: data, Err: err}
