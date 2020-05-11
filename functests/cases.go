@@ -451,3 +451,47 @@ func caseLeaderInOtherPartition() (err error) {
 	fmt.Println("Finished")
 	return nil
 }
+
+func caseRestartPeer() (err error) {
+	sl := simulation.RunLocally(5)
+	defer sl.StopAll()
+
+	sl.SetNetworkReliability(0, 50*time.Millisecond, 0.02)
+	time.Sleep(5 * time.Second)
+
+	fmt.Print("Start sending request.\n")
+
+	for i := 0; i < 5; i++ {
+		sl.RequestRaw(i)
+		time.Sleep(150 * time.Millisecond)
+	}
+	time.Sleep(2 * time.Second)
+	sl.ShutDownPeer("2")
+	fmt.Print("Shutdown peer 2.\n")
+
+	for i := 5; i < 10; i++ {
+		sl.RequestRaw(i)
+		time.Sleep(150 * time.Millisecond)
+	}
+	time.Sleep(5 * time.Second)
+
+	err = sl.AgreeOnLogEntries()
+	if err != nil {
+		return
+	}
+	err = sl.ResetPeer("2")
+	if err != nil {
+		return
+	}
+	sl.StartPeer("2")
+	fmt.Print("Restart peer 2.\n")
+
+	time.Sleep(2 * time.Second)
+	for i := 10; i < 15; i++ {
+		sl.RequestRaw(i)
+		time.Sleep(150 * time.Millisecond)
+	}
+	time.Sleep(5 * time.Second)
+	err = sl.IdenticalLogEntries()
+	return
+}
