@@ -491,7 +491,7 @@ func caseRestartPeer() (err error) {
 		sl.RequestRaw(i)
 		time.Sleep(150 * time.Millisecond)
 	}
-	time.Sleep(5 * time.Second)
+	time.Sleep(10 * time.Second)
 	err = sl.IdenticalLogEntries()
 	return
 }
