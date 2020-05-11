@@ -227,6 +227,11 @@ func (p *Peer) ShutDown() {
 		p.shutdown = true
 		p.logger.Info("Stopping peer.")
 		p.resetTimeout()
+		if p.logIndexMajorityCheckChannel != nil {
+			for _, channel := range p.logIndexMajorityCheckChannel {
+				close(channel)
+			}
+		}
 	} else {
 		p.logger.Warning("This peer is already stopped.")
 	}
