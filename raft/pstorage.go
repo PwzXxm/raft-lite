@@ -13,7 +13,7 @@ type persistentData struct {
 	NumOfNode   int
 }
 
-func (p *Peer) LoadFromPersistentStorage() error {
+func (p *Peer) loadFromPersistentStorage() error {
 	var data persistentData
 	hasData, err := p.persistentStorage.Load(&data)
 	if err != nil {
@@ -38,6 +38,11 @@ func (p *Peer) LoadFromPersistentStorage() error {
 	return nil
 }
 
-func (p *Peer) SaveToPersistentStorage() {
-
+func (p *Peer) saveToPersistentStorage() error {
+	var data persistentData
+	data.Log = p.log
+	data.CommitIndex = p.commitIndex
+	data.NodeID = p.node.NodeID()
+	data.NumOfNode = len(p.rpcPeersIds)
+	return p.persistentStorage.Save(data)
 }

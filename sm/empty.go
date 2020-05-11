@@ -7,6 +7,9 @@ func NewEmptyStateMachine() *ESM {
 	return new(ESM)
 }
 
+func (t *ESM) Reset() {
+}
+
 func (t *ESM) ApplyAction(action interface{}) error {
 	return nil
 }

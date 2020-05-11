@@ -80,6 +80,7 @@ func NewPeer(node rpccore.Node, peers []rpccore.NodeID, logger *logrus.Entry,
 	p.shutdown = true
 	p.logger = logger
 	p.stateMachine = sm
+	p.stateMachine.Reset()
 
 	p.timeoutLoopChan = make(chan interface{}, 1)
 	p.timeoutLoopSkipThisRound = false
@@ -91,7 +92,7 @@ func NewPeer(node rpccore.Node, peers []rpccore.NodeID, logger *logrus.Entry,
 
 	// try to recover from persistent storage
 	p.persistentStorage = ps
-	err := p.LoadFromPersistentStorage()
+	err := p.loadFromPersistentStorage()
 	if err != nil {
 		return nil, err
 	}
@@ -268,6 +269,7 @@ func (p *Peer) updateCommitIndex(idx int) {
 		}
 		p.logger.Infof("CommitIndex is incremented from %v to %v.", p.commitIndex, idx)
 		p.commitIndex = idx
+		p.saveToPersistentStorage()
 	}
 }
 
