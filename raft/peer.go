@@ -4,6 +4,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/PwzXxm/raft-lite/pstorage"
 	"github.com/PwzXxm/raft-lite/rpccore"
 	"github.com/PwzXxm/raft-lite/sm"
 	"github.com/PwzXxm/raft-lite/utils"
@@ -32,15 +33,16 @@ type Peer struct {
 	log         []LogEntry
 
 	commitIndex int
-	lastApplied int
+	// TODO: unused
+	// lastApplied int
 
 	rpcPeersIds []rpccore.NodeID
 	node        rpccore.Node
 	shutdown    bool
 	logger      *logrus.Entry
 
-	// state machine
-	stateMachine sm.StateMachine
+	stateMachine      sm.StateMachine
+	persistentStorage pstorage.PersistentStorage
 
 	// don't use this one directly, use [triggerTimeout] or [resetTimeout]
 	// the value in it can only be [nil]
@@ -57,7 +59,8 @@ type Peer struct {
 	heardFromLeader bool
 }
 
-func NewPeer(node rpccore.Node, peers []rpccore.NodeID, logger *logrus.Entry, sm sm.StateMachine) *Peer {
+func NewPeer(node rpccore.Node, peers []rpccore.NodeID, logger *logrus.Entry,
+	sm sm.StateMachine, ps pstorage.PersistentStorage) (*Peer, error) {
 	p := new(Peer)
 
 	// initialisation
@@ -67,7 +70,6 @@ func NewPeer(node rpccore.Node, peers []rpccore.NodeID, logger *logrus.Entry, sm
 	p.log = []LogEntry{{Cmd: nil, Term: 0}}
 
 	p.commitIndex = 0
-	p.lastApplied = 0
 
 	p.rpcPeersIds = make([]rpccore.NodeID, len(peers))
 	copy(p.rpcPeersIds, peers)
@@ -87,9 +89,16 @@ func NewPeer(node rpccore.Node, peers []rpccore.NodeID, logger *logrus.Entry, sm
 		p.appendingEntries[peer] = false
 	}
 
+	// try to recover from persistent storage
+	p.persistentStorage = ps
+	err := p.LoadFromPersistentStorage()
+	if err != nil {
+		return nil, err
+	}
+
 	p.changeState(Follower)
 
-	return p
+	return p, nil
 }
 
 func (p *Peer) timeoutLoop() {

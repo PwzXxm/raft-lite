@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/PwzXxm/raft-lite/pstorage"
 	"github.com/PwzXxm/raft-lite/raft"
 	"github.com/PwzXxm/raft-lite/rpccore"
 	"github.com/PwzXxm/raft-lite/sm"
@@ -120,9 +121,13 @@ func newLocal(n int) (*local, error) {
 		idxMap[nodeIDs[i]] = i
 		idxMap[id] = j
 
-		l.raftPeers[id] = raft.NewPeer(node, nodeIDs[:n-1], l.loggers[id].WithFields(logrus.Fields{
+		var err error
+		l.raftPeers[id], err = raft.NewPeer(node, nodeIDs[:n-1], l.loggers[id].WithFields(logrus.Fields{
 			"nodeID": node.NodeID(),
-		}), sm.NewEmptyStateMachine())
+		}), sm.NewEmptyStateMachine(), pstorage.NewMemoryBasedPersistentStorage())
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	l.offlineNodes = make(map[rpccore.NodeID]bool, n)
