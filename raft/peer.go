@@ -274,7 +274,10 @@ func (p *Peer) updateCommitIndex(idx int) {
 		}
 		p.logger.Infof("CommitIndex is incremented from %v to %v.", p.commitIndex, idx)
 		p.commitIndex = idx
-		p.saveToPersistentStorage()
+		err := p.saveToPersistentStorage()
+		if err != nil {
+			p.logger.Errorf("Unable to save state: %+v.", err)
+		}
 	}
 }
 
