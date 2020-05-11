@@ -135,7 +135,6 @@ func TestTCPCommunication(t *testing.T) {
 
 	tcpNetwork_ := NewTCPNetwork(1 * time.Second)
 	nodeB, _ := tcpNetwork_.NewLocalNode("nodeB", "127.0.0.1:2222", ":2222")
-	_ = tcpNetwork_.NewRemoteNode("nodeA", "127.0.0.1:1111")
 
 	callback := func(source NodeID, method string, data []byte) ([]byte, error) {
 		if string(data) == "Test: A -> B" {
@@ -153,12 +152,25 @@ func TestTCPCommunication(t *testing.T) {
 		t.Errorf("Node A should receive a response.\n%+v", err)
 	}
 
-	// no callback case
 	data = []byte("Test: B -> A")
-	_, err = nodeB.SendRawRequest("nodeA", "test", data)
-	t.Log(err)
+
+	// node with same id already exists
+	_, err = tcpNetwork.NewLocalNode("nodeA", "127.0.0.1:1111", ":1111")
 	if err == nil {
-		t.Errorf("Node B should receive errer.")
+		t.Errorf("Node B should receive duplicate node errer.")
+	}
+
+	// unable to find target node
+	_, err = nodeB.SendRawRequest("nodeA", "test", data)
+	if err == nil {
+		t.Errorf("Node B should receive no target node errer.")
+	}
+
+	// no callback function provided
+	_ = tcpNetwork_.NewRemoteNode("nodeA", "127.0.0.1:1111")
+	_, err = nodeB.SendRawRequest("nodeA", "test", data)
+	if err == nil {
+		t.Errorf("Node B should receive no callback errer.")
 	}
 }
 
