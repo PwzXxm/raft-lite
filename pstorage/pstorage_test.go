@@ -26,6 +26,7 @@ func TestFileBased(t *testing.T) {
 	}
 	// a little hacky
 	os.Remove(file.Name())
+	defer os.Remove(file.Name())
 
 	m := NewFileBasedPersistentStorage(file.Name())
 	testPersistentStorage(t, m)
