@@ -310,12 +310,12 @@ func caseHighPacketLossRate() (err error) {
 	fmt.Printf("Initial election finished, leader: %v, term: %v\n", *leader1, term1)
 
 	fmt.Println("High packet loss rate mode...")
-	sl.SetNetworkReliability(time.Duration(0*time.Second), time.Duration(0*time.Second), 0.5)
+	sl.SetNetworkReliability(0, 0, 0.5)
 
 	time.Sleep(10 * time.Second)
 
 	fmt.Println("Network back to normal...")
-	sl.SetNetworkReliability(time.Duration(0*time.Second), time.Duration(0*time.Second), 0.0)
+	sl.SetNetworkReliability(0, 0, 0.0)
 
 	time.Sleep(10 * time.Second)
 	leader2, err := sl.AgreeOnLeader()

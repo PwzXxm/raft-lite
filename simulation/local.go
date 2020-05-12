@@ -306,27 +306,24 @@ func (l *local) AgreeOnVoteCount() (int, error) {
 }
 
 func (l *local) IdenticalLogEntries() error {
-	var leaderLogs []raft.LogEntry
+	var peerLogs1 []raft.LogEntry
 	for _, peer := range l.raftPeers {
-		if peer.GetState() == raft.Leader {
-			leaderLogs = peer.GetLog()
-			break
-		}
+		peerLogs1 = peer.GetLog()
+		break
 	}
 	for _, peer := range l.raftPeers {
-		if peer.GetState() != raft.Leader {
-			peerLogs := peer.GetLog()
-			if len(peerLogs) != len(leaderLogs) {
+		peerLogs2 := peer.GetLog()
+		if len(peerLogs1) != len(peerLogs2) {
+			return errors.Errorf("not identical log entries.\n\n%v\n",
+			l.getAllNodeInfo())
+		}
+		for j, peerLog := range peerLogs1 {
+			if peerLog != peerLogs2[j] {
 				return errors.Errorf("not identical log entries.\n\n%v\n",
-					l.getAllNodeInfo())
-			}
-			for i, peerLog := range peerLogs {
-				if peerLog != leaderLogs[i] {
-					return errors.Errorf("not identical log entries.\n\n%v\n",
-						l.getAllNodeInfo())
-				}
+				l.getAllNodeInfo())
 			}
 		}
+		peerLogs1 = peerLogs2
 	}
 	return nil
 }
