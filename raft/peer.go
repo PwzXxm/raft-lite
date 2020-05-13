@@ -23,6 +23,13 @@ type LogEntry struct {
 	Term int
 }
 
+type Snapshot struct {
+	LastIncludedIndex int
+	LastIncludedTerm  int
+	// TODO: add state machine state
+	// TODO: add membership config
+}
+
 type Peer struct {
 	state       PeerState
 	mutex       sync.Mutex
@@ -38,6 +45,9 @@ type Peer struct {
 	node        rpccore.Node
 	shutdown    bool
 	logger      *logrus.Entry
+
+	// snapshot
+	snapshot *Snapshot
 
 	// state machine
 	stateMachine sm.StateMachine
@@ -78,6 +88,7 @@ func NewPeer(node rpccore.Node, peers []rpccore.NodeID, logger *logrus.Entry, sm
 	p.shutdown = true
 	p.logger = logger
 	p.stateMachine = sm
+	p.snapshot = nil
 
 	p.timeoutLoopChan = make(chan interface{}, 1)
 	p.timeoutLoopSkipThisRound = false
@@ -298,4 +309,15 @@ func (p *Peer) GetVoteCount() int {
 
 func (p *Peer) getTotalPeers() int {
 	return len(p.rpcPeersIds) + 1
+}
+
+func (p *Peer) toLogIndex(trueIndex int) int {
+	if p.snapshot == nil {
+		return trueIndex
+	}
+	logidx := trueIndex - p.snapshot.LastIncludedIndex
+	if logidx <= 0 {
+		return -666 // how to deal with this situation
+	}
+	return logidx
 }
