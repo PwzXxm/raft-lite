@@ -70,7 +70,7 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 	for {
 		// TODO: add other conditions that should stop sending request
 		p.mutex.Lock()
-		if p.state != Leader {
+		if p.state != Leader || p.shutdown {
 			p.mutex.Unlock()
 			return
 		}
