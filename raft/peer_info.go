@@ -18,7 +18,7 @@ func (p *Peer) GetInfo() map[string]string {
 	t := v.Type()
 	for i := 0; i < v.NumField(); i++ {
 		fieldName := t.Field(i).Name
-		if fieldName == "mutex" || fieldName == "logger" {
+		if fieldName == "mutex" || fieldName == "logger" || fieldName == "persistentStorage" {
 			continue
 		}
 		mp[fieldName] = getFieldStr(v.Field(i), 2) + "\n"

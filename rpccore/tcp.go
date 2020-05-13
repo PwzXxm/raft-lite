@@ -1,6 +1,7 @@
 package rpccore
 
 import (
+	"encoding/gob"
 	"fmt"
 	"sync"
 	"time"
@@ -11,6 +12,11 @@ import (
 
 // TODO: github.com/valyala/gorpc looks pretty good, but the last commit of it
 // is four years ago
+
+func init() {
+	gob.Register(tcpReqMsg{})
+	gob.Register(tcpResMsg{})
+}
 
 type TCPNetwork struct {
 	lock        sync.RWMutex
@@ -61,16 +67,19 @@ func (n *TCPNetwork) NewLocalNode(nodeID NodeID, remoteAddr, listenAddr string) 
 		Handler: func(clientAddr string, request interface{}) interface{} {
 			node.lock.RLock()
 			callback := node.callback
-			node.lock.Unlock()
+			node.lock.RUnlock()
 			req := request.(tcpReqMsg)
 			data, err := callback(req.Source, req.Method, req.Data)
-			return &tcpResMsg{Data: data, Err: err}
+			errStr := ""
+			if err != nil {
+				errStr = fmt.Sprintf("%v", err)
+			}
+			return &tcpResMsg{Data: data, Err: errStr}
 		},
 	}
-	if err := s.Serve(); err != nil {
+	if err := s.Start(); err != nil {
 		return nil, err
 	}
-
 	// TODO: support graceful shutdown or at least clean shutdown
 	n.nodeAddrMap[nodeID] = remoteAddr
 	return node, nil
@@ -120,7 +129,11 @@ func (node *TCPNode) SendRawRequest(target NodeID, method string, data []byte) (
 	if err != nil {
 		return nil, err
 	} else {
-		return res.(tcpResMsg).Data, res.(tcpResMsg).Err
+		var err error = nil
+		if res.(tcpResMsg).Err != "" {
+			err = errors.New(res.(tcpResMsg).Err)
+		}
+		return res.(tcpResMsg).Data, err
 	}
 }
 
@@ -137,6 +150,6 @@ type tcpReqMsg struct {
 }
 
 type tcpResMsg struct {
-	Err  error
+	Err  string
 	Data []byte
 }
