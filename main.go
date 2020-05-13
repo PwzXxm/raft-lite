@@ -69,10 +69,10 @@ func main() {
 		Name:  "start",
 		Usage: "commands for running raft",
 		Flags: []cli.Flag{
-			&cli.Int64Flag{Name: "p", Usage: "peer information file path", Required: true},
+			&cli.PathFlag{Name: "c", Usage: "peer config file path", Required: true},
 		},
 		Action: func(c *cli.Context) error {
-			return start("p")
+			return start(c.Path("c"))
 		},
 	}
 	app := &cli.App{
