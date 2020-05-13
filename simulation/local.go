@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/PwzXxm/raft-lite/pstorage"
 	"github.com/PwzXxm/raft-lite/raft"
 	"github.com/PwzXxm/raft-lite/rpccore"
 	"github.com/PwzXxm/raft-lite/sm"
@@ -25,6 +26,7 @@ type local struct {
 	rpcPeers  map[rpccore.NodeID]*rpccore.ChanNode
 	raftPeers map[rpccore.NodeID]*raft.Peer
 	loggers   map[rpccore.NodeID]*logrus.Logger
+	pstorages map[rpccore.NodeID]pstorage.PersistentStorage
 
 	// network related
 	netLock          sync.RWMutex
@@ -101,9 +103,10 @@ func newLocal(n int) (*local, error) {
 	l.n = n
 	l.network = rpccore.NewChanNetwork(rpcTimeout)
 	l.network.SetDelayGenerator(l.delayGenerator)
-	l.rpcPeers = make(map[rpccore.NodeID]*rpccore.ChanNode)
-	l.raftPeers = make(map[rpccore.NodeID]*raft.Peer)
-	l.loggers = make(map[rpccore.NodeID]*logrus.Logger)
+	l.rpcPeers = make(map[rpccore.NodeID]*rpccore.ChanNode, n)
+	l.raftPeers = make(map[rpccore.NodeID]*raft.Peer, n)
+	l.loggers = make(map[rpccore.NodeID]*logrus.Logger, n)
+	l.pstorages = make(map[rpccore.NodeID]pstorage.PersistentStorage, n)
 
 	// create rpc nodes
 	for i := 0; i < n; i++ {
@@ -131,15 +134,20 @@ func newLocal(n int) (*local, error) {
 
 	// create raft nodes
 	for id, node := range l.rpcPeers {
+		l.pstorages[id] = pstorage.NewMemoryBasedPersistentStorage()
 		// move current nodeID to the last of the nodeIDs slice
 		i, j := idxMap[id], n-1
 		nodeIDs[i], nodeIDs[j] = nodeIDs[j], nodeIDs[i]
 		idxMap[nodeIDs[i]] = i
 		idxMap[id] = j
 
-		l.raftPeers[id] = raft.NewPeer(node, nodeIDs[:n-1], l.loggers[id].WithFields(logrus.Fields{
+		var err error
+		l.raftPeers[id], err = raft.NewPeer(node, nodeIDs[:n-1], l.loggers[id].WithFields(logrus.Fields{
 			"nodeID": node.NodeID(),
-		}), sm.NewEmptyStateMachine())
+		}), sm.NewEmptyStateMachine(), l.pstorages[id])
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	l.offlineNodes = make(map[rpccore.NodeID]bool, n)
@@ -204,6 +212,10 @@ func (l *local) ShutDownPeer(id rpccore.NodeID) {
 	l.raftPeers[id].ShutDown()
 }
 
+func (l *local) StartPeer(id rpccore.NodeID) {
+	l.raftPeers[id].Start()
+}
+
 func (l *local) Wait(sec int) {
 	if sec <= 0 {
 		log.Warnf("Seconds to wait should be positive integer, not %v", sec)
@@ -229,6 +241,23 @@ func (l *local) PrintAllNodeInfo() {
 	for k, v := range m {
 		log.Infof("%v:\n%v", k, v)
 	}
+}
+
+func (l *local) ResetPeer(nodeID rpccore.NodeID) error {
+	peer := l.raftPeers[nodeID]
+	peer.ShutDown()
+	nodeIDs := make([]rpccore.NodeID, 0, len(l.raftPeers)-1)
+	for k := range l.raftPeers {
+		if k != nodeID {
+			nodeIDs = append(nodeIDs, k)
+		}
+	}
+	var err error
+	l.raftPeers[nodeID], err = raft.NewPeer(l.rpcPeers[nodeID], nodeIDs,
+		l.loggers[nodeID].WithFields(logrus.Fields{
+			"nodeID": nodeID,
+		}), sm.NewEmptyStateMachine(), l.pstorages[nodeID])
+	return err
 }
 
 func (l *local) getAllNodeInfo() map[rpccore.NodeID]map[string]string {
@@ -294,27 +323,24 @@ func (l *local) AgreeOnVoteCount() (int, error) {
 }
 
 func (l *local) IdenticalLogEntries() error {
-	var leaderLogs []raft.LogEntry
+	var peerLogs1 []raft.LogEntry
 	for _, peer := range l.raftPeers {
-		if peer.GetState() == raft.Leader {
-			leaderLogs = peer.GetLog()
-			break
-		}
+		peerLogs1 = peer.GetLog()
+		break
 	}
 	for _, peer := range l.raftPeers {
-		if peer.GetState() != raft.Leader {
-			peerLogs := peer.GetLog()
-			if len(peerLogs) != len(leaderLogs) {
+		peerLogs2 := peer.GetLog()
+		if len(peerLogs1) != len(peerLogs2) {
+			return errors.Errorf("not identical log entries.\n\n%v\n",
+			l.getAllNodeInfo())
+		}
+		for j, peerLog := range peerLogs1 {
+			if peerLog != peerLogs2[j] {
 				return errors.Errorf("not identical log entries.\n\n%v\n",
-					l.getAllNodeInfo())
-			}
-			for i, peerLog := range peerLogs {
-				if peerLog != leaderLogs[i] {
-					return errors.Errorf("not identical log entries.\n\n%v\n",
-						l.getAllNodeInfo())
-				}
+				l.getAllNodeInfo())
 			}
 		}
+		peerLogs1 = peerLogs2
 	}
 	return nil
 }
@@ -326,7 +352,7 @@ func (l *local) agreeOnTwoLogEntries(logEntry1, logEntry2 []raft.LogEntry) error
 			cmdIdentical = false
 		}
 		if logEntry1[i].Term == logEntry2[i].Term {
-			if cmdIdentical == false {
+			if !cmdIdentical {
 				return errors.Errorf("not agree on log entries .\n\n%v\n", l.getAllNodeInfo())
 			}
 		}

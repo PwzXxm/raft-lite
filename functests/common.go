@@ -54,6 +54,10 @@ var testCases = []testCase{
 		action: caseLeaderInOtherPartition,
 	},
 	{
+		name:   "restart peer",
+		action: caseRestartPeer,
+	},
+	{
 		name:   "candidate timeout",
 		action: caseCandidateTimeout,
 	},
