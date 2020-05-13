@@ -59,6 +59,23 @@ func RunLocally(n int) *local {
 	return l
 }
 
+func SetupLocally(n int) *local {
+	log.Info("Setting up simulation locally ...")
+
+	l, err := newLocal(n)
+	if err != nil {
+		log.Panicln(err)
+	}
+
+	return l
+}
+
+func (l *local) StartAll() {
+	for _, node := range l.raftPeers {
+		node.Start()
+	}
+}
+
 // TODO: Current limitation:
 // 		1. latency is uniform distribution
 // 		2. don't support one way connection lost (packet lost is one way)

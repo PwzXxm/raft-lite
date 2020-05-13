@@ -57,6 +57,10 @@ var testCases = []testCase{
 		name:   "restart peer",
 		action: caseRestartPeer,
 	},
+	{
+		name:   "candidate timeout",
+		action: caseCandidateTimeout,
+	},
 }
 
 func List() {
