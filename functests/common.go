@@ -26,10 +26,6 @@ var testCases = []testCase{
 		action: caseAppendLogEntry,
 	},
 	{
-		name:   "check vote count",
-		action: caseCheckVoteCount,
-	},
-	{
 		name:   "leader offline",
 		action: caseLeaderOffline,
 	},
