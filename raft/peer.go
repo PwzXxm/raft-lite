@@ -4,6 +4,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/PwzXxm/raft-lite/pstorage"
 	"github.com/PwzXxm/raft-lite/rpccore"
 	"github.com/PwzXxm/raft-lite/sm"
 	"github.com/PwzXxm/raft-lite/utils"
@@ -39,7 +40,8 @@ type Peer struct {
 	log         []LogEntry
 
 	commitIndex int
-	lastApplied int
+	// TODO: unused
+	// lastApplied int
 
 	rpcPeersIds []rpccore.NodeID
 	node        rpccore.Node
@@ -50,7 +52,10 @@ type Peer struct {
 	snapshot *Snapshot
 
 	// state machine
-	stateMachine sm.StateMachine
+	stateMachine      sm.StateMachine
+	persistentStorage pstorage.PersistentStorage
+
+	timingFactor int // read-only
 
 	// don't use this one directly, use [triggerTimeout] or [resetTimeout]
 	// the value in it can only be [nil]
@@ -67,7 +72,8 @@ type Peer struct {
 	heardFromLeader bool
 }
 
-func NewPeer(node rpccore.Node, peers []rpccore.NodeID, logger *logrus.Entry, sm sm.StateMachine) *Peer {
+func NewPeer(node rpccore.Node, peers []rpccore.NodeID, logger *logrus.Entry,
+	sm sm.StateMachine, ps pstorage.PersistentStorage, timingFactor int) (*Peer, error) {
 	p := new(Peer)
 
 	// initialisation
@@ -77,7 +83,6 @@ func NewPeer(node rpccore.Node, peers []rpccore.NodeID, logger *logrus.Entry, sm
 	p.log = []LogEntry{{Cmd: nil, Term: 0}}
 
 	p.commitIndex = 0
-	p.lastApplied = 0
 
 	p.rpcPeersIds = make([]rpccore.NodeID, len(peers))
 	copy(p.rpcPeersIds, peers)
@@ -89,6 +94,8 @@ func NewPeer(node rpccore.Node, peers []rpccore.NodeID, logger *logrus.Entry, sm
 	p.logger = logger
 	p.stateMachine = sm
 	p.snapshot = nil
+	p.stateMachine.Reset()
+	p.timingFactor = timingFactor
 
 	p.timeoutLoopChan = make(chan interface{}, 1)
 	p.timeoutLoopSkipThisRound = false
@@ -98,9 +105,16 @@ func NewPeer(node rpccore.Node, peers []rpccore.NodeID, logger *logrus.Entry, sm
 		p.appendingEntries[peer] = false
 	}
 
+	// try to recover from persistent storage
+	p.persistentStorage = ps
+	err := p.loadFromPersistentStorage()
+	if err != nil {
+		return nil, err
+	}
+
 	p.changeState(Follower)
 
-	return p
+	return p, nil
 }
 
 func (p *Peer) timeoutLoop() {
@@ -115,11 +129,11 @@ func (p *Peer) timeoutLoop() {
 		var timeout time.Duration
 		switch currentState {
 		case Follower:
-			timeout = time.Duration(utils.Random(2000, 4000))
+			timeout = time.Duration(utils.Random(400, 800) * p.timingFactor)
 		case Candidate:
-			timeout = time.Duration(utils.Random(2000, 4000))
+			timeout = time.Duration(utils.Random(400, 800) * p.timingFactor)
 		case Leader:
-			timeout = 500
+			timeout = time.Duration(100 * p.timingFactor)
 		}
 
 		select {
@@ -142,6 +156,8 @@ func (p *Peer) timeoutLoop() {
 						go p.callAppendEntryRPC(peerID)
 					}
 				}
+			case Candidate:
+				p.startElection()
 			}
 		}
 		p.timeoutLoopSkipThisRound = false
@@ -190,7 +206,6 @@ func (p *Peer) changeState(state PeerState) {
 	case Follower:
 		p.heardFromLeader = false
 	case Candidate:
-		p.voteCount = 1
 		p.startElection()
 	case Leader:
 		p.nextIndex = make(map[rpccore.NodeID]int)
@@ -228,6 +243,11 @@ func (p *Peer) ShutDown() {
 		p.shutdown = true
 		p.logger.Info("Stopping peer.")
 		p.resetTimeout()
+		if p.logIndexMajorityCheckChannel != nil {
+			for _, channel := range p.logIndexMajorityCheckChannel {
+				close(channel)
+			}
+		}
 	} else {
 		p.logger.Warning("This peer is already stopped.")
 	}
@@ -235,6 +255,7 @@ func (p *Peer) ShutDown() {
 
 func (p *Peer) startElection() {
 	p.logger.Info("Start election.")
+	p.voteCount = 1
 	voteID := p.node.NodeID()
 	p.updateTerm(p.currentTerm + 1)
 	p.votedFor = &voteID
@@ -270,6 +291,10 @@ func (p *Peer) updateCommitIndex(idx int) {
 		}
 		p.logger.Infof("CommitIndex is incremented from %v to %v.", p.commitIndex, idx)
 		p.commitIndex = idx
+		err := p.saveToPersistentStorage()
+		if err != nil {
+			p.logger.Errorf("Unable to save state: %+v.", err)
+		}
 	}
 }
 

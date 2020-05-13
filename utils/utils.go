@@ -28,6 +28,10 @@ func Random(a, b int) int {
 	return rand.Intn(b-a+1) + a
 }
 
+func RandomFloat(a, b float64) float64 {
+	return a + rand.Float64()*(b-a)
+}
+
 func RandomTime(a, b time.Duration) time.Duration {
 	return time.Duration(rand.Int63n(int64(b-a+1)) + int64(a))
 }

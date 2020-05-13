@@ -212,38 +212,6 @@ func caseAppendLogEntry() (err error) {
 	return nil
 }
 
-func caseCheckVoteCount() (err error) {
-	n := 6
-	sl := simulation.RunLocally(n)
-	defer sl.StopAll()
-
-	// process inital election normally
-	time.Sleep(5 * time.Second)
-	leader1, err := sl.AgreeOnLeader()
-	if err != nil {
-		return
-	}
-	term1, err := sl.AgreeOnTerm()
-	if err != nil {
-		return
-	}
-
-	if leader1 == nil {
-		return errors.Errorf("No leader is selected.")
-	}
-	// at least 1 as the initial election happens
-	if term1 < 1 {
-		return errors.Errorf("Term 1 should be at least 1. t1: %v", term1)
-	}
-
-	voteCount, err := sl.AgreeOnVoteCount()
-	if voteCount != n {
-		return errors.Errorf("Vote count changed from %v to %v.", n, voteCount)
-	}
-	fmt.Printf("Vote count check is succeed. v: %v\n", voteCount)
-	return nil
-}
-
 func caseLeaderOffline() (err error) {
 	sl := simulation.RunLocally(5)
 	defer sl.StopAll()
@@ -310,12 +278,12 @@ func caseHighPacketLossRate() (err error) {
 	fmt.Printf("Initial election finished, leader: %v, term: %v\n", *leader1, term1)
 
 	fmt.Println("High packet loss rate mode...")
-	sl.SetNetworkReliability(time.Duration(0*time.Second), time.Duration(0*time.Second), 0.5)
+	sl.SetNetworkReliability(0, 0, 0.5)
 
 	time.Sleep(10 * time.Second)
 
 	fmt.Println("Network back to normal...")
-	sl.SetNetworkReliability(time.Duration(0*time.Second), time.Duration(0*time.Second), 0.0)
+	sl.SetNetworkReliability(0, 0, 0.0)
 
 	time.Sleep(10 * time.Second)
 	leader2, err := sl.AgreeOnLeader()
@@ -450,4 +418,62 @@ func caseLeaderInOtherPartition() (err error) {
 
 	fmt.Println("Finished")
 	return nil
+}
+
+func caseRestartPeer() (err error) {
+	sl := simulation.RunLocally(5)
+	defer sl.StopAll()
+
+	sl.SetNetworkReliability(0, 50*time.Millisecond, 0.02)
+	time.Sleep(5 * time.Second)
+
+	fmt.Print("Start sending request.\n")
+
+	for i := 0; i < 5; i++ {
+		sl.RequestRaw(i)
+		time.Sleep(150 * time.Millisecond)
+	}
+	time.Sleep(2 * time.Second)
+	sl.ShutDownPeer("2")
+	fmt.Print("Shutdown peer 2.\n")
+
+	for i := 5; i < 10; i++ {
+		sl.RequestRaw(i)
+		time.Sleep(150 * time.Millisecond)
+	}
+	time.Sleep(5 * time.Second)
+
+	err = sl.AgreeOnLogEntries()
+	if err != nil {
+		return
+	}
+	err = sl.ResetPeer("2")
+	if err != nil {
+		return
+	}
+	sl.StartPeer("2")
+	fmt.Print("Restart peer 2.\n")
+
+	time.Sleep(2 * time.Second)
+	for i := 10; i < 15; i++ {
+		sl.RequestRaw(i)
+		time.Sleep(150 * time.Millisecond)
+	}
+	time.Sleep(10 * time.Second)
+	err = sl.IdenticalLogEntries()
+	return
+}
+
+func caseCandidateTimeout() error {
+	sl := simulation.SetupLocally(5)
+	defer sl.StopAll()
+	sl.SetNetworkReliability(0, 0, 1)
+	sl.StartAll()
+
+	time.Sleep(4 * time.Second)
+	sl.SetNetworkReliability(0, 0, 0)
+	time.Sleep(4 * time.Second)
+
+	_, err := sl.AgreeOnLeader()
+	return err
 }

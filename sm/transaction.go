@@ -14,6 +14,10 @@ func NewTransactionStateMachine() *TSM {
 	return t
 }
 
+func (t *TSM) Reset() {
+	t.data = make(map[string]int)
+}
+
 func (t *TSM) ApplyAction(action interface{}) error {
 	tsmAction := action.(TSMAction)
 	switch tsmAction.action {
