@@ -451,3 +451,17 @@ func caseLeaderInOtherPartition() (err error) {
 	fmt.Println("Finished")
 	return nil
 }
+
+func caseCandidateTimeout() error {
+	sl := simulation.SetupLocally(5)
+	defer sl.StopAll()
+	sl.SetNetworkReliability(0, 0, 1)
+	sl.StartAll()
+
+	time.Sleep(4 * time.Second)
+	sl.SetNetworkReliability(0, 0, 0)
+	time.Sleep(4 * time.Second)
+
+	_, err := sl.AgreeOnLeader()
+	return err
+}

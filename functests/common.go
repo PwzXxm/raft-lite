@@ -53,6 +53,10 @@ var testCases = []testCase{
 		name:   "leader in other partition",
 		action: caseLeaderInOtherPartition,
 	},
+	{
+		name:   "candidate timeout",
+		action: caseCandidateTimeout,
+	},
 }
 
 func List() {

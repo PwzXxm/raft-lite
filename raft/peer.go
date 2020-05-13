@@ -131,6 +131,8 @@ func (p *Peer) timeoutLoop() {
 						go p.callAppendEntryRPC(peerID)
 					}
 				}
+			case Candidate:
+				p.startElection()
 			}
 		}
 		p.timeoutLoopSkipThisRound = false
@@ -179,7 +181,6 @@ func (p *Peer) changeState(state PeerState) {
 	case Follower:
 		p.heardFromLeader = false
 	case Candidate:
-		p.voteCount = 1
 		p.startElection()
 	case Leader:
 		p.nextIndex = make(map[rpccore.NodeID]int)
@@ -224,6 +225,7 @@ func (p *Peer) ShutDown() {
 
 func (p *Peer) startElection() {
 	p.logger.Info("Start election.")
+	p.voteCount = 1
 	voteID := p.node.NodeID()
 	p.updateTerm(p.currentTerm + 1)
 	p.votedFor = &voteID
