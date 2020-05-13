@@ -317,7 +317,7 @@ func (p *Peer) toLogIndex(trueIndex int) int {
 	}
 	logidx := trueIndex - p.snapshot.LastIncludedIndex
 	if logidx <= 0 {
-		return -666 // how to deal with this situation
+		return // how to deal with this situation
 	}
 	return logidx
 }

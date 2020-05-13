@@ -23,7 +23,7 @@ func (p *Peer) handleInstallSnapshot(req installSnapshotReq) installSnapshotRes 
 	if req.Term < p.currentTerm {
 		return res
 	}
-	// retain partial log if mine is longer
+	// retain following logs if mine is longer
 	myLastRecoredIndex := len(p.log) + p.snapshot.LastIncludedIndex
 	if req.LastIncludedIndex < myLastRecoredIndex && p.log[p.toLogIndex(req.LastIncludedIndex)].Term == req.LastIncludedTerm {
 		p.log = p.log[p.toLogIndex(req.LastIncludedIndex):]
