@@ -4,6 +4,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/PwzXxm/raft-lite/pstorage"
 	"github.com/PwzXxm/raft-lite/rpccore"
 	"github.com/PwzXxm/raft-lite/sm"
 	"github.com/PwzXxm/raft-lite/utils"
@@ -32,15 +33,16 @@ type Peer struct {
 	log         []LogEntry
 
 	commitIndex int
-	lastApplied int
+	// TODO: unused
+	// lastApplied int
 
 	rpcPeersIds []rpccore.NodeID
 	node        rpccore.Node
 	shutdown    bool
 	logger      *logrus.Entry
 
-	// state machine
-	stateMachine sm.StateMachine
+	stateMachine      sm.StateMachine
+	persistentStorage pstorage.PersistentStorage
 
 	// don't use this one directly, use [triggerTimeout] or [resetTimeout]
 	// the value in it can only be [nil]
@@ -57,7 +59,8 @@ type Peer struct {
 	heardFromLeader bool
 }
 
-func NewPeer(node rpccore.Node, peers []rpccore.NodeID, logger *logrus.Entry, sm sm.StateMachine) *Peer {
+func NewPeer(node rpccore.Node, peers []rpccore.NodeID, logger *logrus.Entry,
+	sm sm.StateMachine, ps pstorage.PersistentStorage) (*Peer, error) {
 	p := new(Peer)
 
 	// initialisation
@@ -67,7 +70,6 @@ func NewPeer(node rpccore.Node, peers []rpccore.NodeID, logger *logrus.Entry, sm
 	p.log = []LogEntry{{Cmd: nil, Term: 0}}
 
 	p.commitIndex = 0
-	p.lastApplied = 0
 
 	p.rpcPeersIds = make([]rpccore.NodeID, len(peers))
 	copy(p.rpcPeersIds, peers)
@@ -78,6 +80,7 @@ func NewPeer(node rpccore.Node, peers []rpccore.NodeID, logger *logrus.Entry, sm
 	p.shutdown = true
 	p.logger = logger
 	p.stateMachine = sm
+	p.stateMachine.Reset()
 
 	p.timeoutLoopChan = make(chan interface{}, 1)
 	p.timeoutLoopSkipThisRound = false
@@ -87,9 +90,16 @@ func NewPeer(node rpccore.Node, peers []rpccore.NodeID, logger *logrus.Entry, sm
 		p.appendingEntries[peer] = false
 	}
 
+	// try to recover from persistent storage
+	p.persistentStorage = ps
+	err := p.loadFromPersistentStorage()
+	if err != nil {
+		return nil, err
+	}
+
 	p.changeState(Follower)
 
-	return p
+	return p, nil
 }
 
 func (p *Peer) timeoutLoop() {
@@ -217,6 +227,11 @@ func (p *Peer) ShutDown() {
 		p.shutdown = true
 		p.logger.Info("Stopping peer.")
 		p.resetTimeout()
+		if p.logIndexMajorityCheckChannel != nil {
+			for _, channel := range p.logIndexMajorityCheckChannel {
+				close(channel)
+			}
+		}
 	} else {
 		p.logger.Warning("This peer is already stopped.")
 	}
@@ -259,6 +274,10 @@ func (p *Peer) updateCommitIndex(idx int) {
 		}
 		p.logger.Infof("CommitIndex is incremented from %v to %v.", p.commitIndex, idx)
 		p.commitIndex = idx
+		err := p.saveToPersistentStorage()
+		if err != nil {
+			p.logger.Errorf("Unable to save state: %+v.", err)
+		}
 	}
 }
 

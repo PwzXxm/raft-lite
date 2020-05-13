@@ -310,12 +310,12 @@ func caseHighPacketLossRate() (err error) {
 	fmt.Printf("Initial election finished, leader: %v, term: %v\n", *leader1, term1)
 
 	fmt.Println("High packet loss rate mode...")
-	sl.SetNetworkReliability(time.Duration(0*time.Second), time.Duration(0*time.Second), 0.5)
+	sl.SetNetworkReliability(0, 0, 0.5)
 
 	time.Sleep(10 * time.Second)
 
 	fmt.Println("Network back to normal...")
-	sl.SetNetworkReliability(time.Duration(0*time.Second), time.Duration(0*time.Second), 0.0)
+	sl.SetNetworkReliability(0, 0, 0.0)
 
 	time.Sleep(10 * time.Second)
 	leader2, err := sl.AgreeOnLeader()
@@ -450,4 +450,48 @@ func caseLeaderInOtherPartition() (err error) {
 
 	fmt.Println("Finished")
 	return nil
+}
+
+func caseRestartPeer() (err error) {
+	sl := simulation.RunLocally(5)
+	defer sl.StopAll()
+
+	sl.SetNetworkReliability(0, 50*time.Millisecond, 0.02)
+	time.Sleep(5 * time.Second)
+
+	fmt.Print("Start sending request.\n")
+
+	for i := 0; i < 5; i++ {
+		sl.RequestRaw(i)
+		time.Sleep(150 * time.Millisecond)
+	}
+	time.Sleep(2 * time.Second)
+	sl.ShutDownPeer("2")
+	fmt.Print("Shutdown peer 2.\n")
+
+	for i := 5; i < 10; i++ {
+		sl.RequestRaw(i)
+		time.Sleep(150 * time.Millisecond)
+	}
+	time.Sleep(5 * time.Second)
+
+	err = sl.AgreeOnLogEntries()
+	if err != nil {
+		return
+	}
+	err = sl.ResetPeer("2")
+	if err != nil {
+		return
+	}
+	sl.StartPeer("2")
+	fmt.Print("Restart peer 2.\n")
+
+	time.Sleep(2 * time.Second)
+	for i := 10; i < 15; i++ {
+		sl.RequestRaw(i)
+		time.Sleep(150 * time.Millisecond)
+	}
+	time.Sleep(10 * time.Second)
+	err = sl.IdenticalLogEntries()
+	return
 }

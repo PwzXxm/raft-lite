@@ -53,6 +53,10 @@ var testCases = []testCase{
 		name:   "leader in other partition",
 		action: caseLeaderInOtherPartition,
 	},
+	{
+		name:   "restart peer",
+		action: caseRestartPeer,
+	},
 }
 
 func List() {
