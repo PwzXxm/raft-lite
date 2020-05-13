@@ -16,8 +16,9 @@ import (
 )
 
 const (
-	clientRequestTimeout = 10 * time.Second
-	rpcTimeout           = 4 * time.Second
+	testTimingFactor     = 1
+	clientRequestTimeout = 1 * time.Second
+	rpcTimeout           = 80 * testTimingFactor * time.Millisecond
 )
 
 type local struct {
@@ -57,6 +58,23 @@ func RunLocally(n int) *local {
 	}
 
 	return l
+}
+
+func SetupLocally(n int) *local {
+	log.Info("Setting up simulation locally ...")
+
+	l, err := newLocal(n)
+	if err != nil {
+		log.Panicln(err)
+	}
+
+	return l
+}
+
+func (l *local) StartAll() {
+	for _, node := range l.raftPeers {
+		node.Start()
+	}
 }
 
 // TODO: Current limitation:
@@ -127,7 +145,7 @@ func newLocal(n int) (*local, error) {
 		var err error
 		l.raftPeers[id], err = raft.NewPeer(node, nodeIDs[:n-1], l.loggers[id].WithFields(logrus.Fields{
 			"nodeID": node.NodeID(),
-		}), sm.NewEmptyStateMachine(), l.pstorages[id])
+		}), sm.NewEmptyStateMachine(), l.pstorages[id], testTimingFactor)
 		if err != nil {
 			return nil, err
 		}
@@ -239,7 +257,7 @@ func (l *local) ResetPeer(nodeID rpccore.NodeID) error {
 	l.raftPeers[nodeID], err = raft.NewPeer(l.rpcPeers[nodeID], nodeIDs,
 		l.loggers[nodeID].WithFields(logrus.Fields{
 			"nodeID": nodeID,
-		}), sm.NewEmptyStateMachine(), l.pstorages[nodeID])
+		}), sm.NewEmptyStateMachine(), l.pstorages[nodeID], testTimingFactor)
 	return err
 }
 
@@ -293,18 +311,6 @@ func (l *local) AgreeOnTerm() (int, error) {
 	return term, nil
 }
 
-func (l *local) AgreeOnVoteCount() (int, error) {
-	voteCount, peerCount := 0, 0
-	for _, peer := range l.raftPeers {
-		peerCount += 1
-		voteCount += peer.GetVoteCount()
-	}
-	if voteCount != peerCount {
-		return 0, errors.Errorf("Failed to agree on vote count.\n\n%v\n", l.getAllNodeInfo())
-	}
-	return voteCount, nil
-}
-
 func (l *local) IdenticalLogEntries() error {
 	var peerLogs1 []raft.LogEntry
 	for _, peer := range l.raftPeers {
@@ -315,12 +321,12 @@ func (l *local) IdenticalLogEntries() error {
 		peerLogs2 := peer.GetLog()
 		if len(peerLogs1) != len(peerLogs2) {
 			return errors.Errorf("not identical log entries.\n\n%v\n",
-			l.getAllNodeInfo())
+				l.getAllNodeInfo())
 		}
 		for j, peerLog := range peerLogs1 {
 			if peerLog != peerLogs2[j] {
 				return errors.Errorf("not identical log entries.\n\n%v\n",
-				l.getAllNodeInfo())
+					l.getAllNodeInfo())
 			}
 		}
 		peerLogs1 = peerLogs2

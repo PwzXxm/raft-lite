@@ -6,7 +6,7 @@ import (
 	"github.com/PwzXxm/raft-lite/rpccore"
 )
 
-const leaderRequestTimeout = 4 * time.Second
+const leaderRequestTimeout = 2 * time.Second
 
 func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
 	// consistency check
@@ -122,8 +122,12 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 }
 
 // this is a blocking function
-func (p *Peer) onReceiveClientRequest(cmd interface{}) {
+func (p *Peer) onReceiveClientRequest(cmd interface{}) bool {
 	p.mutex.Lock()
+	if p.state != Leader {
+		p.mutex.Unlock()
+		return false
+	}
 	newlog := LogEntry{Term: p.currentTerm, Cmd: cmd}
 	p.log = append(p.log, newlog)
 	newLogIndex := len(p.log) - 1
@@ -149,6 +153,7 @@ func (p *Peer) onReceiveClientRequest(cmd interface{}) {
 			break
 		}
 	}
+	return true
 }
 
 // TODO: maybe respond to client and commit change to the state machine later
@@ -171,8 +176,7 @@ func (p *Peer) HandleClientRequest(cmd interface{}) bool {
 	// use timeout to chec
 	c := make(chan bool)
 	go func() {
-		p.onReceiveClientRequest(cmd)
-		c <- true
+		c <- p.onReceiveClientRequest(cmd)
 	}()
 
 	select {

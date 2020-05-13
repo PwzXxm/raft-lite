@@ -44,6 +44,8 @@ type Peer struct {
 	stateMachine      sm.StateMachine
 	persistentStorage pstorage.PersistentStorage
 
+	timingFactor int // read-only
+
 	// don't use this one directly, use [triggerTimeout] or [resetTimeout]
 	// the value in it can only be [nil]
 	timeoutLoopChan          chan (interface{})
@@ -60,7 +62,7 @@ type Peer struct {
 }
 
 func NewPeer(node rpccore.Node, peers []rpccore.NodeID, logger *logrus.Entry,
-	sm sm.StateMachine, ps pstorage.PersistentStorage) (*Peer, error) {
+	sm sm.StateMachine, ps pstorage.PersistentStorage, timingFactor int) (*Peer, error) {
 	p := new(Peer)
 
 	// initialisation
@@ -81,6 +83,7 @@ func NewPeer(node rpccore.Node, peers []rpccore.NodeID, logger *logrus.Entry,
 	p.logger = logger
 	p.stateMachine = sm
 	p.stateMachine.Reset()
+	p.timingFactor = timingFactor
 
 	p.timeoutLoopChan = make(chan interface{}, 1)
 	p.timeoutLoopSkipThisRound = false
@@ -114,11 +117,11 @@ func (p *Peer) timeoutLoop() {
 		var timeout time.Duration
 		switch currentState {
 		case Follower:
-			timeout = time.Duration(utils.Random(2000, 4000))
+			timeout = time.Duration(utils.Random(400, 800) * p.timingFactor)
 		case Candidate:
-			timeout = time.Duration(utils.Random(2000, 4000))
+			timeout = time.Duration(utils.Random(400, 800) * p.timingFactor)
 		case Leader:
-			timeout = 500
+			timeout = time.Duration(100 * p.timingFactor)
 		}
 
 		select {
@@ -141,6 +144,8 @@ func (p *Peer) timeoutLoop() {
 						go p.callAppendEntryRPC(peerID)
 					}
 				}
+			case Candidate:
+				p.startElection()
 			}
 		}
 		p.timeoutLoopSkipThisRound = false
@@ -189,7 +194,6 @@ func (p *Peer) changeState(state PeerState) {
 	case Follower:
 		p.heardFromLeader = false
 	case Candidate:
-		p.voteCount = 1
 		p.startElection()
 	case Leader:
 		p.nextIndex = make(map[rpccore.NodeID]int)
@@ -239,6 +243,7 @@ func (p *Peer) ShutDown() {
 
 func (p *Peer) startElection() {
 	p.logger.Info("Start election.")
+	p.voteCount = 1
 	voteID := p.node.NodeID()
 	p.updateTerm(p.currentTerm + 1)
 	p.votedFor = &voteID

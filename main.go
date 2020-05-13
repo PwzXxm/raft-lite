@@ -12,7 +12,7 @@ import (
 )
 
 func main() {
-	cmd_simulation := &cli.Command{
+	cmdSimulation := &cli.Command{
 		Name:  "simulation",
 		Usage: "commands for running simulation",
 		Subcommands: []*cli.Command{
@@ -33,7 +33,7 @@ func main() {
 			},
 		},
 	}
-	cmd_functional := &cli.Command{
+	cmdFunctional := &cli.Command{
 		Name:  "functionaltest",
 		Usage: "commands for running functional tests",
 		Subcommands: []*cli.Command{
@@ -65,7 +65,7 @@ func main() {
 			},
 		},
 	}
-	cmd_start := &cli.Command{
+	cmdStart := &cli.Command{
 		Name:  "start",
 		Usage: "commands for running raft",
 		Flags: []cli.Flag{
@@ -74,12 +74,22 @@ func main() {
 		Action: func(c *cli.Context) error {
 			return start(c.Path("c"))
 		},
+	cmdIntegrationTest := &cli.Command{
+		Name:  "integrationtest",
+		Usage: "run complex testcases where actions are generated randomly",
+		Flags: []cli.Flag{
+			&cli.Int64Flag{Name: "t", Usage: "time in minutes", Required: true},
+		},
+		Action: func(c *cli.Context) error {
+			return functests.RunComplex(c.Int64("t"))
+		},
 	}
 	app := &cli.App{
 		Commands: []*cli.Command{
-			cmd_simulation,
-			cmd_functional,
-			cmd_start,
+			cmdSimulation,
+			cmdFunctional,
+			cmdStart,
+			cmdIntegrationTest,
 		},
 	}
 
