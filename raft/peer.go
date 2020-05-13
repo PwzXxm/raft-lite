@@ -315,9 +315,10 @@ func (p *Peer) toLogIndex(trueIndex int) int {
 	if p.snapshot == nil {
 		return trueIndex
 	}
-	logidx := trueIndex - p.snapshot.LastIncludedIndex
-	if logidx <= 0 {
-		return // how to deal with this situation
+	logidx := trueIndex - p.snapshot.LastIncludedIndex - 1
+	if logidx < 0 {
+		p.logger.Errorf("Access to invalid log index (inside snapshot)")
+		return -1 // how to deal with this situation
 	}
 	return logidx
 }
