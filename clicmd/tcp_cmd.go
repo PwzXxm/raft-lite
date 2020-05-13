@@ -1,11 +1,15 @@
-package rpccore
+package clicmd
 
-import "time"
+import (
+	"time"
+
+	"github.com/PwzXxm/raft-lite/rpccore"
+)
 
 type tcpConfig struct {
 	timeout     time.Duration
-	nodeAddrMap map[NodeID]string
-	nodeID      NodeID
+	nodeAddrMap map[rpccore.NodeID]string
+	nodeID      rpccore.NodeID
 	remoteAddr  string
 	listenAddr  string
 }
@@ -13,11 +17,12 @@ type tcpConfig struct {
 //StartFromFile is good
 func StartFromFile(filepath string) error {
 	tcpConfig := readFromJSON(filepath)
-	n := NewTCPNetwork(tcpConfig.timeout)
+	n := rpccore.NewTCPNetwork(tcpConfig.timeout)
 	n.NewLocalNode(tcpConfig.nodeID, tcpConfig.remoteAddr, tcpConfig.listenAddr)
 	for nodeID, addr := range tcpConfig.nodeAddrMap {
 		n.NewRemoteNode(nodeID, addr)
 	}
+	
 	return nil
 }
 

@@ -4,8 +4,8 @@ import (
 	"log"
 	"os"
 
+	"github.com/PwzXxm/raft-lite/clicmd"
 	"github.com/PwzXxm/raft-lite/functests"
-	"github.com/PwzXxm/raft-lite/rpccore"
 	"github.com/PwzXxm/raft-lite/simulation"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
@@ -99,6 +99,6 @@ func localSimulation(n int) error {
 }
 
 func start(filePath string) error {
-	err := rpccore.StartFromFile(filePath)
+	err := clicmd.StartFromFile(filePath)
 	return err
 }
