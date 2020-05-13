@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/PwzXxm/raft-lite/functests"
+	"github.com/PwzXxm/raft-lite/rpccore"
 	"github.com/PwzXxm/raft-lite/simulation"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
@@ -64,10 +65,21 @@ func main() {
 			},
 		},
 	}
+	cmd_start := &cli.Command{
+		Name:  "start",
+		Usage: "commands for running raft",
+		Flags: []cli.Flag{
+			&cli.Int64Flag{Name: "p", Usage: "peer information file path", Required: true},
+		},
+		Action: func(c *cli.Context) error {
+			return start("p")
+		},
+	}
 	app := &cli.App{
 		Commands: []*cli.Command{
 			cmd_simulation,
 			cmd_functional,
+			cmd_start,
 		},
 	}
 
@@ -84,4 +96,9 @@ func localSimulation(n int) error {
 
 	rf.StartReadingCMD()
 	return nil
+}
+
+func start(filePath string) error {
+	err := rpccore.StartFromFile(filePath)
+	return err
 }
