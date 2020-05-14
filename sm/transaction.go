@@ -1,6 +1,9 @@
 package sm
 
 import (
+	"bytes"
+	"encoding/gob"
+
 	"github.com/pkg/errors"
 )
 
@@ -53,6 +56,28 @@ func (t *TSM) Query(req interface{}) (interface{}, error) {
 		return nil, errors.Errorf("invalid key: %v", key)
 	}
 	return v, nil
+}
+
+func (t *TSM) TakeSnapshot() ([]byte, error) {
+	buf := new(bytes.Buffer)
+	enc := gob.NewEncoder(buf)
+
+	err := enc.Encode(t.data)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func (t *TSM) ResetWithSnapshot(b []byte) error {
+	buf := bytes.NewBuffer(b)
+	dec := gob.NewDecoder(buf)
+	var data map[string]int
+	err := dec.Decode(&data)
+	if err == nil {
+		t.data = data
+	}
+	return err
 }
 
 // I really don't like the non-type-safe approach below, but I couldn't find a
