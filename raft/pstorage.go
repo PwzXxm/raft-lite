@@ -9,8 +9,10 @@ type persistentData struct {
 	// TODO: check this
 	Log         []LogEntry
 	CommitIndex int
-	NodeID      rpccore.NodeID
-	NumOfNode   int
+
+	// for validation
+	NodeID    rpccore.NodeID
+	NumOfNode int
 }
 
 func (p *Peer) loadFromPersistentStorage() error {
