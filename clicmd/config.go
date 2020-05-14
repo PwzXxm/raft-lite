@@ -21,6 +21,7 @@ type raftConfig struct {
 	Sm               sm.StateMachine
 	PstorageFilePath string
 	LogPath          string
+	TimingFactor     int
 }
 
 //StartFromFile is good
@@ -45,10 +46,15 @@ func StartFromFile(filepath string) error {
 	}
 	ps := pstorage.NewFileBasedPersistentStorage(config.PstorageFilePath)
 	p, err := raft.NewPeer(node, config.Peers, logger.WithFields(logrus.Fields{
-		"nodeID": node.NodeID(),}), config.Sm, ps)
+		"nodeID": node.NodeID()}), config.Sm, ps, config.TimingFactor)
+	startReadingCmd(p)
 	return nil
 }
 
 func readFromJSON(filepath string) raftConfig {
 	return raftConfig{}
+}
+
+func startReadingCmd(p *raft.Peer) {
+	
 }

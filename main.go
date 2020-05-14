@@ -74,6 +74,7 @@ func main() {
 		Action: func(c *cli.Context) error {
 			return start(c.Path("c"))
 		},
+	}
 	cmdIntegrationTest := &cli.Command{
 		Name:  "integrationtest",
 		Usage: "run complex testcases where actions are generated randomly",
