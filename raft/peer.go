@@ -323,3 +323,13 @@ func (p *Peer) GetVoteCount() int {
 func (p *Peer) getTotalPeers() int {
 	return len(p.rpcPeersIds) + 1
 }
+
+func (p *Peer) QueryStateMachine(key string) (interface{}, error) {
+	return p.stateMachine.Query(key)
+}
+
+//TODO: might send the command to leader
+func (p *Peer) HandleClientCmd(cmd interface{}) bool {
+	p.HandleClientRequest(cmd)
+	return true
+}
