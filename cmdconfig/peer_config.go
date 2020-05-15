@@ -1,20 +1,16 @@
-package clicmd
+package cmdconfig
 
 import (
 	"bufio"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"os"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/PwzXxm/raft-lite/pstorage"
 	"github.com/PwzXxm/raft-lite/raft"
 	"github.com/PwzXxm/raft-lite/rpccore"
 	"github.com/PwzXxm/raft-lite/sm"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -48,8 +44,8 @@ func init() {
 	scanner = bufio.NewScanner(os.Stdin)
 }
 
-//StartFromFile is good
-func StartFromFile(filepath string) error {
+//StartPeerFromFile is good
+func StartPeerFromFile(filepath string) error {
 	config, err := readFromJSON(filepath)
 	if err != nil {
 		return err
@@ -87,7 +83,6 @@ func StartFromFile(filepath string) error {
 		return err
 	}
 	p.Start()
-	startReadingCmd(p)
 	return nil
 }
 
@@ -102,85 +97,4 @@ func readFromJSON(filepath string) (raftConfig, error) {
 		return v, err
 	}
 	return v, nil
-}
-
-func startReadingCmd(p *raft.Peer) {
-	invalidCommandError := errors.New("Invalid command")
-	var err error
-
-	for scanner.Scan() {
-		cmd := strings.Fields(scanner.Text())
-
-		err = nil
-		l := len(cmd)
-
-		if l == 0 {
-			err = errors.New("Command cannot be empty")
-		}
-
-		if err == nil {
-			switch cmd[0] {
-			case cmdQuery:
-				if l != 2 {
-					err = combineErrorUsage(invalidCommandError, cmd[0])
-					break
-				}
-				result, e := p.QueryStateMachine(cmd[1])
-				if e != nil {
-					err = e
-					break
-				}
-				fmt.Print("The query result for key: ", cmd[1], " is ", result)
-			case cmdSet, cmdIncre:
-				if l != 3 {
-					err = combineErrorUsage(invalidCommandError, cmd[0])
-					break
-				}
-				value, e := strconv.Atoi(cmd[2])
-				if e != nil {
-					err = errors.New("value should be an integer")
-					break
-				}
-				switch cmd[0] {
-				case cmdSet:
-					go func() {
-						p.HandleClientCmd(sm.TSMActionSetValue(cmd[1], value))
-						fmt.Println("Request ", cmd, " sent")
-					}()
-				case cmdIncre:
-					go func() {
-						p.HandleClientCmd(sm.TSMActionIncrValue(cmd[1], value))
-						fmt.Println("Request ", cmd, " sent")
-					}()
-				}
-			case cmdMove:
-				if l != 4 {
-					err = combineErrorUsage(invalidCommandError, cmd[0])
-					break
-				}
-				value, e := strconv.Atoi(cmd[3])
-				if e != nil {
-					err = errors.New("value should be an integer")
-					break
-				}
-				go func() {
-					p.HandleClientCmd(sm.TSMActionMoveValue(cmd[1], cmd[2], value))
-					fmt.Println("Request ", cmd, " sent")
-				}()
-			default:
-				err = invalidCommandError
-			}
-		}
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintln(os.Stderr, "Failed reading stdout: ", err)
-	}
-}
-
-func combineErrorUsage(e error, cmd string) error {
-	return errors.New(e.Error() + "\nUsage: " + cmd + " " + usageMp[cmd])
 }

@@ -4,7 +4,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/PwzXxm/raft-lite/clicmd"
+	"github.com/PwzXxm/raft-lite/cmdconfig"
 	"github.com/PwzXxm/raft-lite/functests"
 	"github.com/PwzXxm/raft-lite/simulation"
 	"github.com/pkg/errors"
@@ -66,13 +66,13 @@ func main() {
 		},
 	}
 	cmdStart := &cli.Command{
-		Name:  "start",
+		Name:  "peer",
 		Usage: "commands for running raft",
 		Flags: []cli.Flag{
 			&cli.PathFlag{Name: "c", Usage: "peer config file path", Required: true},
 		},
 		Action: func(c *cli.Context) error {
-			return start(c.Path("c"))
+			return startPeer(c.Path("c"))
 		},
 	}
 	cmdIntegrationTest := &cli.Command{
@@ -85,12 +85,23 @@ func main() {
 			return functests.RunComplex(c.Int64("t"))
 		},
 	}
+	cmdClient := &cli.Command{
+		Name:  "client",
+		Usage: "commands for starting client",
+		Flags: []cli.Flag{
+			&cli.PathFlag{Name: "c", Usage: "client config file path", Required: true},
+		},
+		Action: func(c *cli.Context) error {
+			return startClient(c.Path("c"))
+		},
+	}
 	app := &cli.App{
 		Commands: []*cli.Command{
 			cmdSimulation,
 			cmdFunctional,
 			cmdStart,
 			cmdIntegrationTest,
+			cmdClient,
 		},
 	}
 
@@ -109,7 +120,12 @@ func localSimulation(n int) error {
 	return nil
 }
 
-func start(filePath string) error {
-	err := clicmd.StartFromFile(filePath)
+func startPeer(filePath string) error {
+	err := cmdconfig.StartPeerFromFile(filePath)
+	return err
+}
+
+func startClient(filePath string) error {
+	err := cmdconfig.StartClientFromFile(filePath)
 	return err
 }
