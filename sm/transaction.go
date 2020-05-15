@@ -3,26 +3,42 @@ package sm
 import (
 	"bytes"
 	"encoding/gob"
+	"math/rand"
 
 	"github.com/pkg/errors"
 )
 
+// This state machine is not thread-safe
 type TSM struct {
-	data map[string]int
+	data            map[string]int
+	latestRequestID map[string]uint32
 }
 
 func NewTransactionStateMachine() *TSM {
 	t := new(TSM)
 	t.data = make(map[string]int)
+	t.latestRequestID = make(map[string]uint32)
 	return t
 }
 
 func (t *TSM) Reset() {
 	t.data = make(map[string]int)
+	t.latestRequestID = make(map[string]uint32)
 }
 
 func (t *TSM) ApplyAction(action interface{}) error {
 	tsmAction := action.(TSMAction)
+	// check duplicate
+	lastID, ok := t.latestRequestID[tsmAction.clientID]
+	if ok {
+		if lastID == tsmAction.requestID {
+			// duplicate request, ignore it
+			return nil
+		}
+	}
+	t.latestRequestID[tsmAction.clientID] = tsmAction.requestID
+
+	// execute action
 	switch tsmAction.action {
 	case tsmActionSet:
 		t.data[tsmAction.target] = tsmAction.value
@@ -49,20 +65,31 @@ func (t *TSM) ApplyAction(action interface{}) error {
 
 // return the value of the given key.
 // key is string and return value is int
-func (t *TSM) Query(req interface{}) (interface{}, error) {
-	key := req.(string)
-	v, ok := t.data[key]
-	if !ok {
-		return nil, errors.Errorf("invalid key: %v", key)
+func (t *TSM) Query(req interface{}) interface{} {
+	query := req.(TSMQuery)
+	switch query.query {
+	case tsmQueryData:
+		key := query.key
+		v, ok := t.data[key]
+		if !ok {
+			return nil
+		}
+		return v
+	case tsmQueryLatestRequest:
+		client := query.key
+		v, ok := t.latestRequestID[client]
+		if !ok {
+			return nil
+		}
+		return v
 	}
-	return v, nil
 }
 
 func (t *TSM) TakeSnapshot() ([]byte, error) {
 	buf := new(bytes.Buffer)
 	enc := gob.NewEncoder(buf)
 
-	err := enc.Encode(t.data)
+	err := enc.Encode(t)
 	if err != nil {
 		return nil, err
 	}
@@ -72,10 +99,11 @@ func (t *TSM) TakeSnapshot() ([]byte, error) {
 func (t *TSM) ResetWithSnapshot(b []byte) error {
 	buf := bytes.NewBuffer(b)
 	dec := gob.NewDecoder(buf)
-	var data map[string]int
-	err := dec.Decode(&data)
+	var newTSM TSM
+	err := dec.Decode(&newTSM)
 	if err == nil {
-		t.data = data
+		t.data = newTSM.data
+		t.latestRequestID = newTSM.latestRequestID
 	}
 	return err
 }
@@ -89,6 +117,9 @@ type TSMAction struct {
 	target string
 	source string // useless for [tsmActionSet] and [tsmActionIncr]
 	value  int
+	// request info
+	clientID  string
+	requestID uint32
 }
 
 type tsmActionType int
@@ -99,27 +130,73 @@ const (
 	tsmActionMove
 )
 
-func TSMActionSetValue(key string, value int) TSMAction {
+type TSMActionBuilder struct {
+	clientID      string
+	lastRequestID uint32
+}
+
+func NewTSMActionBuilder(clientID string) *TSMActionBuilder {
+	return &TSMActionBuilder{clientID: clientID, lastRequestID: rand.Uint32()}
+}
+
+func (b *TSMActionBuilder) newRequestID() uint32 {
+	b.lastRequestID += 1
+	return b.lastRequestID
+}
+
+func (b *TSMActionBuilder) TSMActionSetValue(key string, value int) TSMAction {
 	return TSMAction{
-		action: tsmActionSet,
-		target: key,
-		value:  value,
+		action:    tsmActionSet,
+		target:    key,
+		value:     value,
+		clientID:  b.clientID,
+		requestID: b.newRequestID(),
 	}
 }
 
-func TSMActionIncrValue(key string, value int) TSMAction {
+func (b *TSMActionBuilder) TSMActionIncrValue(key string, value int) TSMAction {
 	return TSMAction{
-		action: tsmActionIncr,
-		target: key,
-		value:  value,
+		action:    tsmActionIncr,
+		target:    key,
+		value:     value,
+		clientID:  b.clientID,
+		requestID: b.newRequestID(),
 	}
 }
 
-func TSMActionMoveValue(source, target string, value int) TSMAction {
+func (b *TSMActionBuilder) TSMActionMoveValue(source, target string, value int) TSMAction {
 	return TSMAction{
-		action: tsmActionMove,
-		source: source,
-		target: target,
-		value:  value,
+		action:    tsmActionMove,
+		source:    source,
+		target:    target,
+		value:     value,
+		clientID:  b.clientID,
+		requestID: b.newRequestID(),
+	}
+}
+
+type TSMQuery struct {
+	query tsmQueryType
+	key   string
+}
+
+type tsmQueryType int
+
+const (
+	tsmQueryData tsmQueryType = iota
+	tsmQueryLatestRequest
+)
+
+func NewTSMDataQuery(key string) TSMQuery {
+	return TSMQuery{
+		query: tsmQueryData,
+		key:   key,
+	}
+}
+
+func NewTSMLatestRequestQuery(clientID string) TSMQuery {
+	return TSMQuery{
+		query: tsmQueryLatestRequest,
+		key:   clientID,
 	}
 }
