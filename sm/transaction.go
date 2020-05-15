@@ -83,6 +83,7 @@ func (t *TSM) Query(req interface{}) interface{} {
 		}
 		return v
 	}
+	return nil
 }
 
 func (t *TSM) TakeSnapshot() ([]byte, error) {
