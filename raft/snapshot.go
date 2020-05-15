@@ -3,15 +3,13 @@ package raft
 func (p *Peer) makeSnapshot(lastIncludedIndex int) *Snapshot {
 	return &Snapshot{
 		LastIncludedIndex: lastIncludedIndex,
-		LastIncludedTerm:  p.log[lastIncludedIndex].Term,
+		LastIncludedTerm:  p.log[p.toLogIndex(lastIncludedIndex)].Term,
 		// TODO: write state machine state into ss
 		// TODO: write membership config into ss
 	}
 }
 
-func (p *Peer) SaveToSnapshot() {
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
+func (p *Peer) saveToSnapshot() {
 	snapshot := p.makeSnapshot(p.commitIndex)
 	p.snapshot = snapshot
 	p.log = p.log[p.toLogIndex(p.commitIndex+1):]
@@ -24,11 +22,11 @@ func (p *Peer) handleInstallSnapshot(req installSnapshotReq) installSnapshotRes 
 		return res
 	}
 	// retain following logs if mine is longer
-	myLastRecoredIndex := len(p.log) + p.snapshot.LastIncludedIndex
+	myLastRecoredIndex := p.logLen() - 1
 	if req.LastIncludedIndex < myLastRecoredIndex && p.log[p.toLogIndex(req.LastIncludedIndex)].Term == req.LastIncludedTerm {
-		p.log = p.log[p.toLogIndex(req.LastIncludedIndex):]
+		p.log = p.log[p.toLogIndex(req.LastIncludedIndex+1):]
 	} else {
-		p.log = []LogEntry{{Cmd: nil, Term: 0}}
+		p.log = []LogEntry{}
 	}
 
 	p.snapshot = req.Snapshot
@@ -37,7 +35,7 @@ func (p *Peer) handleInstallSnapshot(req installSnapshotReq) installSnapshotRes 
 	return res
 }
 
-func (p *Peer) handleInstallSnapshotRes(res installSnapshotRes) {
+func (p *Peer) handleInstallSnapshotRes(res *installSnapshotRes) {
 	// update leader's term if res includs a higher term?
 	if res.Term > p.currentTerm {
 		p.currentTerm = res.Term

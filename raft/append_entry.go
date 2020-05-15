@@ -21,11 +21,11 @@ func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
 		prevLogIndex := req.PrevLogIndex
 		newLogIndex := 0
 		// find the index that the peer is consistent with the new entries
-		for len(p.log) > (prevLogIndex+newLogIndex+1) &&
-			p.log[prevLogIndex+newLogIndex+1].Term == req.Entries[newLogIndex].Term {
+		for p.logLen() > (prevLogIndex+newLogIndex+1) &&
+			p.log[p.toLogIndex(prevLogIndex+newLogIndex+1)].Term == req.Entries[newLogIndex].Term {
 			newLogIndex++
 		}
-		p.log = append(p.log[0:prevLogIndex+newLogIndex+1], req.Entries[newLogIndex:]...)
+		p.log = append(p.log[0:p.toLogIndex(prevLogIndex+newLogIndex+1)], req.Entries[newLogIndex:]...)
 		if len(req.Entries) > newLogIndex {
 			p.logger.Infof("Delete and append new logs from index %v", prevLogIndex+newLogIndex+1)
 		}
@@ -44,7 +44,7 @@ func (p *Peer) consitencyCheck(req appendEntriesReq) bool {
 		p.updateTerm(req.Term)
 		p.changeState(Follower)
 	}
-	if len(p.log) <= req.PrevLogIndex || p.log[req.PrevLogIndex].Term != req.PrevLogTerm {
+	if p.logLen() <= req.PrevLogIndex || p.log[p.toLogIndex(req.PrevLogIndex)].Term != req.PrevLogTerm {
 		return false
 	}
 	return true
@@ -75,13 +75,23 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 			return
 		}
 		nextIndex := p.nextIndex[target]
+
+		if p.toLogIndex(nextIndex-1) < 0 && p.snapshot != nil {
+			req := installSnapshotReq{Term: p.currentTerm, LeaderID: leaderID, LastIncludedIndex: p.snapshot.LastIncludedIndex,
+				LastIncludedTerm: p.snapshot.LastIncludedTerm, Snapshot: p.snapshot}
+			res := p.installSnapshot(target, req)
+			p.mutex.Lock()
+			p.handleInstallSnapshotRes(res)
+			p.mutex.Unlock()
+		}
+
 		currentTerm := p.currentTerm
 		if nextIndex <= 0 {
 			p.logger.Warn("nextIndex out of range")
 		}
-		prevLogTerm := p.log[nextIndex-1].Term
+		prevLogTerm := p.log[p.toLogIndex(nextIndex-1)].Term
 		leaderCommit := p.commitIndex
-		entries := p.log[nextIndex:]
+		entries := p.log[p.toLogIndex(nextIndex):]
 		p.mutex.Unlock()
 		// if no more entries need to be updated, return
 		if len(entries) == 0 && !isFirstTime {
@@ -130,7 +140,7 @@ func (p *Peer) onReceiveClientRequest(cmd interface{}) bool {
 	}
 	newlog := LogEntry{Term: p.currentTerm, Cmd: cmd}
 	p.log = append(p.log, newlog)
-	newLogIndex := len(p.log) - 1
+	newLogIndex := p.logLen() - 1
 	totalPeers := p.getTotalPeers()
 	majorityCheckChannel := make(chan rpccore.NodeID, totalPeers)
 	majorityCheckChannel <- p.node.NodeID()

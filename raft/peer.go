@@ -212,7 +212,7 @@ func (p *Peer) changeState(state PeerState) {
 		p.matchIndex = make(map[rpccore.NodeID]int)
 		p.logIndexMajorityCheckChannel = make(map[int]chan rpccore.NodeID)
 		for _, peers := range p.rpcPeersIds {
-			p.nextIndex[peers] = len(p.log)
+			p.nextIndex[peers] = p.logLen()
 
 			// TODO: grind in the furture
 			p.matchIndex[peers] = 0
@@ -260,7 +260,7 @@ func (p *Peer) startElection() {
 	p.updateTerm(p.currentTerm + 1)
 	p.votedFor = &voteID
 
-	req := requestVoteReq{Term: p.currentTerm, CandidateID: p.node.NodeID(), LastLogIndex: len(p.log) - 1, LastLogTerm: p.log[len(p.log)-1].Term}
+	req := requestVoteReq{Term: p.currentTerm, CandidateID: p.node.NodeID(), LastLogIndex: p.logLen() - 1, LastLogTerm: p.log[p.toLogIndex(p.logLen()-1)].Term}
 	for _, peerID := range p.rpcPeersIds {
 		go func(peerID rpccore.NodeID) {
 			res := p.requestVote(peerID, req)
@@ -280,10 +280,10 @@ func (p *Peer) updateTerm(term int) {
 }
 
 func (p *Peer) updateCommitIndex(idx int) {
-	idx = utils.Min(idx, len(p.log)-1)
+	idx = utils.Min(idx, p.logLen()-1)
 	if idx > p.commitIndex {
 		for i := p.commitIndex + 1; i <= idx; i++ {
-			err := p.stateMachine.ApplyAction(p.log[i])
+			err := p.stateMachine.ApplyAction(p.log[p.toLogIndex(i)])
 			if err != nil {
 				p.logger.Errorf("Error happened during applying actions to "+
 					"state machine, logIdx: %v, err: %v", i, err)
@@ -294,6 +294,9 @@ func (p *Peer) updateCommitIndex(idx int) {
 		err := p.saveToPersistentStorage()
 		if err != nil {
 			p.logger.Errorf("Unable to save state: %+v.", err)
+		}
+		if p.toLogIndex(p.commitIndex) > 50 {
+			p.saveToSnapshot()
 		}
 	}
 }
@@ -313,7 +316,7 @@ func (p *Peer) GetState() PeerState {
 func (p *Peer) GetLog() []LogEntry {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
-	var peerLog = make([]LogEntry, len(p.log))
+	var peerLog = make([]LogEntry, p.logLen())
 	for i, v := range p.log {
 		peerLog[i] = v
 	}
@@ -346,4 +349,12 @@ func (p *Peer) toLogIndex(trueIndex int) int {
 		return -1 // how to deal with this situation
 	}
 	return logidx
+}
+
+func (p *Peer) logLen() int {
+	if p.snapshot == nil {
+		return len(p.log)
+	} else {
+		return len(p.log) + p.snapshot.LastIncludedIndex + 1
+	}
 }
