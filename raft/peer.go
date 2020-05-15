@@ -101,7 +101,6 @@ func NewPeer(node rpccore.Node, peers []rpccore.NodeID, logger *logrus.Entry,
 	}
 
 	p.changeState(Follower)
-
 	return p, nil
 }
 
@@ -329,7 +328,6 @@ func (p *Peer) QueryStateMachine(key string) (interface{}, error) {
 }
 
 //TODO: might send the command to leader
-func (p *Peer) HandleClientCmd(cmd interface{}) bool {
+func (p *Peer) HandleClientCmd(cmd interface{}) {
 	p.HandleClientRequest(cmd)
-	return true
 }

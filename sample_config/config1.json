@@ -1,0 +1,13 @@
+{
+    "Timeout": 10,
+    "NodeAddrMap": {
+        "alpha": "127.0.0.1:8001",
+        "bravo": "127.0.0.1:8002",
+        "charlie": "127.0.0.1:8003"
+    },
+    "NodeID": "alpha",
+    "ListenAddr": "127.0.0.1:8001",
+    "PstorageFilePath": "./pstorage.dat",
+    "LogPath": "./sample_logs/peerLog1.log",
+    "TimingFactor": 5
+}

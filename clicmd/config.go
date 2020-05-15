@@ -22,9 +22,7 @@ type raftConfig struct {
 	Timeout          time.Duration
 	NodeAddrMap      map[rpccore.NodeID]string
 	NodeID           rpccore.NodeID
-	RemoteAddr       string
 	ListenAddr       string
-	Peers            []rpccore.NodeID
 	PstorageFilePath string
 	LogPath          string
 	TimingFactor     int
@@ -56,27 +54,39 @@ func StartFromFile(filepath string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(config)
-	n := rpccore.NewTCPNetwork(config.Timeout)
-	node, err := n.NewLocalNode(config.NodeID, config.RemoteAddr, config.ListenAddr)
-	if err != nil {
-		return err
-	}
-	for nodeID, addr := range config.NodeAddrMap {
-		n.NewRemoteNode(nodeID, addr)
-	}
+	//set logger
 	logger := logrus.New()
-
 	file, err := os.OpenFile(config.LogPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	defer file.Close()
 	if err == nil {
 		logger.Out = file
 	} else {
 		logger.Info("Failed to log to file, using default stderr")
 		logger.Out = os.Stdout
 	}
+	//new tcp network
+	n := rpccore.NewTCPNetwork(config.Timeout * time.Second)
+	node, err := n.NewLocalNode(config.NodeID, config.NodeAddrMap[config.NodeID], config.ListenAddr)
+	if err != nil {
+		return err
+	}
+	for nodeID, addr := range config.NodeAddrMap {
+		n.NewRemoteNode(nodeID, addr)
+	}
 	ps := pstorage.NewFileBasedPersistentStorage(config.PstorageFilePath)
-	p, err := raft.NewPeer(node, config.Peers, logger.WithFields(logrus.Fields{
+	//new peer
+	peers := []rpccore.NodeID{}
+	for peer := range config.NodeAddrMap {
+		if peer != config.NodeID {
+			peers = append(peers, peer)
+		}
+	}
+	p, err := raft.NewPeer(node, peers, logger.WithFields(logrus.Fields{
 		"nodeID": node.NodeID()}), sm.NewTransactionStateMachine(), ps, config.TimingFactor)
+	if err != nil {
+		return err
+	}
+	p.Start()
 	startReadingCmd(p)
 	return nil
 }
@@ -134,21 +144,13 @@ func startReadingCmd(p *raft.Peer) {
 				switch cmd[0] {
 				case cmdSet:
 					go func() {
-						success := p.HandleClientCmd(sm.TSMActionSetValue(cmd[1], value))
-						if success {
-							fmt.Println("Request ", cmd, " succeed")
-						} else {
-							fmt.Println("Request ", cmd, " failed")
-						}
+						p.HandleClientCmd(sm.TSMActionSetValue(cmd[1], value))
+						fmt.Println("Request ", cmd, " sent")
 					}()
 				case cmdIncre:
 					go func() {
-						success := p.HandleClientCmd(sm.TSMActionIncrValue(cmd[1], value))
-						if success {
-							fmt.Println("Request ", cmd, " succeed")
-						} else {
-							fmt.Println("Request ", cmd, " failed")
-						}
+						p.HandleClientCmd(sm.TSMActionIncrValue(cmd[1], value))
+						fmt.Println("Request ", cmd, " sent")
 					}()
 				}
 			case cmdMove:
@@ -162,12 +164,8 @@ func startReadingCmd(p *raft.Peer) {
 					break
 				}
 				go func() {
-					success := p.HandleClientCmd(sm.TSMActionMoveValue(cmd[1], cmd[2], value))
-					if success {
-						fmt.Println("Request ", cmd, " succeed")
-					} else {
-						fmt.Println("Request ", cmd, " failed")
-					}
+					p.HandleClientCmd(sm.TSMActionMoveValue(cmd[1], cmd[2], value))
+					fmt.Println("Request ", cmd, " sent")
 				}()
 			default:
 				err = invalidCommandError
