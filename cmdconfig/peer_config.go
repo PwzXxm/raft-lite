@@ -1,7 +1,6 @@
 package cmdconfig
 
 import (
-	"bufio"
 	"encoding/json"
 	"io/ioutil"
 	"os"
@@ -24,29 +23,9 @@ type raftConfig struct {
 	TimingFactor     int
 }
 
-const (
-	cmdQuery = "query"
-	cmdSet   = "set"
-	cmdIncre = "increment"
-	cmdMove  = "move"
-)
-
-var usageMp = map[string]string{
-	cmdQuery: "<key>",
-	cmdSet:   "<key> <value>",
-	cmdIncre: "<key> <value>",
-	cmdMove:  "<source> <target> <value>",
-}
-
-var scanner *bufio.Scanner
-
-func init() {
-	scanner = bufio.NewScanner(os.Stdin)
-}
-
 //StartPeerFromFile is good
 func StartPeerFromFile(filepath string) error {
-	config, err := readFromJSON(filepath)
+	config, err := readPeerFromJSON(filepath)
 	if err != nil {
 		return err
 	}
@@ -83,10 +62,12 @@ func StartPeerFromFile(filepath string) error {
 		return err
 	}
 	p.Start()
+	for {
+	}
 	return nil
 }
 
-func readFromJSON(filepath string) (raftConfig, error) {
+func readPeerFromJSON(filepath string) (raftConfig, error) {
 	v := raftConfig{}
 	data, err := ioutil.ReadFile(filepath)
 	if err != nil {
