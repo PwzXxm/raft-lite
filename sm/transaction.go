@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"math/rand"
+	"reflect"
 
 	"github.com/pkg/errors"
 )
@@ -98,15 +99,20 @@ func (t *TSM) TakeSnapshot() ([]byte, error) {
 }
 
 func (t *TSM) ResetWithSnapshot(b []byte) error {
-	buf := bytes.NewBuffer(b)
-	dec := gob.NewDecoder(buf)
-	var newTSM TSM
-	err := dec.Decode(&newTSM)
+	newTSM, err := decodeTSMFromBytes(b)
 	if err == nil {
 		t.data = newTSM.data
 		t.latestRequestID = newTSM.latestRequestID
 	}
 	return err
+}
+
+func decodeTSMFromBytes(b []byte) (TSM, error) {
+	buf := bytes.NewBuffer(b)
+	dec := gob.NewDecoder(buf)
+	var newTSM TSM
+	err := dec.Decode(&newTSM)
+	return newTSM, err
 }
 
 // I really don't like the non-type-safe approach below, but I couldn't find a
@@ -200,4 +206,16 @@ func NewTSMLatestRequestQuery(clientID string) TSMQuery {
 		query: tsmQueryLatestRequest,
 		key:   clientID,
 	}
+}
+
+func TSMIsSnapshotEqual(b1 []byte, b2 []byte) (bool, error) {
+	tSM1, err := decodeTSMFromBytes(b1)
+	if err != nil {
+		return false, err
+	}
+	tSM2, err := decodeTSMFromBytes(b2)
+	if err != nil {
+		return false, err
+	}
+	return reflect.DeepEqual(tSM1, tSM2), nil
 }

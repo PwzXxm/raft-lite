@@ -385,16 +385,16 @@ func (l *local) AgreeOnSnapshot() (int, int, error) {
 	li := -1
 	lt := -1
 	for _, peer := range l.raftPeers {
-		if peer.GetSnapshot() == nil {
+		if peer.GetRecentSnapshot() == nil {
 			return -1, -1, errors.Errorf("Node %v does not have snapshot. \n", peer.GetNodeID())
 		}
 		if li == -1 && lt == -1 {
-			li = peer.GetSnapshot().LastIncludedIndex
-			lt = peer.GetSnapshot().LastIncludedTerm
+			li = peer.GetRecentSnapshot().LastIncludedIndex
+			lt = peer.GetRecentSnapshot().LastIncludedTerm
 		} else {
-			if li != peer.GetSnapshot().LastIncludedIndex || lt != peer.GetSnapshot().LastIncludedTerm {
+			if li != peer.GetRecentSnapshot().LastIncludedIndex || lt != peer.GetRecentSnapshot().LastIncludedTerm {
 				return -1, -1, errors.Errorf("Node %v has different snapshot {LastIdx: %v, LastTerm: %v} \n",
-					peer.GetSnapshot().LastIncludedIndex, peer.GetSnapshot().LastIncludedTerm)
+					peer.GetRecentSnapshot().LastIncludedIndex, peer.GetRecentSnapshot().LastIncludedTerm)
 			}
 		}
 	}

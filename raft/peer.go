@@ -335,10 +335,21 @@ func (p *Peer) GetNodeID() rpccore.NodeID {
 	return p.node.NodeID()
 }
 
-func (p *Peer) GetSnapshot() *Snapshot {
+func (p *Peer) GetRecentSnapshot() *Snapshot {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 	return p.snapshot
+}
+
+func (p *Peer) TakeStateMachineSnapshot() []byte {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+	data, err := p.stateMachine.TakeSnapshot()
+	if err != nil {
+		p.logger.Errorf("Unable to get current state machine state, %+v", err)
+		data = nil
+	}
+	return data
 }
 
 func (p *Peer) GetVoteCount() int {
