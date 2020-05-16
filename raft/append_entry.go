@@ -1,12 +1,8 @@
 package raft
 
 import (
-	"time"
-
 	"github.com/PwzXxm/raft-lite/rpccore"
 )
-
-const leaderRequestTimeout = 2 * time.Second
 
 func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
 	// consistency check
@@ -39,11 +35,14 @@ func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
 func (p *Peer) consitencyCheck(req appendEntriesReq) bool {
 	if req.Term < p.currentTerm {
 		return false
-	} else {
-		p.heardFromLeader = true
-		p.updateTerm(req.Term)
-		p.changeState(Follower)
 	}
+
+	p.heardFromLeader = true
+	p.updateTerm(req.Term)
+	p.changeState(Follower)
+	// TODO: check this, will the whole request will be kept?
+	p.leaderID = &req.LeaderID
+
 	if len(p.log) <= req.PrevLogIndex || p.log[req.PrevLogIndex].Term != req.PrevLogTerm {
 		return false
 	}
@@ -149,40 +148,9 @@ func (p *Peer) onReceiveClientRequest(cmd interface{}) bool {
 			delete(p.logIndexMajorityCheckChannel, newLogIndex)
 			close(majorityCheckChannel)
 			p.mutex.Unlock()
-			p.respondClient(newLogIndex)
+			p.logger.Infof("New log %v has been commited with log index %v", p.log[newLogIndex], newLogIndex)
 			break
 		}
 	}
 	return true
-}
-
-// TODO: maybe respond to client and commit change to the state machine later
-func (p *Peer) respondClient(logIndex int) {
-	p.logger.Infof("New log %v has been commited with log index %v", p.log[logIndex], logIndex)
-}
-
-func (p *Peer) HandleClientRequest(cmd interface{}) bool {
-	// double check leader status
-	p.mutex.Lock()
-	if p.state != Leader {
-		p.mutex.Unlock()
-		return false
-	}
-
-	p.mutex.Unlock()
-
-	p.logger.Infof("Received new request to append %v", cmd)
-
-	// use timeout to chec
-	c := make(chan bool)
-	go func() {
-		c <- p.onReceiveClientRequest(cmd)
-	}()
-
-	select {
-	case done := <-c:
-		return done
-	case <-time.After(leaderRequestTimeout):
-		return false
-	}
 }

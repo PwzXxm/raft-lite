@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/PwzXxm/raft-lite/client"
 	"github.com/PwzXxm/raft-lite/rpccore"
 	"github.com/pkg/errors"
 )
@@ -128,6 +129,37 @@ func (p *Peer) handleRPCCall(source rpccore.NodeID, method string, data []byte) 
 		}
 		p.mutex.Lock()
 		res := p.handleAppendEntries(req)
+		p.mutex.Unlock()
+		var buf bytes.Buffer
+		err = gob.NewEncoder(&buf).Encode(res)
+		return buf.Bytes(), errors.WithStack(err)
+	case client.RPCMethodLeaderRequest:
+		p.mutex.Lock()
+		res := p.handleClientLeaderRequest()
+		p.mutex.Unlock()
+		var buf bytes.Buffer
+		err := gob.NewEncoder(&buf).Encode(res)
+		return buf.Bytes(), errors.WithStack(err)
+	case client.RPCMethodActionRequest:
+		var req client.ActionReq
+		err := gob.NewDecoder(bytes.NewReader(data)).Decode(&req)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+		p.mutex.Lock()
+		res := p.handleClientActionRequest(req)
+		p.mutex.Unlock()
+		var buf bytes.Buffer
+		err = gob.NewEncoder(&buf).Encode(res)
+		return buf.Bytes(), errors.WithStack(err)
+	case client.RPCMethodQueryRequest:
+		var req client.QueryReq
+		err := gob.NewDecoder(bytes.NewReader(data)).Decode(&req)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+		p.mutex.Lock()
+		res := p.handleClientQueryRequest(req)
 		p.mutex.Unlock()
 		var buf bytes.Buffer
 		err = gob.NewEncoder(&buf).Encode(res)

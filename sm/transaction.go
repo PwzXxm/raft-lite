@@ -65,25 +65,25 @@ func (t *TSM) ApplyAction(action interface{}) error {
 
 // return the value of the given key.
 // key is string and return value is int
-func (t *TSM) Query(req interface{}) interface{} {
+func (t *TSM) Query(req interface{}) (interface{}, error) {
 	query := req.(TSMQuery)
 	switch query.query {
 	case tsmQueryData:
 		key := query.key
 		v, ok := t.data[key]
 		if !ok {
-			return nil
+			return nil, errors.New("key does not exist")
 		}
-		return v
+		return v, nil
 	case tsmQueryLatestRequest:
 		client := query.key
 		v, ok := t.latestRequestID[client]
 		if !ok {
-			return nil
+			return nil, errors.New("key does not exist")
 		}
-		return v
+		return v, nil
 	}
-	return nil
+	return nil, errors.New("invalid query")
 }
 
 func (t *TSM) TakeSnapshot() ([]byte, error) {
