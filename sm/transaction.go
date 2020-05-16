@@ -3,6 +3,7 @@ package sm
 import (
 	"bytes"
 	"encoding/gob"
+	"fmt"
 	"math/rand"
 	"reflect"
 
@@ -28,6 +29,7 @@ func (t *TSM) Reset() {
 }
 
 func (t *TSM) ApplyAction(action interface{}) error {
+	fmt.Printf("Apply actions\n")
 	tsmAction := action.(TSMAction)
 	// check duplicate
 	lastID, ok := t.latestRequestID[tsmAction.clientID]
@@ -42,14 +44,17 @@ func (t *TSM) ApplyAction(action interface{}) error {
 	// execute action
 	switch tsmAction.action {
 	case tsmActionSet:
+		fmt.Printf("Action1\n")
 		t.data[tsmAction.target] = tsmAction.value
 	case tsmActionIncr:
+		fmt.Printf("Action2\n")
 		v, ok := t.data[tsmAction.target]
 		if !ok {
 			return errors.Errorf("invalid key: %v", tsmAction.target)
 		}
 		t.data[tsmAction.target] = v + tsmAction.value
 	case tsmActionMove:
+		fmt.Printf("Action3\n")
 		sv, ok := t.data[tsmAction.source]
 		if !ok {
 			return errors.Errorf("invalid key for source: %v", tsmAction.source)
@@ -118,6 +123,10 @@ func decodeTSMFromBytes(b []byte) (TSM, error) {
 // I really don't like the non-type-safe approach below, but I couldn't find a
 // better way. There is an another approach that use anonymous functions as
 // [TSMAction] but it can't be serialized.
+
+func init() {
+	gob.Register(TSMAction{})
+}
 
 type TSMAction struct {
 	action tsmActionType

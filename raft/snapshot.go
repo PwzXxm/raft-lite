@@ -1,7 +1,14 @@
 package raft
 
+import (
+	"fmt"
+
+	"github.com/PwzXxm/raft-lite/sm"
+)
+
 func (p *Peer) makeSnapshot(lastIncludedIndex int) (*Snapshot, error) {
 	stateMachineSnapshot, err := p.stateMachine.TakeSnapshot()
+	fmt.Printf("StateMachine %v, Make SM snapshot: %v, log: %v\n", p.stateMachine, stateMachineSnapshot, p.log)
 	if err != nil {
 		return nil, err
 	}
@@ -53,4 +60,16 @@ func (p *Peer) handleInstallSnapshotRes(res *installSnapshotRes) {
 		p.updateTerm(res.Term)
 		p.changeState(Follower)
 	}
+}
+
+func SnapshotEqual(s1 *Snapshot, s2 *Snapshot) (bool, error) {
+	fmt.Printf("s1: %v, s2: %v\n", s1, s2)
+	smEqual, err := sm.TSMIsSnapshotEqual(s1.StateMachineSnapshot, s2.StateMachineSnapshot)
+	if err != nil {
+		return false, err
+	}
+	if smEqual && s1.LastIncludedIndex == s2.LastIncludedIndex && s1.LastIncludedTerm == s2.LastIncludedTerm {
+		return true, nil
+	}
+	return false, nil
 }

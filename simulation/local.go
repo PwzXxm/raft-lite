@@ -1,6 +1,7 @@
 package simulation
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 	"sync"
@@ -382,23 +383,26 @@ func (l *local) AgreeOnLogEntries() error {
 }
 
 func (l *local) AgreeOnSnapshot() (int, int, error) {
-	li := -1
-	lt := -1
+	var ss *raft.Snapshot
 	for _, peer := range l.raftPeers {
 		if peer.GetRecentSnapshot() == nil {
 			return -1, -1, errors.Errorf("Node %v does not have snapshot. \n", peer.GetNodeID())
 		}
-		if li == -1 && lt == -1 {
-			li = peer.GetRecentSnapshot().LastIncludedIndex
-			lt = peer.GetRecentSnapshot().LastIncludedTerm
+		if ss == nil {
+			ss = peer.GetRecentSnapshot()
 		} else {
-			if li != peer.GetRecentSnapshot().LastIncludedIndex || lt != peer.GetRecentSnapshot().LastIncludedTerm {
+			isEqual, err := raft.SnapshotEqual(ss, peer.GetRecentSnapshot())
+			if err != nil {
+				fmt.Printf("fail to compare snapshots, %v\n", err)
+				return -1, -1, err
+			}
+			if isEqual {
 				return -1, -1, errors.Errorf("Node %v has different snapshot {LastIdx: %v, LastTerm: %v} \n",
 					peer.GetRecentSnapshot().LastIncludedIndex, peer.GetRecentSnapshot().LastIncludedTerm)
 			}
 		}
 	}
-	return li, lt, nil
+	return ss.LastIncludedIndex, ss.LastIncludedTerm, nil
 }
 
 func (l *local) SetNetworkReliability(oneWayLatencyMin, oneWayLatencyMax time.Duration, packetLossRate float64) {

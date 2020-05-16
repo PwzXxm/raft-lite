@@ -6,6 +6,7 @@ import (
 
 	"github.com/PwzXxm/raft-lite/rpccore"
 	"github.com/PwzXxm/raft-lite/simulation"
+	"github.com/PwzXxm/raft-lite/sm"
 	"github.com/pkg/errors"
 )
 
@@ -479,19 +480,20 @@ func caseCandidateTimeout() error {
 }
 
 func caseSaveToSnapshot() error {
-	sl := simulation.RunLocally_optional(5, 3)
+	sl := simulation.RunLocally_optional(3, 100)
 	defer sl.StopAll()
+	actioinBuilder := sm.NewTSMActionBuilder("100")
 	// leader election
 	time.Sleep(2 * time.Second)
-	leader, err := sl.AgreeOnLeader()
+	_, err := sl.AgreeOnLeader()
 	if err != nil {
 		return err
 	}
 
 	// make requests, check each node has the same snapshot
 	fmt.Print("Start sending request.\n")
-	for i := 0; i < 20; i++ {
-		sl.RequestRaw(i)
+	for i := 0; i < 1; i++ {
+		sl.RequestSync(actioinBuilder.TSMActionIncrValue("100", 10))
 		time.Sleep(150 * time.Millisecond)
 	}
 	li, lt, err := sl.AgreeOnSnapshot()
@@ -500,25 +502,25 @@ func caseSaveToSnapshot() error {
 		return err
 	}
 
-	// isolate node i who is not leader
-	var isolater rpccore.NodeID
-	for _, p := range sl.GetAllNodeIDs() {
-		if p != *leader {
-			isolater = p
-		}
-	}
-	fmt.Printf("ShutDown Peer %v\n", isolater)
-	sl.ShutDownPeer(isolater)
-	fmt.Print("Start sending request.\n")
-	for i := 0; i < 20; i++ {
-		sl.RequestRaw(i)
-		time.Sleep(150 * time.Millisecond)
-	}
-	fmt.Printf("Restart Peer %v\n", isolater)
-	sl.StartPeer(isolater)
-	time.Sleep(4 * time.Second)
+	// // isolate node i who is not leader
+	// var isolater rpccore.NodeID
+	// for _, p := range sl.GetAllNodeIDs() {
+	// 	if p != *leader {
+	// 		isolater = p
+	// 	}
+	// }
+	// fmt.Printf("ShutDown Peer %v\n", isolater)
+	// sl.ShutDownPeer(isolater)
+	// fmt.Print("Start sending request.\n")
+	// for i := 0; i < 20; i++ {
+	// 	sl.RequestRaw(actioinBuilder.TSMActionIncrValue("0", 10))
+	// 	time.Sleep(150 * time.Millisecond)
+	// }
+	// fmt.Printf("Restart Peer %v\n", isolater)
+	// sl.StartPeer(isolater)
+	// time.Sleep(4 * time.Second)
 
-	_, _, err = sl.AgreeOnSnapshot()
-	fmt.Printf("LastIdx: %v LastTerm: %v\n", li, lt)
+	// _, _, err = sl.AgreeOnSnapshot()
+	// fmt.Printf("LastIdx: %v LastTerm: %v\n %v", li, lt, err)
 	return err
 }
