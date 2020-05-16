@@ -8,6 +8,5 @@
     "NodeID": "bravo",
     "ListenAddr": "127.0.0.1:8002",
     "PstorageFilePath": "./pstorage.dat",
-    "LogPath": "./sample_logs/peerLog2.log",
     "TimingFactor": 5
 }
