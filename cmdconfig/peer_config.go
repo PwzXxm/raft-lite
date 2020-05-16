@@ -19,7 +19,6 @@ type raftConfig struct {
 	NodeID           rpccore.NodeID
 	ListenAddr       string
 	PstorageFilePath string
-	LogPath          string
 	TimingFactor     int
 }
 
@@ -31,14 +30,7 @@ func StartPeerFromFile(filepath string) error {
 	}
 	//set logger
 	logger := logrus.New()
-	file, err := os.OpenFile(config.LogPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-	defer file.Close()
-	if err == nil {
-		logger.Out = file
-	} else {
-		logger.Info("Failed to log to file, using default stderr")
-		logger.Out = os.Stdout
-	}
+	logger.Out = os.Stdout
 	//new tcp network
 	n := rpccore.NewTCPNetwork(config.Timeout * time.Second)
 	node, err := n.NewLocalNode(config.NodeID, config.NodeAddrMap[config.NodeID], config.ListenAddr)

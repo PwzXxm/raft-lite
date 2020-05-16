@@ -8,6 +8,5 @@
     "NodeID": "alpha",
     "ListenAddr": "127.0.0.1:8001",
     "PstorageFilePath": "./pstorage.dat",
-    "LogPath": "./sample_logs/peerLog1.log",
     "TimingFactor": 5
 }

@@ -35,7 +35,7 @@ func init() {
 
 type clientConfig struct {
 	NodeAddrMap map[rpccore.NodeID]string
-	ClientAddr  string
+	ClientID    string
 }
 
 //StartClientFromFile is good

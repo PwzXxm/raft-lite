@@ -10,6 +10,5 @@
     "NodeID": "echo",
     "ListenAddr": "127.0.0.1:8005",
     "PstorageFilePath": "./pstorage.dat",
-    "LogPath": "./sample_logs/peerLog5.log",
     "TimingFactor": 1
 }
