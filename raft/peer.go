@@ -285,10 +285,13 @@ func (p *Peer) updateCommitIndex(idx int) {
 	idx = utils.Min(idx, p.logLen()-1)
 	if idx > p.commitIndex {
 		for i := p.commitIndex + 1; i <= idx; i++ {
-			err := p.stateMachine.ApplyAction(p.log[p.toLogIndex(i)])
-			if err != nil {
-				p.logger.Errorf("Error happened during applying actions to "+
-					"state machine, logIdx: %v, err: %v", i, err)
+			action := p.log[p.toLogIndex(i)].Cmd
+			if action != nil {
+				err := p.stateMachine.ApplyAction(p.log[p.toLogIndex(i)])
+				if err != nil {
+					p.logger.Errorf("Error happened during applying actions to "+
+						"state machine, logIdx: %v, err: %v", i, err)
+				}
 			}
 		}
 		p.logger.Infof("CommitIndex is incremented from %v to %v.", p.commitIndex, idx)
@@ -319,9 +322,7 @@ func (p *Peer) GetLog() []LogEntry {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 	var peerLog = make([]LogEntry, p.logLen())
-	for i, v := range p.log {
-		peerLog[i] = v
-	}
+	copy(peerLog, p.log)
 	return peerLog
 }
 
