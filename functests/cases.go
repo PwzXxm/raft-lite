@@ -477,3 +477,48 @@ func caseCandidateTimeout() error {
 	_, err := sl.AgreeOnLeader()
 	return err
 }
+
+func caseSaveToSnapshot() error {
+	sl := simulation.RunLocally_optional(5, 3)
+	defer sl.StopAll()
+	// leader election
+	time.Sleep(2 * time.Second)
+	leader, err := sl.AgreeOnLeader()
+	if err != nil {
+		return err
+	}
+
+	// make requests, check each node has the same snapshot
+	fmt.Print("Start sending request.\n")
+	for i := 0; i < 20; i++ {
+		sl.RequestRaw(i)
+		time.Sleep(150 * time.Millisecond)
+	}
+	li, lt, err := sl.AgreeOnSnapshot()
+	fmt.Printf("LastIdx: %v LastTerm: %v\n", li, lt)
+	if err != nil {
+		return err
+	}
+
+	// isolate node i who is not leader
+	var isolater rpccore.NodeID
+	for _, p := range sl.GetAllNodeIDs() {
+		if p != *leader {
+			isolater = p
+		}
+	}
+	fmt.Printf("ShutDown Peer %v\n", isolater)
+	sl.ShutDownPeer(isolater)
+	fmt.Print("Start sending request.\n")
+	for i := 0; i < 20; i++ {
+		sl.RequestRaw(i)
+		time.Sleep(150 * time.Millisecond)
+	}
+	fmt.Printf("Restart Peer %v\n", isolater)
+	sl.StartPeer(isolater)
+	time.Sleep(4 * time.Second)
+
+	_, _, err = sl.AgreeOnSnapshot()
+	fmt.Printf("LastIdx: %v LastTerm: %v\n", li, lt)
+	return err
+}

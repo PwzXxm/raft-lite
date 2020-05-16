@@ -10,9 +10,10 @@ func (p *Peer) makeSnapshot(lastIncludedIndex int) *Snapshot {
 }
 
 func (p *Peer) saveToSnapshot() {
-	snapshot := p.makeSnapshot(p.commitIndex)
-	p.snapshot = snapshot
+	new_snapshot := p.makeSnapshot(p.commitIndex)
 	p.log = p.log[p.toLogIndex(p.commitIndex+1):]
+	p.snapshot = new_snapshot
+	p.logger.Infof("Success save to snapshot: current log %v, current snapshot %v", p.log, p.snapshot)
 }
 
 func (p *Peer) handleInstallSnapshot(req installSnapshotReq) installSnapshotRes {
@@ -29,15 +30,18 @@ func (p *Peer) handleInstallSnapshot(req installSnapshotReq) installSnapshotRes 
 		p.log = []LogEntry{}
 	}
 
+	p.commitIndex = req.LastIncludedIndex
 	p.snapshot = req.Snapshot
 	// TODO: write state machine state from ss
 	// TODO: write membership config from ss
+	p.logger.Infof("Success install snapshot: current log %v, current snapshot %v", p.log, p.snapshot)
 	return res
 }
 
 func (p *Peer) handleInstallSnapshotRes(res *installSnapshotRes) {
 	// update leader's term if res includs a higher term?
 	if res.Term > p.currentTerm {
-		p.currentTerm = res.Term
+		p.updateTerm(res.Term)
+		p.changeState(Follower)
 	}
 }

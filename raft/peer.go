@@ -49,7 +49,8 @@ type Peer struct {
 	logger      *logrus.Entry
 
 	// snapshot
-	snapshot *Snapshot
+	snapshot          *Snapshot
+	snapshotThreshold int
 
 	// state machine
 	stateMachine      sm.StateMachine
@@ -73,7 +74,7 @@ type Peer struct {
 }
 
 func NewPeer(node rpccore.Node, peers []rpccore.NodeID, logger *logrus.Entry,
-	sm sm.StateMachine, ps pstorage.PersistentStorage, timingFactor int) (*Peer, error) {
+	sm sm.StateMachine, ps pstorage.PersistentStorage, timingFactor int, snapshotThreshold int) (*Peer, error) {
 	p := new(Peer)
 
 	// initialisation
@@ -94,6 +95,7 @@ func NewPeer(node rpccore.Node, peers []rpccore.NodeID, logger *logrus.Entry,
 	p.logger = logger
 	p.stateMachine = sm
 	p.snapshot = nil
+	p.snapshotThreshold = snapshotThreshold
 	p.stateMachine.Reset()
 	p.timingFactor = timingFactor
 
@@ -295,7 +297,7 @@ func (p *Peer) updateCommitIndex(idx int) {
 		if err != nil {
 			p.logger.Errorf("Unable to save state: %+v.", err)
 		}
-		if p.toLogIndex(p.commitIndex) > 50 {
+		if p.toLogIndex(p.commitIndex)+1 >= p.snapshotThreshold {
 			p.saveToSnapshot()
 		}
 	}
@@ -329,6 +331,12 @@ func (p *Peer) GetNodeID() rpccore.NodeID {
 	return p.node.NodeID()
 }
 
+func (p *Peer) GetSnapshot() *Snapshot {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+	return p.snapshot
+}
+
 func (p *Peer) GetVoteCount() int {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
@@ -346,7 +354,7 @@ func (p *Peer) toLogIndex(trueIndex int) int {
 	logidx := trueIndex - p.snapshot.LastIncludedIndex - 1
 	if logidx < 0 {
 		p.logger.Errorf("Access to invalid log index (inside snapshot)")
-		return -1 // how to deal with this situation
+		return logidx
 	}
 	return logidx
 }
