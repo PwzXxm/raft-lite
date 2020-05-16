@@ -17,3 +17,11 @@ func (t *ESM) ApplyAction(action interface{}) error {
 func (t *ESM) Query(req interface{}) (interface{}, error) {
 	return nil, nil
 }
+
+func (t *ESM) TakeSnapshot() ([]byte, error) {
+	return nil, nil
+}
+
+func (t *ESM) ResetWithSnapshot(b []byte) error {
+	return nil
+}
