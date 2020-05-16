@@ -1,19 +1,28 @@
 package raft
 
-func (p *Peer) makeSnapshot(lastIncludedIndex int) *Snapshot {
-	return &Snapshot{
-		LastIncludedIndex: lastIncludedIndex,
-		LastIncludedTerm:  p.log[p.toLogIndex(lastIncludedIndex)].Term,
-		// TODO: write state machine state into ss
-		// TODO: write membership config into ss
+func (p *Peer) makeSnapshot(lastIncludedIndex int) (*Snapshot, error) {
+	stateMachineSnapshot, err := p.stateMachine.TakeSnapshot()
+	if err != nil {
+		return nil, err
 	}
+
+	return &Snapshot{
+		LastIncludedIndex:    lastIncludedIndex,
+		LastIncludedTerm:     p.log[p.toLogIndex(lastIncludedIndex)].Term,
+		StateMachineSnapshot: stateMachineSnapshot,
+		// TODO: write membership config into ss
+	}, nil
 }
 
-func (p *Peer) saveToSnapshot() {
-	new_snapshot := p.makeSnapshot(p.commitIndex)
+func (p *Peer) saveToSnapshot() error {
+	new_snapshot, err := p.makeSnapshot(p.commitIndex)
+	if err != nil {
+		return err
+	}
 	p.log = p.log[p.toLogIndex(p.commitIndex+1):]
 	p.snapshot = new_snapshot
 	p.logger.Infof("Success save to snapshot: current log %v, current snapshot %v", p.log, p.snapshot)
+	return nil
 }
 
 func (p *Peer) handleInstallSnapshot(req installSnapshotReq) installSnapshotRes {
@@ -32,7 +41,7 @@ func (p *Peer) handleInstallSnapshot(req installSnapshotReq) installSnapshotRes 
 
 	p.commitIndex = req.LastIncludedIndex
 	p.snapshot = req.Snapshot
-	// TODO: write state machine state from ss
+	p.stateMachine.ResetWithSnapshot(p.snapshot.StateMachineSnapshot)
 	// TODO: write membership config from ss
 	p.logger.Infof("Success install snapshot: current log %v, current snapshot %v", p.log, p.snapshot)
 	return res

@@ -25,9 +25,9 @@ type LogEntry struct {
 }
 
 type Snapshot struct {
-	LastIncludedIndex int
-	LastIncludedTerm  int
-	// TODO: add state machine state
+	LastIncludedIndex    int
+	LastIncludedTerm     int
+	StateMachineSnapshot []byte
 	// TODO: add membership config
 }
 
@@ -301,7 +301,10 @@ func (p *Peer) updateCommitIndex(idx int) {
 			p.logger.Errorf("Unable to save state: %+v.", err)
 		}
 		if p.toLogIndex(p.commitIndex)+1 >= p.snapshotThreshold {
-			p.saveToSnapshot()
+			err = p.saveToSnapshot()
+			if err != nil {
+				p.logger.Errorf("Unable to save Snapshot: %+v.", err)
+			}
 		}
 	}
 }
