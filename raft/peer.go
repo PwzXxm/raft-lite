@@ -59,6 +59,9 @@ type Peer struct {
 
 	// follower only
 	heardFromLeader bool
+
+	// for cluster membership change, false for Cnew peers
+	voteable bool
 }
 
 func NewPeer(node rpccore.Node, peers []rpccore.NodeID, logger *logrus.Entry,
@@ -289,6 +292,10 @@ func (p *Peer) updateCommitIndex(idx int) {
 	}
 }
 
+func (p *Peer) updateVoteable(voteable bool) {
+	p.voteable = voteable
+}
+
 func (p *Peer) GetTerm() int {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
@@ -319,6 +326,12 @@ func (p *Peer) GetVoteCount() int {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 	return p.voteCount
+}
+
+func (p *Peer) GetVoteable() bool {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+	return p.voteable
 }
 
 func (p *Peer) getTotalPeers() int {

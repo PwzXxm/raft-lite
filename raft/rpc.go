@@ -41,6 +41,15 @@ type requestVoteRes struct {
 	VoteGranted bool
 }
 
+type ConfigurationReq struct {
+	Term int
+}
+
+type ConfigurationRes struct {
+	Term    int
+	Success bool
+}
+
 func (p *Peer) requestVote(target rpccore.NodeID, arg requestVoteReq) *requestVoteRes {
 	var res requestVoteRes
 	if p.callRPCAndLogError(target, rpcMethodRequestVote, arg, &res) == nil {
