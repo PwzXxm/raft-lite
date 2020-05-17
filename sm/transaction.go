@@ -131,6 +131,10 @@ const (
 	tsmActionMove
 )
 
+func (a TSMAction) RequestID() uint32 {
+	return a.requestID
+}
+
 type TSMActionBuilder struct {
 	clientID      string
 	lastRequestID uint32

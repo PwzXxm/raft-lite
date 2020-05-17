@@ -1,6 +1,7 @@
 package raft
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/PwzXxm/raft-lite/client"
@@ -60,13 +61,15 @@ func (p *Peer) handleClientActionRequest(req client.ActionReq) client.ActionRes 
 
 func (p *Peer) handleClientQueryRequest(req client.QueryReq) client.QueryRes {
 	if p.state != Leader {
-		return client.QueryRes{Success: false, Data: nil}
+		return client.QueryRes{Success: false, QueryErr: nil, Data: nil}
 	}
 
 	v, err := p.stateMachine.Query(req.Cmd)
 	if err != nil {
-		return client.QueryRes{Success: false, Data: nil}
+		// Data is [nil] if the query is invalid
+		serr := fmt.Sprint(err)
+		return client.QueryRes{Success: true, QueryErr: &serr, Data: nil}
 	}
 
-	return client.QueryRes{Success: true, Data: v}
+	return client.QueryRes{Success: true, QueryErr: nil, Data: v}
 }

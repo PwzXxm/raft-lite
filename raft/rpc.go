@@ -133,6 +133,8 @@ func (p *Peer) handleRPCCall(source rpccore.NodeID, method string, data []byte) 
 		var buf bytes.Buffer
 		err = gob.NewEncoder(&buf).Encode(res)
 		return buf.Bytes(), errors.WithStack(err)
+
+	// NOTE: Client request only works with transaction state machine.
 	case client.RPCMethodLeaderRequest:
 		p.mutex.Lock()
 		res := p.handleClientLeaderRequest()

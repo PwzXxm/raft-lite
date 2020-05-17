@@ -33,8 +33,9 @@ type QueryReq struct {
 }
 
 type QueryRes struct {
-	Success bool
-	Data    interface{}
+	Success  bool
+	QueryErr *string
+	Data     interface{}
 }
 
 func (c *Client) callRPC(target rpccore.NodeID, method string, req, res interface{}) error {

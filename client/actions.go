@@ -1,7 +1,6 @@
 package client
 
 import (
-	"fmt"
 	"os"
 	"time"
 
@@ -64,6 +63,7 @@ func (c *Client) lookForLeader() rpccore.NodeID {
 	// cached, the cache will be cleaned if there is any issue
 	// blocking, keep trying until find a leader
 	for c.leaderID != nil {
+		// select a client by random
 		pl := c.peers[c.nl[utils.Random(0, c.n-1)]].NodeID()
 		var leaderRes LeaderRes
 		err := c.callRPC(pl, RPCMethodLeaderRequest, "", &leaderRes)
@@ -89,21 +89,36 @@ func (c *Client) logErrAndBackoff(msg string, err error) {
 	time.Sleep(100 * time.Millisecond)
 }
 
-func (c *Client) sendActionRequest(act sm.TSMAction) error {
+func (c *Client) sendActionRequest(actReq ActionReq) error {
 	leader := c.lookForLeader()
-	fmt.Print(leader)
-	return nil
+	var actionRes ActionRes
+	err := c.callRPC(leader, RPCMethodActionRequest, actReq, &actionRes)
+	if err == nil && !actionRes.Started {
+		err = errors.Errorf("Node %v declined the request.", leader)
+	}
+	return err
 }
 
-func (c *Client) checkActionRequest(act sm.TSMAction) (bool, error) {
+func (c *Client) checkActionRequest(queryReq QueryReq, reqID uint32) (bool, error) {
 	leader := c.lookForLeader()
-	fmt.Print(leader)
-	return false, nil
+	var queryRes QueryRes
+	err := c.callRPC(leader, RPCMethodQueryRequest, queryReq, &queryRes)
+	if err == nil {
+		if queryRes.Success {
+			return (queryRes.QueryErr == nil && queryRes.Data.(uint32) == reqID), nil
+		} else {
+			err = errors.Errorf("Node %v decliend the query request.", leader)
+		}
+	}
+	return false, err
 }
 
 func (c *Client) executeActionRequest(act sm.TSMAction) {
+	actReq := ActionReq{Cmd: act}
+	queryReq := QueryReq{Cmd: sm.NewTSMLatestRequestQuery(c.clientID)}
+	reqID := act.RequestID()
 	for {
-		err := c.sendActionRequest(act)
+		err := c.sendActionRequest(actReq)
 		if err != nil {
 			c.logErrAndBackoff("send action request failed. ", err)
 			continue
@@ -113,7 +128,7 @@ func (c *Client) executeActionRequest(act sm.TSMAction) {
 		time.Sleep(100 * time.Millisecond)
 
 		for i := 0; i < 4; i++ {
-			success, err := c.checkActionRequest(act)
+			success, err := c.checkActionRequest(queryReq, reqID)
 			if err != nil {
 				c.logErrAndBackoff("check action request failed. ", err)
 			}
@@ -124,6 +139,30 @@ func (c *Client) executeActionRequest(act sm.TSMAction) {
 				// TODO: another backoff?
 				time.Sleep(100 * time.Millisecond)
 			}
+		}
+	}
+}
+
+func (c *Client) executeQueryRequest(query sm.TSMQuery) (interface{}, error) {
+	queryReq := QueryReq{Cmd: query}
+	for {
+		leader := c.lookForLeader()
+		var queryRes QueryRes
+		err := c.callRPC(leader, RPCMethodQueryRequest, queryReq, &queryRes)
+		if err == nil {
+			if queryRes.Success {
+				if queryRes.QueryErr == nil {
+					return queryRes.Data, nil
+				} else {
+					return nil, errors.New(*queryRes.QueryErr)
+				}
+			} else {
+				err = errors.Errorf("Node %v decliend the query request.", leader)
+			}
+		}
+		if err != nil {
+			c.logErrAndBackoff("Request query failed. ", err)
+			continue
 		}
 	}
 }
