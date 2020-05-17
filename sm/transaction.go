@@ -32,39 +32,39 @@ func (t *TSM) ApplyAction(action interface{}) error {
 	fmt.Printf("Apply actions\n")
 	tsmAction := action.(TSMAction)
 	// check duplicate
-	lastID, ok := t.latestRequestID[tsmAction.clientID]
+	lastID, ok := t.latestRequestID[tsmAction.ClientID]
 	if ok {
-		if lastID == tsmAction.requestID {
+		if lastID == tsmAction.RequestID {
 			// duplicate request, ignore it
 			return nil
 		}
 	}
-	t.latestRequestID[tsmAction.clientID] = tsmAction.requestID
+	t.latestRequestID[tsmAction.ClientID] = tsmAction.RequestID
 
 	// execute action
-	switch tsmAction.action {
+	switch tsmAction.Action {
 	case tsmActionSet:
 		fmt.Printf("Action1\n")
-		t.data[tsmAction.target] = tsmAction.value
+		t.data[tsmAction.Target] = tsmAction.Value
 	case tsmActionIncr:
 		fmt.Printf("Action2\n")
-		v, ok := t.data[tsmAction.target]
+		v, ok := t.data[tsmAction.Target]
 		if !ok {
-			return errors.Errorf("invalid key: %v", tsmAction.target)
+			return errors.Errorf("invalid key: %v", tsmAction.Target)
 		}
-		t.data[tsmAction.target] = v + tsmAction.value
+		t.data[tsmAction.Target] = v + tsmAction.Value
 	case tsmActionMove:
 		fmt.Printf("Action3\n")
-		sv, ok := t.data[tsmAction.source]
+		sv, ok := t.data[tsmAction.Source]
 		if !ok {
-			return errors.Errorf("invalid key for source: %v", tsmAction.source)
+			return errors.Errorf("invalid key for source: %v", tsmAction.Source)
 		}
-		tv, ok := t.data[tsmAction.target]
+		tv, ok := t.data[tsmAction.Target]
 		if !ok {
-			return errors.Errorf("invalid key for target: %v", tsmAction.target)
+			return errors.Errorf("invalid key for target: %v", tsmAction.Target)
 		}
-		t.data[tsmAction.source] = sv - tsmAction.value
-		t.data[tsmAction.target] = tv + tsmAction.value
+		t.data[tsmAction.Source] = sv - tsmAction.Value
+		t.data[tsmAction.Target] = tv + tsmAction.Value
 	}
 	return nil
 }
@@ -73,16 +73,16 @@ func (t *TSM) ApplyAction(action interface{}) error {
 // key is string and return value is int
 func (t *TSM) Query(req interface{}) interface{} {
 	query := req.(TSMQuery)
-	switch query.query {
+	switch query.Query {
 	case tsmQueryData:
-		key := query.key
+		key := query.Key
 		v, ok := t.data[key]
 		if !ok {
 			return nil
 		}
 		return v
 	case tsmQueryLatestRequest:
-		client := query.key
+		client := query.Key
 		v, ok := t.latestRequestID[client]
 		if !ok {
 			return nil
@@ -129,13 +129,13 @@ func init() {
 }
 
 type TSMAction struct {
-	action tsmActionType
-	target string
-	source string // useless for [tsmActionSet] and [tsmActionIncr]
-	value  int
+	Action tsmActionType
+	Target string
+	Source string // useless for [tsmActionSet] and [tsmActionIncr]
+	Value  int
 	// request info
-	clientID  string
-	requestID uint32
+	ClientID  string
+	RequestID uint32
 }
 
 type tsmActionType int
@@ -162,38 +162,38 @@ func (b *TSMActionBuilder) newRequestID() uint32 {
 
 func (b *TSMActionBuilder) TSMActionSetValue(key string, value int) TSMAction {
 	return TSMAction{
-		action:    tsmActionSet,
-		target:    key,
-		value:     value,
-		clientID:  b.clientID,
-		requestID: b.newRequestID(),
+		Action:    tsmActionSet,
+		Target:    key,
+		Value:     value,
+		ClientID:  b.clientID,
+		RequestID: b.newRequestID(),
 	}
 }
 
 func (b *TSMActionBuilder) TSMActionIncrValue(key string, value int) TSMAction {
 	return TSMAction{
-		action:    tsmActionIncr,
-		target:    key,
-		value:     value,
-		clientID:  b.clientID,
-		requestID: b.newRequestID(),
+		Action:    tsmActionIncr,
+		Target:    key,
+		Value:     value,
+		ClientID:  b.clientID,
+		RequestID: b.newRequestID(),
 	}
 }
 
 func (b *TSMActionBuilder) TSMActionMoveValue(source, target string, value int) TSMAction {
 	return TSMAction{
-		action:    tsmActionMove,
-		source:    source,
-		target:    target,
-		value:     value,
-		clientID:  b.clientID,
-		requestID: b.newRequestID(),
+		Action:    tsmActionMove,
+		Source:    source,
+		Target:    target,
+		Value:     value,
+		ClientID:  b.clientID,
+		RequestID: b.newRequestID(),
 	}
 }
 
 type TSMQuery struct {
-	query tsmQueryType
-	key   string
+	Query tsmQueryType
+	Key   string
 }
 
 type tsmQueryType int
@@ -205,15 +205,15 @@ const (
 
 func NewTSMDataQuery(key string) TSMQuery {
 	return TSMQuery{
-		query: tsmQueryData,
-		key:   key,
+		Query: tsmQueryData,
+		Key:   key,
 	}
 }
 
 func NewTSMLatestRequestQuery(clientID string) TSMQuery {
 	return TSMQuery{
-		query: tsmQueryLatestRequest,
-		key:   clientID,
+		Query: tsmQueryLatestRequest,
+		Key:   clientID,
 	}
 }
 
