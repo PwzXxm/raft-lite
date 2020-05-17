@@ -391,14 +391,16 @@ func (l *local) AgreeOnSnapshot() (int, int, error) {
 		if ss == nil {
 			ss = peer.GetRecentSnapshot()
 		} else {
-			isEqual, err := raft.SnapshotEqual(ss, peer.GetRecentSnapshot())
+			ss2 := peer.GetRecentSnapshot()
+			isEqual, err := raft.SnapshotEqual(ss, ss2)
 			if err != nil {
 				fmt.Printf("fail to compare snapshots, %v\n", err)
 				return -1, -1, err
 			}
 			if isEqual {
-				return -1, -1, errors.Errorf("Node %v has different snapshot {LastIdx: %v, LastTerm: %v} \n",
-					peer.GetNodeID(), peer.GetRecentSnapshot().LastIncludedIndex, peer.GetRecentSnapshot().LastIncludedTerm)
+				return -1, -1, errors.Errorf("Node %v has different snapshot\n s1:\n%v\nlast term:%v\nlast index:%v, \n s2:\n%v\nlast term:%v\nlast index:%v",
+					peer.GetNodeID(), peer.GetRecentSnapshot().LastIncludedIndex, peer.GetRecentSnapshot().LastIncludedTerm,
+					sm.TSMToStringHuman(ss.StateMachineSnapshot), ss.LastIncludedTerm, ss.LastIncludedIndex, sm.TSMToStringHuman(ss2.StateMachineSnapshot), ss2.LastIncludedTerm, ss2.LastIncludedIndex)
 			}
 		}
 	}

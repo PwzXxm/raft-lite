@@ -229,3 +229,11 @@ func TSMIsSnapshotEqual(b1 []byte, b2 []byte) (bool, error) {
 	}
 	return reflect.DeepEqual(tSM1, tSM2), nil
 }
+
+func TSMToStringHuman(b []byte) string {
+	tSM, err := decodeTSMFromBytes(b)
+	if err != nil {
+		return fmt.Sprintf("Unable to decode snapshot: %v", err)
+	}
+	return fmt.Sprint(tSM)
+}
