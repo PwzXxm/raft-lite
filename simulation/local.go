@@ -20,7 +20,7 @@ const (
 	testTimingFactor         = 1
 	clientRequestTimeout     = 1 * time.Second
 	rpcTimeout               = 80 * testTimingFactor * time.Millisecond
-	defaultSnapshotThreshold = 100
+	defaultSnapshotThreshold = 10000
 )
 
 type local struct {
@@ -397,10 +397,15 @@ func (l *local) AgreeOnSnapshot() (int, int, error) {
 				fmt.Printf("fail to compare snapshots, %v\n", err)
 				return -1, -1, err
 			}
-			if isEqual {
+			if !isEqual {
 				return -1, -1, errors.Errorf("Node %v has different snapshot\n s1:\n%v\nlast term:%v\nlast index:%v, \n s2:\n%v\nlast term:%v\nlast index:%v",
-					peer.GetNodeID(), peer.GetRecentSnapshot().LastIncludedIndex, peer.GetRecentSnapshot().LastIncludedTerm,
-					sm.TSMToStringHuman(ss.StateMachineSnapshot), ss.LastIncludedTerm, ss.LastIncludedIndex, sm.TSMToStringHuman(ss2.StateMachineSnapshot), ss2.LastIncludedTerm, ss2.LastIncludedIndex)
+					peer.GetNodeID(),
+					sm.TSMToStringHuman(ss.StateMachineSnapshot),
+					ss.LastIncludedTerm,
+					ss.LastIncludedIndex,
+					sm.TSMToStringHuman(ss2.StateMachineSnapshot),
+					ss2.LastIncludedTerm,
+					ss2.LastIncludedIndex)
 			}
 		}
 	}

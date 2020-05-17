@@ -480,20 +480,21 @@ func caseCandidateTimeout() error {
 }
 
 func caseSaveToSnapshot() error {
-	sl := simulation.RunLocally_optional(3, 1, sm.NewTransactionStateMachine())
+	sl := simulation.RunLocally_optional(5, 1, sm.NewTransactionStateMachine())
 	defer sl.StopAll()
-	actioinBuilder := sm.NewTSMActionBuilder("100")
+	actioinBuilder := sm.NewTSMActionBuilder("client")
 	// leader election
 	time.Sleep(2 * time.Second)
-	_, err := sl.AgreeOnLeader()
+	leader, err := sl.AgreeOnLeader()
 	if err != nil {
 		return err
 	}
 
 	// make requests, check each node has the same snapshot
 	fmt.Print("Start sending request.\n")
-	for i := 0; i < 1; i++ {
-		sl.RequestSync(actioinBuilder.TSMActionIncrValue("100", 10))
+	sl.RequestSync(actioinBuilder.TSMActionSetValue("key_a", 0))
+	for i := 0; i < 20; i++ {
+		sl.RequestSync(actioinBuilder.TSMActionIncrValue("key_a", 10))
 		time.Sleep(150 * time.Millisecond)
 	}
 	li, lt, err := sl.AgreeOnSnapshot()
@@ -502,25 +503,25 @@ func caseSaveToSnapshot() error {
 		return err
 	}
 
-	// // isolate node i who is not leader
-	// var isolater rpccore.NodeID
-	// for _, p := range sl.GetAllNodeIDs() {
-	// 	if p != *leader {
-	// 		isolater = p
-	// 	}
-	// }
-	// fmt.Printf("ShutDown Peer %v\n", isolater)
-	// sl.ShutDownPeer(isolater)
-	// fmt.Print("Start sending request.\n")
-	// for i := 0; i < 20; i++ {
-	// 	sl.RequestRaw(actioinBuilder.TSMActionIncrValue("0", 10))
-	// 	time.Sleep(150 * time.Millisecond)
-	// }
-	// fmt.Printf("Restart Peer %v\n", isolater)
-	// sl.StartPeer(isolater)
-	// time.Sleep(4 * time.Second)
+	// isolate node i who is not leader
+	var isolater rpccore.NodeID
+	for _, p := range sl.GetAllNodeIDs() {
+		if p != *leader {
+			isolater = p
+		}
+	}
+	fmt.Printf("ShutDown Peer %v\n", isolater)
+	sl.ShutDownPeer(isolater)
+	fmt.Print("Start sending request.\n")
+	for i := 0; i < 20; i++ {
+		sl.RequestRaw(actioinBuilder.TSMActionIncrValue("key_a", 10))
+		time.Sleep(150 * time.Millisecond)
+	}
+	fmt.Printf("Restart Peer %v\n", isolater)
+	sl.StartPeer(isolater)
+	time.Sleep(4 * time.Second)
 
-	// _, _, err = sl.AgreeOnSnapshot()
-	// fmt.Printf("LastIdx: %v LastTerm: %v\n %v", li, lt, err)
+	_, _, err = sl.AgreeOnSnapshot()
+	fmt.Printf("LastIdx: %v LastTerm: %v\n %v", li, lt, err)
 	return err
 }

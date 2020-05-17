@@ -1,14 +1,12 @@
 package raft
 
 import (
-	"fmt"
-
 	"github.com/PwzXxm/raft-lite/sm"
 )
 
 func (p *Peer) makeSnapshot(lastIncludedIndex int) (*Snapshot, error) {
 	stateMachineSnapshot, err := p.stateMachine.TakeSnapshot()
-	fmt.Printf("StateMachine %v, Make SM snapshot: %v, log: %v\n", p.stateMachine, stateMachineSnapshot, p.log)
+	// fmt.Printf("StateMachine %v, Make SM snapshot: %v, log: %v\n", p.stateMachine, stateMachineSnapshot, p.log)
 	if err != nil {
 		return nil, err
 	}
@@ -28,7 +26,7 @@ func (p *Peer) saveToSnapshot() error {
 	}
 	p.log = p.log[p.toLogIndex(p.commitIndex+1):]
 	p.snapshot = new_snapshot
-	p.logger.Infof("Success save to snapshot: current log %v, current snapshot %v", p.log, p.snapshot)
+	// p.logger.Infof("Success save to snapshot: current log %v, current snapshot %v", p.log, p.snapshot)
 	return nil
 }
 
@@ -50,7 +48,7 @@ func (p *Peer) handleInstallSnapshot(req installSnapshotReq) installSnapshotRes 
 	p.snapshot = req.Snapshot
 	p.stateMachine.ResetWithSnapshot(p.snapshot.StateMachineSnapshot)
 	// TODO: write membership config from ss
-	p.logger.Infof("Success install snapshot: current log %v, current snapshot %v", p.log, p.snapshot)
+	// p.logger.Infof("Success install snapshot: current log %v, current snapshot %v", p.log, p.snapshot)
 	return res
 }
 
@@ -63,7 +61,6 @@ func (p *Peer) handleInstallSnapshotRes(res *installSnapshotRes) {
 }
 
 func SnapshotEqual(s1 *Snapshot, s2 *Snapshot) (bool, error) {
-	fmt.Printf("s1: %v, s2: %v\n", s1, s2)
 	smEqual, err := sm.TSMIsSnapshotEqual(s1.StateMachineSnapshot, s2.StateMachineSnapshot)
 	if err != nil {
 		return false, err
