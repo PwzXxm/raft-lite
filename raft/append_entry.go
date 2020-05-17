@@ -50,6 +50,14 @@ func (p *Peer) consitencyCheck(req appendEntriesReq) bool {
 	return true
 }
 
+func (p *Peer) triggerLeaderHeartbeat() {
+	for peerID, appendingEntry := range p.appendingEntries {
+		if !appendingEntry {
+			go p.callAppendEntryRPC(peerID)
+		}
+	}
+}
+
 //iteratively call appendEntry RPC until the follower is up to date with leader.
 func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 	p.mutex.Lock()
