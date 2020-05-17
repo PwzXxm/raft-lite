@@ -248,9 +248,18 @@ func (p *Peer) startElection() {
 	req := requestVoteReq{Term: p.currentTerm, CandidateID: p.node.NodeID(), LastLogIndex: len(p.log) - 1, LastLogTerm: p.log[len(p.log)-1].Term}
 	for _, peerID := range p.rpcPeersIds {
 		go func(peerID rpccore.NodeID) {
-			res := p.requestVote(peerID, req)
-			if res != nil {
-				p.handleRequestVoteRespond(*res)
+			for {
+				// not candidate case
+				if p.state != Candidate {
+					return
+				}
+				res := p.requestVote(peerID, req)
+				if res != nil {
+					p.handleRequestVoteRespond(*res)
+					return
+				}
+				// no request vote respond case
+				continue
 			}
 		}(peerID)
 	}
