@@ -12,84 +12,85 @@ import (
 
 // This state machine is not thread-safe
 type TSM struct {
-	data            map[string]int
-	latestRequestID map[string]uint32
+	Data            map[string]int
+	LatestRequestID map[string]uint32
 }
 
 func NewTransactionStateMachine() *TSM {
 	t := new(TSM)
-	t.data = make(map[string]int)
-	t.latestRequestID = make(map[string]uint32)
+	t.Data = make(map[string]int)
+	t.LatestRequestID = make(map[string]uint32)
 	return t
 }
 
 func (t *TSM) Reset() {
-	t.data = make(map[string]int)
-	t.latestRequestID = make(map[string]uint32)
+	t.Data = make(map[string]int)
+	t.LatestRequestID = make(map[string]uint32)
 }
 
 func (t *TSM) ApplyAction(action interface{}) error {
 	fmt.Printf("Apply actions\n")
 	tsmAction := action.(TSMAction)
 	// check duplicate
-	lastID, ok := t.latestRequestID[tsmAction.ClientID]
+	lastID, ok := t.LatestRequestID[tsmAction.ClientID]
 	if ok {
 		if lastID == tsmAction.RequestID {
 			// duplicate request, ignore it
 			return nil
 		}
 	}
-	t.latestRequestID[tsmAction.ClientID] = tsmAction.RequestID
+	t.LatestRequestID[tsmAction.ClientID] = tsmAction.RequestID
 
 	// execute action
 	switch tsmAction.Action {
 	case tsmActionSet:
 		fmt.Printf("Action1\n")
-		t.data[tsmAction.Target] = tsmAction.Value
+		t.Data[tsmAction.Target] = tsmAction.Value
 	case tsmActionIncr:
 		fmt.Printf("Action2\n")
-		v, ok := t.data[tsmAction.Target]
+		v, ok := t.Data[tsmAction.Target]
 		if !ok {
 			return errors.Errorf("invalid key: %v", tsmAction.Target)
 		}
-		t.data[tsmAction.Target] = v + tsmAction.Value
+		t.Data[tsmAction.Target] = v + tsmAction.Value
 	case tsmActionMove:
 		fmt.Printf("Action3\n")
-		sv, ok := t.data[tsmAction.Source]
+		sv, ok := t.Data[tsmAction.Source]
 		if !ok {
 			return errors.Errorf("invalid key for source: %v", tsmAction.Source)
 		}
-		tv, ok := t.data[tsmAction.Target]
+		tv, ok := t.Data[tsmAction.Target]
 		if !ok {
 			return errors.Errorf("invalid key for target: %v", tsmAction.Target)
 		}
-		t.data[tsmAction.Source] = sv - tsmAction.Value
-		t.data[tsmAction.Target] = tv + tsmAction.Value
+		t.Data[tsmAction.Source] = sv - tsmAction.Value
+		t.Data[tsmAction.Target] = tv + tsmAction.Value
 	}
 	return nil
 }
 
 // return the value of the given key.
 // key is string and return value is int
-func (t *TSM) Query(req interface{}) interface{} {
+// TODO: Temp fakes func
+func (t *TSM) Query(req interface{}) (interface{}, error) {
 	query := req.(TSMQuery)
 	switch query.Query {
 	case tsmQueryData:
 		key := query.Key
-		v, ok := t.data[key]
+		v, ok := t.Data[key]
 		if !ok {
-			return nil
+			return nil, nil
 		}
-		return v
+		return v, nil
 	case tsmQueryLatestRequest:
 		client := query.Key
-		v, ok := t.latestRequestID[client]
+		v, ok := t.LatestRequestID[client]
 		if !ok {
-			return nil
+			return nil, nil
 		}
-		return v
+		return v, nil
 	}
-	return nil
+	return nil, nil
 }
 
 func (t *TSM) TakeSnapshot() ([]byte, error) {
@@ -106,8 +107,8 @@ func (t *TSM) TakeSnapshot() ([]byte, error) {
 func (t *TSM) ResetWithSnapshot(b []byte) error {
 	newTSM, err := decodeTSMFromBytes(b)
 	if err == nil {
-		t.data = newTSM.data
-		t.latestRequestID = newTSM.latestRequestID
+		t.Data = newTSM.Data
+		t.LatestRequestID = newTSM.LatestRequestID
 	}
 	return err
 }

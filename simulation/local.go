@@ -48,13 +48,13 @@ func init() {
 }
 
 func RunLocally(n int) *local {
-	return RunLocally_optional(n, defaultSnapshotThreshold)
+	return RunLocally_optional(n, defaultSnapshotThreshold, sm.NewEmptyStateMachine())
 }
 
-func RunLocally_optional(n int, snapshotThreshold int) *local {
+func RunLocally_optional(n int, snapshotThreshold int, stateMachine sm.StateMachine) *local {
 	log.Info("Starting simulation locally ...")
 
-	l, err := newLocal_optional(n, snapshotThreshold)
+	l, err := newLocal_optional(n, snapshotThreshold, stateMachine)
 	if err != nil {
 		log.Panicln(err)
 	}
@@ -101,10 +101,10 @@ func (l *local) delayGenerator(source, target rpccore.NodeID) time.Duration {
 }
 
 func newLocal(n int) (*local, error) {
-	return newLocal_optional(n, defaultSnapshotThreshold)
+	return newLocal_optional(n, defaultSnapshotThreshold, sm.NewEmptyStateMachine())
 }
 
-func newLocal_optional(n int, snapshotThreshold int) (*local, error) {
+func newLocal_optional(n int, snapshotThreshold int, stateMachine sm.StateMachine) (*local, error) {
 	if n <= 0 {
 		err := errors.Errorf("The number of peers should be positive, but got %v", n)
 		return nil, err
@@ -155,7 +155,7 @@ func newLocal_optional(n int, snapshotThreshold int) (*local, error) {
 		var err error
 		l.raftPeers[id], err = raft.NewPeer(node, nodeIDs[:n-1], l.loggers[id].WithFields(logrus.Fields{
 			"nodeID": node.NodeID(),
-		}), sm.NewEmptyStateMachine(), l.pstorages[id], testTimingFactor, snapshotThreshold)
+		}), stateMachine, l.pstorages[id], testTimingFactor, snapshotThreshold)
 		if err != nil {
 			return nil, err
 		}
@@ -398,7 +398,7 @@ func (l *local) AgreeOnSnapshot() (int, int, error) {
 			}
 			if isEqual {
 				return -1, -1, errors.Errorf("Node %v has different snapshot {LastIdx: %v, LastTerm: %v} \n",
-					peer.GetRecentSnapshot().LastIncludedIndex, peer.GetRecentSnapshot().LastIncludedTerm)
+					peer.GetNodeID(), peer.GetRecentSnapshot().LastIncludedIndex, peer.GetRecentSnapshot().LastIncludedTerm)
 			}
 		}
 	}

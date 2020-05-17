@@ -480,7 +480,7 @@ func caseCandidateTimeout() error {
 }
 
 func caseSaveToSnapshot() error {
-	sl := simulation.RunLocally_optional(3, 100)
+	sl := simulation.RunLocally_optional(3, 1, sm.NewTransactionStateMachine())
 	defer sl.StopAll()
 	actioinBuilder := sm.NewTSMActionBuilder("100")
 	// leader election
