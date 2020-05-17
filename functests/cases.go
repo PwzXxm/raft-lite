@@ -103,11 +103,7 @@ func caseSkewedPartitionLeaderElection() (err error) {
 		return
 	}
 	fmt.Printf("Recovery from partition, leader:%v, term:%v\n", *leader2, term2)
-	if *leader2 == "3" || *leader2 == "4" {
-		return errors.Errorf("Leader elected in wrong partition, l1:%v, l2:%v, t:%v",
-			*leader1, *leader2, term2)
-	}
-	return
+	return sl.IdenticalLogEntries()
 }
 
 func caseRecoverLeaderElection() (err error) {
