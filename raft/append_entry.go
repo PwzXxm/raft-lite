@@ -44,13 +44,16 @@ func (p *Peer) consitencyCheck(req appendEntriesReq) bool {
 		p.updateTerm(req.Term)
 		p.changeState(Follower)
 	}
+	if p.logLen() <= req.PrevLogIndex {
+		return false
+	}
 	var myPrevLogTerm int
 	if p.toLogIndex(req.PrevLogIndex+1) == 0 && p.snapshot != nil {
 		myPrevLogTerm = p.snapshot.LastIncludedTerm
 	} else {
 		myPrevLogTerm = p.log[p.toLogIndex(req.PrevLogIndex)].Term
 	}
-	if p.logLen() <= req.PrevLogIndex || myPrevLogTerm != req.PrevLogTerm {
+	if myPrevLogTerm != req.PrevLogTerm {
 		return false
 	}
 	return true
@@ -102,7 +105,7 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 				p.logger.Warn("nextIndex out of range")
 			}
 			var prevLogTerm int
-			if p.toLogIndex(nextIndex) == 0 {
+			if p.toLogIndex(nextIndex) == 0 && p.snapshot != nil {
 				prevLogTerm = p.snapshot.LastIncludedTerm
 			} else {
 				prevLogTerm = p.log[p.toLogIndex(nextIndex-1)].Term

@@ -48,13 +48,13 @@ func init() {
 }
 
 func RunLocally(n int) *local {
-	return RunLocally_optional(n, defaultSnapshotThreshold, sm.NewEmptyStateMachine())
+	return RunLocallyOptional(n, defaultSnapshotThreshold, sm.NewEmptyStateMachine())
 }
 
-func RunLocally_optional(n int, snapshotThreshold int, stateMachine sm.StateMachine) *local {
+func RunLocallyOptional(n int, snapshotThreshold int, stateMachine sm.StateMachine) *local {
 	log.Info("Starting simulation locally ...")
 
-	l, err := newLocal_optional(n, snapshotThreshold, stateMachine)
+	l, err := newLocalOptional(n, snapshotThreshold, stateMachine)
 	if err != nil {
 		log.Panicln(err)
 	}
@@ -101,10 +101,10 @@ func (l *local) delayGenerator(source, target rpccore.NodeID) time.Duration {
 }
 
 func newLocal(n int) (*local, error) {
-	return newLocal_optional(n, defaultSnapshotThreshold, sm.NewEmptyStateMachine())
+	return newLocalOptional(n, defaultSnapshotThreshold, sm.NewEmptyStateMachine())
 }
 
-func newLocal_optional(n int, snapshotThreshold int, stateMachine sm.StateMachine) (*local, error) {
+func newLocalOptional(n int, snapshotThreshold int, stateMachine sm.StateMachine) (*local, error) {
 	if n <= 0 {
 		err := errors.Errorf("The number of peers should be positive, but got %v", n)
 		return nil, err
@@ -290,7 +290,7 @@ func (l *local) getAllNodeInfo() map[rpccore.NodeID]map[string]string {
 func (l *local) getAllNodeLogs() map[rpccore.NodeID][]raft.LogEntry {
 	m := make(map[rpccore.NodeID][]raft.LogEntry)
 	for nodeID, peer := range l.raftPeers {
-		m[nodeID] = peer.GetLog()
+		m[nodeID] = peer.GetRestLog()
 	}
 	return m
 }
@@ -332,11 +332,11 @@ func (l *local) AgreeOnTerm() (int, error) {
 func (l *local) IdenticalLogEntries() error {
 	var peerLogs1 []raft.LogEntry
 	for _, peer := range l.raftPeers {
-		peerLogs1 = peer.GetLog()
+		peerLogs1 = peer.GetRestLog()
 		break
 	}
 	for _, peer := range l.raftPeers {
-		peerLogs2 := peer.GetLog()
+		peerLogs2 := peer.GetRestLog()
 		if len(peerLogs1) != len(peerLogs2) {
 			return errors.Errorf("not identical log entries.\n\n%v\n",
 				l.getAllNodeInfo())

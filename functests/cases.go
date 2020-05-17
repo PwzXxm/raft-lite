@@ -480,7 +480,7 @@ func caseCandidateTimeout() error {
 }
 
 func caseSaveToSnapshot() error {
-	sl := simulation.RunLocally_optional(5, 1, sm.NewTransactionStateMachine())
+	sl := simulation.RunLocallyOptional(5, 5, sm.NewTransactionStateMachine())
 	defer sl.StopAll()
 	actioinBuilder := sm.NewTSMActionBuilder("client")
 	// leader election
@@ -521,7 +521,7 @@ func caseSaveToSnapshot() error {
 	sl.StartPeer(isolater)
 	time.Sleep(4 * time.Second)
 
-	_, _, err = sl.AgreeOnSnapshot()
+	li, lt, err = sl.AgreeOnSnapshot()
 	fmt.Printf("LastIdx: %v LastTerm: %v\n %v", li, lt, err)
 	return err
 }

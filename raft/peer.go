@@ -295,18 +295,18 @@ func (p *Peer) updateCommitIndex(idx int) {
 						"state machine, logIdx: %v, err: %v", i, err)
 				}
 			}
+			if p.toLogIndex(i)+1 >= p.snapshotThreshold {
+				err := p.saveToSnapshot()
+				if err != nil {
+					p.logger.Errorf("Unable to save Snapshot: %+v.", err)
+				}
+			}
 		}
 		p.logger.Infof("CommitIndex is incremented from %v to %v.", p.commitIndex, idx)
 		p.commitIndex = idx
 		err := p.saveToPersistentStorage()
 		if err != nil {
 			p.logger.Errorf("Unable to save state: %+v.", err)
-		}
-		if p.toLogIndex(p.commitIndex)+1 >= p.snapshotThreshold {
-			err = p.saveToSnapshot()
-			if err != nil {
-				p.logger.Errorf("Unable to save Snapshot: %+v.", err)
-			}
 		}
 	}
 }
@@ -323,10 +323,10 @@ func (p *Peer) GetState() PeerState {
 	return p.state
 }
 
-func (p *Peer) GetLog() []LogEntry {
+func (p *Peer) GetRestLog() []LogEntry {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
-	var peerLog = make([]LogEntry, p.logLen())
+	var peerLog = make([]LogEntry, len(p.log))
 	copy(peerLog, p.log)
 	return peerLog
 }
