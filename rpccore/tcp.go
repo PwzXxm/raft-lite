@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/PwzXxm/raft-lite/sm"
 	"github.com/pkg/errors"
 	"github.com/valyala/gorpc"
 )
@@ -16,6 +17,7 @@ import (
 func init() {
 	gob.Register(tcpReqMsg{})
 	gob.Register(tcpResMsg{})
+	gob.Register(sm.TSMAction{})
 }
 
 type TCPNetwork struct {

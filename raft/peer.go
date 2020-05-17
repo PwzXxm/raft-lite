@@ -275,7 +275,7 @@ func (p *Peer) updateCommitIndex(idx int) {
 		for i := p.commitIndex + 1; i <= idx; i++ {
 			action := p.log[i].Cmd
 			if action != nil {
-				err := p.stateMachine.ApplyAction(p.log[i])
+				err := p.stateMachine.ApplyAction(action)
 				if err != nil {
 					p.logger.Errorf("Error happened during applying actions to "+
 						"state machine, logIdx: %v, err: %v", i, err)

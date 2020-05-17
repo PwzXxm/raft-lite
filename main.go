@@ -7,6 +7,7 @@ import (
 	"github.com/PwzXxm/raft-lite/cmdconfig"
 	"github.com/PwzXxm/raft-lite/functests"
 	"github.com/PwzXxm/raft-lite/simulation"
+	"github.com/PwzXxm/raft-lite/client"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 )
@@ -126,6 +127,6 @@ func startPeer(filePath string) error {
 }
 
 func startClient(filePath string) error {
-	err := cmdconfig.StartClientFromFile(filePath)
+	err := client.StartClientFromFile(filePath)
 	return err
 }

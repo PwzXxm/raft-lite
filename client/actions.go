@@ -1,7 +1,10 @@
 package client
 
 import (
+	"fmt"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/PwzXxm/raft-lite/rpccore"
@@ -19,52 +22,126 @@ type Client struct {
 	net      *rpccore.TCPNetwork
 	node     rpccore.Node
 	nl       []rpccore.NodeID
-	peers    map[rpccore.NodeID]*rpccore.TCPNode
 	ab       *sm.TSMActionBuilder
 
-	logger logrus.Logger
+	logger *logrus.Logger
 
 	leaderID *rpccore.NodeID
 }
 
-func NewClientFromConfig(config interface{}) *Client {
+func NewClientFromConfig(config clientConfig) (*Client, error) {
 	c := new(Client)
 
 	// TODO: init
-	// c.n =
-	// c.clientID =
+	c.n = len(config.NodeAddrMap)
+	c.clientID = config.ClientID
 	c.net = rpccore.NewTCPNetwork(tcpTimeout)
 
 	// TODO: change to no server version
-	// c.node = c.net.NewLocalNode()
+	cnode, err := c.net.NewLocalClientOnlyNode(rpccore.NodeID(config.ClientID))
+	if err != nil {
+		return nil, err
+	}
+	c.node = cnode
 
-	// c.nl =
-	// c.peers =
+	c.nl = make([]rpccore.NodeID, c.n)
+	i := 0
+	for nodeID, addr := range config.NodeAddrMap {
+		c.nl[i] = nodeID
+		i++
+		err := c.net.NewRemoteNode(nodeID, addr)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	c.ab = sm.NewTSMActionBuilder(c.clientID)
 
-	// c.looger = logrus.New()
+	c.logger = logrus.New()
 	c.logger.Out = os.Stdout
+	c.logger.SetLevel(logrus.DebugLevel)
 
-	return c
+	return c, nil
 }
 
-func (c *Client) parseAndBuild(cmd interface{}) (interface{}, error) {
-	// parse
+func (c *Client) startReadingCmd() {
+	invalidCommandError := errors.New("Invalid command")
+	var err error
 
-	// c.ab.TSMActionIncrValue()
-	// c.ab.TSMActionMoveValue()
-	// c.ab.TSMActionSetValue()
-	// sm.NewTSMDataQuery(d)
-	return nil, nil
+	fmt.Print(">:")
+	for scanner.Scan() {
+		cmd := strings.Fields(scanner.Text())
+
+		err = nil
+		l := len(cmd)
+
+		if l == 0 {
+			err = errors.New("Command cannot be empty")
+		}
+
+		if err == nil {
+			switch cmd[0] {
+			case cmdQuery:
+				if l != 2 {
+					err = c.combineErrorUsage(invalidCommandError, cmd[0])
+					break
+				}
+				c.executeQueryRequest(sm.NewTSMDataQuery(cmd[1]))
+			case cmdSet, cmdIncre:
+				if l != 3 {
+					err = c.combineErrorUsage(invalidCommandError, cmd[0])
+					break
+				}
+				value, e := strconv.Atoi(cmd[2])
+				if e != nil {
+					err = errors.New("value should be an integer")
+					break
+				}
+				switch cmd[0] {
+				case cmdSet:
+					c.executeActionRequest(c.ab.TSMActionSetValue(cmd[1], value))
+				case cmdIncre:
+					c.executeActionRequest(c.ab.TSMActionIncrValue(cmd[1], value))
+				}
+			case cmdMove:
+				if l != 4 {
+					err = c.combineErrorUsage(invalidCommandError, cmd[0])
+					break
+				}
+				value, e := strconv.Atoi(cmd[3])
+				if e != nil {
+					err = errors.New("value should be an integer")
+					break
+				}
+				c.executeActionRequest(c.ab.TSMActionMoveValue(cmd[1], cmd[2], value))
+			default:
+				err = invalidCommandError
+			}
+		}
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
+		fmt.Print(">:")
+	}
+
+	if err := scanner.Err(); err != nil {
+		fmt.Fprintln(os.Stderr, "Failed reading stdout: ", err)
+	}
+}
+
+func (c *Client) combineErrorUsage(e error, cmd string) error {
+	return errors.New(e.Error() + "\nUsage: " + cmd + " " + usageMp[cmd])
 }
 
 func (c *Client) lookForLeader() rpccore.NodeID {
 	// cached, the cache will be cleaned if there is any issue
 	// blocking, keep trying until find a leader
-	for c.leaderID != nil {
+	for c.leaderID == nil {
 		// select a client by random
-		pl := c.peers[c.nl[utils.Random(0, c.n-1)]].NodeID()
+		pl := c.nl[utils.Random(0, c.n-1)]
+		fmt.Println(pl)
+		fmt.Println(c.nl)
+		fmt.Println(len(c.nl))
 		var leaderRes LeaderRes
 		err := c.callRPC(pl, RPCMethodLeaderRequest, "", &leaderRes)
 		if err == nil {
@@ -116,7 +193,7 @@ func (c *Client) checkActionRequest(queryReq QueryReq, reqID uint32) (bool, erro
 func (c *Client) executeActionRequest(act sm.TSMAction) {
 	actReq := ActionReq{Cmd: act}
 	queryReq := QueryReq{Cmd: sm.NewTSMLatestRequestQuery(c.clientID)}
-	reqID := act.RequestID()
+	reqID := act.GetRequestID()
 	for {
 		err := c.sendActionRequest(actReq)
 		if err != nil {
