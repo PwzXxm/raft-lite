@@ -126,7 +126,7 @@ func complexTest(ctx context.Context, wg *sync.WaitGroup, rst map[string]int) er
 			rst[nodeStatusChange]++
 		case networkBackToNormal:
 			// all nodes are online, network has no latency and packet loss
-			sl.SetNetworkReliability(0, 0, 0)
+			sl.SetNetworkReliability(10*time.Millisecond, 40*time.Millisecond, 0)
 			for _, nodeID := range nodeIDs {
 				sl.SetNodeNetworkStatus(nodeID, true)
 			}

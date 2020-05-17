@@ -278,12 +278,12 @@ func caseHighPacketLossRate() (err error) {
 	fmt.Printf("Initial election finished, leader: %v, term: %v\n", *leader1, term1)
 
 	fmt.Println("High packet loss rate mode...")
-	sl.SetNetworkReliability(0, 0, 0.5)
+	sl.SetNetworkReliability(10*time.Millisecond, 40*time.Millisecond, 0.5)
 
 	time.Sleep(10 * time.Second)
 
 	fmt.Println("Network back to normal...")
-	sl.SetNetworkReliability(0, 0, 0.0)
+	sl.SetNetworkReliability(10*time.Millisecond, 40*time.Millisecond, 0.0)
 
 	time.Sleep(10 * time.Second)
 	leader2, err := sl.AgreeOnLeader()
@@ -424,7 +424,7 @@ func caseRestartPeer() (err error) {
 	sl := simulation.RunLocally(5)
 	defer sl.StopAll()
 
-	sl.SetNetworkReliability(0, 50*time.Millisecond, 0.02)
+	sl.SetNetworkReliability(10*time.Millisecond, 40*time.Millisecond, 0.02)
 	time.Sleep(5 * time.Second)
 
 	fmt.Print("Start sending request.\n")
@@ -467,11 +467,11 @@ func caseRestartPeer() (err error) {
 func caseCandidateTimeout() error {
 	sl := simulation.SetupLocally(5)
 	defer sl.StopAll()
-	sl.SetNetworkReliability(0, 0, 1)
+	sl.SetNetworkReliability(10*time.Millisecond, 40*time.Millisecond, 1)
 	sl.StartAll()
 
 	time.Sleep(4 * time.Second)
-	sl.SetNetworkReliability(0, 0, 0)
+	sl.SetNetworkReliability(10*time.Millisecond, 40*time.Millisecond, 0)
 	time.Sleep(4 * time.Second)
 
 	_, err := sl.AgreeOnLeader()
