@@ -8,20 +8,6 @@ import (
 	"github.com/PwzXxm/raft-lite/rpccore"
 )
 
-const (
-	cmdQuery = "query"
-	cmdSet   = "set"
-	cmdIncre = "increment"
-	cmdMove  = "move"
-)
-
-var usageMp = map[string]string{
-	cmdQuery: "<key>",
-	cmdSet:   "<key> <value>",
-	cmdIncre: "<key> <value>",
-	cmdMove:  "<source> <target> <value>",
-}
-
 type clientConfig struct {
 	NodeAddrMap map[rpccore.NodeID]string
 	ClientID    string

@@ -3,6 +3,7 @@ module github.com/PwzXxm/raft-lite
 go 1.14
 
 require (
+	github.com/fatih/color v1.9.0
 	github.com/natefinch/atomic v0.0.0-20150920032501-a62ce929ffcc
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.5.0

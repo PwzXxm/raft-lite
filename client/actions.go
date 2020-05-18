@@ -11,11 +11,10 @@ import (
 	"github.com/PwzXxm/raft-lite/rpccore"
 	"github.com/PwzXxm/raft-lite/sm"
 	"github.com/PwzXxm/raft-lite/utils"
+	"github.com/fatih/color"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
-
-const tcpTimeout = time.Second
 
 type Client struct {
 	n        int
@@ -28,6 +27,26 @@ type Client struct {
 	logger *logrus.Logger
 
 	leaderID *rpccore.NodeID
+}
+
+const (
+	tcpTimeout        = time.Second
+	cmdQuery          = "query"
+	cmdSet            = "set"
+	cmdIncre          = "increment"
+	cmdMove           = "move"
+	cmdSetLoggerLevel = "loggerLevel"
+	loggerLevelDebug  = "debug"
+	loggerLevelInfo   = "info"
+	loggerLevelWarn   = "warn"
+)
+
+var usageMp = map[string]string{
+	cmdQuery:          "<key>",
+	cmdSet:            "<key> <value>",
+	cmdIncre:          "<key> <value>",
+	cmdMove:           "<source> <target> <value>",
+	cmdSetLoggerLevel: "<level> (error, info, debug)",
 }
 
 func NewClientFromConfig(config clientConfig) (*Client, error) {
@@ -66,7 +85,9 @@ func (c *Client) startReadingCmd() {
 	invalidCommandError := errors.New("Invalid command")
 	var err error
 
-	fmt.Print(">:")
+	green := color.New(color.FgGreen)
+	red := color.New(color.FgRed)
+	green.Print("> ")
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		cmd := strings.Fields(scanner.Text())
@@ -86,6 +107,25 @@ func (c *Client) startReadingCmd() {
 					break
 				}
 				c.executeQueryRequest(sm.NewTSMDataQuery(cmd[1]))
+			case cmdSetLoggerLevel:
+				if l != 2 {
+					err = c.combineErrorUsage(invalidCommandError, cmd[0])
+					break
+				}
+				switch cmd[1] {
+				case loggerLevelDebug:
+					c.logger.SetLevel(logrus.DebugLevel)
+					green.Println("Logger level set to debug")
+				case loggerLevelInfo:
+					c.logger.SetLevel(logrus.InfoLevel)
+					green.Println("Logger level set to info")
+				case loggerLevelWarn:
+					c.logger.SetLevel(logrus.WarnLevel)
+					green.Println("Logger level set to warn")
+				default:
+					err = c.combineErrorUsage(invalidCommandError, cmd[0])
+					break
+				}
 			case cmdSet, cmdIncre:
 				if l != 3 {
 					err = c.combineErrorUsage(invalidCommandError, cmd[0])
@@ -114,13 +154,19 @@ func (c *Client) startReadingCmd() {
 				}
 				c.executeActionRequest(c.ab.TSMActionMoveValue(cmd[1], cmd[2], value))
 			default:
-				err = invalidCommandError
+				red.Fprintln(os.Stderr, invalidCommandError)
+				// err = invalidCommandError
+				red.Println("Command list:")
+				for command, usage := range usageMp {
+					red.Println("    ", command, usage)
+
+				}
 			}
 		}
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
+			red.Fprintln(os.Stderr, err)
 		}
-		fmt.Print(">:")
+		green.Print("> ")
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -138,9 +184,6 @@ func (c *Client) lookForLeader() rpccore.NodeID {
 	for c.leaderID == nil {
 		// select a client by random
 		pl := c.nl[utils.Random(0, c.n-1)]
-		fmt.Println(pl)
-		fmt.Println(c.nl)
-		fmt.Println(len(c.nl))
 		var leaderRes LeaderRes
 		err := c.callRPC(pl, RPCMethodLeaderRequest, "", &leaderRes)
 		if err == nil {
