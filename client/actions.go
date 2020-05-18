@@ -109,7 +109,12 @@ func (c *Client) startReadingCmd() {
 					err = c.combineErrorUsage(invalidCommandError, cmd[0])
 					break
 				}
-				c.executeQueryRequest(sm.NewTSMDataQuery(cmd[1]))
+				res, err := c.executeQueryRequest(sm.NewTSMDataQuery(cmd[1]))
+				if err != nil {
+					red.Println(err)
+				} else {
+					green.Printf("The query result for key %v: %v\n", cmd[1], res)
+				}
 			case cmdSetLoggerLevel:
 				if l != 2 {
 					err = c.combineErrorUsage(invalidCommandError, cmd[0])
