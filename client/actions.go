@@ -11,6 +11,7 @@ import (
 	"github.com/PwzXxm/raft-lite/rpccore"
 	"github.com/PwzXxm/raft-lite/sm"
 	"github.com/PwzXxm/raft-lite/utils"
+	"github.com/common-nighthawk/go-figure"
 	"github.com/fatih/color"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -82,6 +83,8 @@ func NewClientFromConfig(config clientConfig) (*Client, error) {
 }
 
 func (c *Client) startReadingCmd() {
+	printWelcomeMsg()
+
 	invalidCommandError := errors.New("Invalid command")
 	var err error
 
@@ -155,12 +158,7 @@ func (c *Client) startReadingCmd() {
 				c.executeActionRequest(c.ab.TSMActionMoveValue(cmd[1], cmd[2], value))
 			default:
 				red.Fprintln(os.Stderr, invalidCommandError)
-				// err = invalidCommandError
-				red.Println("Command list:")
-				for command, usage := range usageMp {
-					red.Println("    ", command, usage)
-
-				}
+				utils.PrintUsage(usageMp)
 			}
 		}
 		if err != nil {
@@ -284,4 +282,11 @@ func (c *Client) executeQueryRequest(query sm.TSMQuery) (interface{}, error) {
 			continue
 		}
 	}
+}
+
+func printWelcomeMsg() {
+	fmt.Printf("\n=============================================\n")
+	figure.NewFigure("Raft lite", "doom", true).Print()
+	fmt.Printf("\n\n Welcome to Raft Lite Transaction System\n")
+	fmt.Printf("\n=============================================\n")
 }
