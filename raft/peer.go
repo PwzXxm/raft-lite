@@ -245,23 +245,25 @@ func (p *Peer) startElection() {
 	p.updateTerm(p.currentTerm + 1)
 	p.votedFor = &voteID
 
+	term := p.currentTerm
 	req := requestVoteReq{Term: p.currentTerm, CandidateID: p.node.NodeID(), LastLogIndex: len(p.log) - 1, LastLogTerm: p.log[len(p.log)-1].Term}
 	for _, peerID := range p.rpcPeersIds {
-		go func(peerID rpccore.NodeID) {
+		go func(peerID rpccore.NodeID, term int) {
 			for {
-				// not candidate case
-				if p.state != Candidate {
+				// not valid case
+				p.mutex.Lock()
+				if p.state != Candidate || p.currentTerm != term {
+					p.mutex.Unlock()
 					return
 				}
+				p.mutex.Unlock()
+
 				res := p.requestVote(peerID, req)
 				if res != nil {
 					p.handleRequestVoteRespond(*res)
-					return
 				}
-				// no request vote respond case
-				continue
 			}
-		}(peerID)
+		}(peerID, term)
 	}
 }
 
