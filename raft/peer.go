@@ -250,7 +250,9 @@ func (p *Peer) startElection() {
 	for _, peerID := range p.rpcPeersIds {
 		go func(peerID rpccore.NodeID, term int) {
 			for {
-				// not valid case
+				// return if this election is invalid
+				// 1. peer is not candidate anymore
+				// 2. next round of election starts
 				p.mutex.Lock()
 				if p.state != Candidate || p.currentTerm != term {
 					p.mutex.Unlock()
@@ -260,7 +262,9 @@ func (p *Peer) startElection() {
 
 				res := p.requestVote(peerID, req)
 				if res != nil {
+					p.mutex.Lock()
 					p.handleRequestVoteRespond(*res)
+					p.mutex.Unlock()
 				}
 			}
 		}(peerID, term)
