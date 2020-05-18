@@ -22,7 +22,6 @@ type raftConfig struct {
 	TimingFactor     int
 }
 
-//StartPeerFromFile is good
 func StartPeerFromFile(filepath string) error {
 	config, err := readPeerFromJSON(filepath)
 	if err != nil {
