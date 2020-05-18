@@ -33,7 +33,11 @@ func (p *Peer) handleRequestVoteRespond(res requestVoteRes) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
-	if res.VoteGranted && res.Term == p.currentTerm {
+	if res.Term < p.currentTerm {
+		return
+	}
+
+	if res.VoteGranted {
 		p.voteCount += 1
 
 		// Note that p.rpcPeersIds dose not include itself

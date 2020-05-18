@@ -26,7 +26,7 @@ type local struct {
 	network   *rpccore.ChanNetwork
 	rpcPeers  map[rpccore.NodeID]*rpccore.ChanNode
 	raftPeers map[rpccore.NodeID]*raft.Peer
-	loggers   map[rpccore.NodeID]*logrus.Logger
+	logger    *logrus.Logger
 	pstorages map[rpccore.NodeID]pstorage.PersistentStorage
 
 	// network related
@@ -106,7 +106,12 @@ func newLocal(n int) (*local, error) {
 	l.network.SetDelayGenerator(l.delayGenerator)
 	l.rpcPeers = make(map[rpccore.NodeID]*rpccore.ChanNode, n)
 	l.raftPeers = make(map[rpccore.NodeID]*raft.Peer, n)
-	l.loggers = make(map[rpccore.NodeID]*logrus.Logger, n)
+	l.logger = logrus.New()
+	l.logger.Out = os.Stdout
+	l.logger.SetFormatter(&logrus.TextFormatter{
+		FullTimestamp:   true,
+		TimestampFormat: "15:04:05.999999999Z07:00",
+	})
 	l.pstorages = make(map[rpccore.NodeID]pstorage.PersistentStorage, n)
 
 	// create rpc nodes
@@ -117,10 +122,6 @@ func newLocal(n int) (*local, error) {
 			return nil, err
 		}
 		l.rpcPeers[node.NodeID()] = node
-
-		logger := logrus.New()
-		logger.Out = os.Stdout
-		l.loggers[node.NodeID()] = logger
 	}
 
 	// gather nodeIDs and a map (nodeID -> idex in nodeIDs slice)
@@ -143,7 +144,7 @@ func newLocal(n int) (*local, error) {
 		idxMap[id] = j
 
 		var err error
-		l.raftPeers[id], err = raft.NewPeer(node, nodeIDs[:n-1], l.loggers[id].WithFields(logrus.Fields{
+		l.raftPeers[id], err = raft.NewPeer(node, nodeIDs[:n-1], l.logger.WithFields(logrus.Fields{
 			"nodeID": node.NodeID(),
 		}), sm.NewEmptyStateMachine(), l.pstorages[id], testTimingFactor)
 		if err != nil {
@@ -157,9 +158,9 @@ func newLocal(n int) (*local, error) {
 		l.offlineNodes[k] = false
 		l.nodePartition[k] = 0
 	}
-	l.oneWayLatencyMin = 0
-	l.oneWayLatencyMax = 0
-	l.packetLossRate = 0
+	l.oneWayLatencyMin = 10 * time.Millisecond
+	l.oneWayLatencyMax = 40 * time.Millisecond
+	l.packetLossRate = 0.01
 	return l, nil
 }
 
@@ -255,7 +256,7 @@ func (l *local) ResetPeer(nodeID rpccore.NodeID) error {
 	}
 	var err error
 	l.raftPeers[nodeID], err = raft.NewPeer(l.rpcPeers[nodeID], nodeIDs,
-		l.loggers[nodeID].WithFields(logrus.Fields{
+		l.logger.WithFields(logrus.Fields{
 			"nodeID": nodeID,
 		}), sm.NewEmptyStateMachine(), l.pstorages[nodeID], testTimingFactor)
 	return err

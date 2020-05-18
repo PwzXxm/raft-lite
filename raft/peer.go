@@ -140,11 +140,7 @@ func (p *Peer) timeoutLoop() {
 					p.heardFromLeader = false
 				}
 			case Leader:
-				for peerID, appendingEntry := range p.appendingEntries {
-					if !appendingEntry {
-						go p.callAppendEntryRPC(peerID)
-					}
-				}
+				p.triggerLeaderHeartbeat()
 			case Candidate:
 				p.startElection()
 			}
@@ -207,6 +203,7 @@ func (p *Peer) changeState(state PeerState) {
 			// TODO: grind in the furture
 			p.matchIndex[peers] = 0
 		}
+		p.triggerLeaderHeartbeat()
 	}
 	p.resetTimeout()
 }
