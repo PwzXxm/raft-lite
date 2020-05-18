@@ -52,9 +52,11 @@ func StartPeerFromFile(filepath string) error {
 		return err
 	}
 	for nodeID, addr := range config.NodeAddrMap {
-		err = n.NewRemoteNode(nodeID, addr)
-		if err != nil {
-			return err
+		if nodeID != config.NodeID {
+			err = n.NewRemoteNode(nodeID, addr)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	ps := pstorage.NewFileBasedPersistentStorage(config.PstorageFilePath)
