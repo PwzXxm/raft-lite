@@ -46,9 +46,9 @@ func (p *Peer) handleInstallSnapshot(req installSnapshotReq) installSnapshotRes 
 
 	p.commitIndex = req.LastIncludedIndex
 	p.snapshot = req.Snapshot
+	p.heardFromLeader = true
 	p.stateMachine.ResetWithSnapshot(p.snapshot.StateMachineSnapshot)
 	// TODO: write membership config from ss
-	// p.logger.Infof("Success install snapshot: current log %v, current snapshot %v", p.log, p.snapshot)
 	return res
 }
 
