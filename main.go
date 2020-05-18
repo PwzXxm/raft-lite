@@ -4,10 +4,9 @@ import (
 	"log"
 	"os"
 
-	"github.com/PwzXxm/raft-lite/cmdconfig"
+	"github.com/PwzXxm/raft-lite/client"
 	"github.com/PwzXxm/raft-lite/functests"
 	"github.com/PwzXxm/raft-lite/simulation"
-	"github.com/PwzXxm/raft-lite/client"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 )
@@ -73,7 +72,7 @@ func main() {
 			&cli.PathFlag{Name: "c", Usage: "peer config file path", Required: true},
 		},
 		Action: func(c *cli.Context) error {
-			return startPeer(c.Path("c"))
+			return StartPeerFromFile(c.Path("c"))
 		},
 	}
 	cmdIntegrationTest := &cli.Command{
@@ -119,11 +118,6 @@ func localSimulation(n int) error {
 
 	rf.StartReadingCMD()
 	return nil
-}
-
-func startPeer(filePath string) error {
-	err := cmdconfig.StartPeerFromFile(filePath)
-	return err
 }
 
 func startClient(filePath string) error {

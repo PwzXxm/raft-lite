@@ -1,12 +1,12 @@
 package utils
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"sort"
 	"time"
-	"io/ioutil"
-	"encoding/json"
 )
 
 func init() {
@@ -65,14 +65,10 @@ func PrintUsage(m map[string]string) {
 	}
 }
 
-func ReadClientFromJSON(v interface{}, filepath string) (interface{}, error) {
+func ReadClientFromJSON(v interface{}, filepath string) error {
 	data, err := ioutil.ReadFile(filepath)
 	if err != nil {
-		return v, err
+		return err
 	}
-	err = json.Unmarshal(data, &v)
-	if err != nil {
-		return v, err
-	}
-	return v, nil
+	return json.Unmarshal(data, v)
 }

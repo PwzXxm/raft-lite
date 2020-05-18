@@ -1,6 +1,7 @@
-package cmdconfig
+package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -12,11 +13,11 @@ import (
 	"github.com/PwzXxm/raft-lite/rpccore"
 	"github.com/PwzXxm/raft-lite/sm"
 	"github.com/PwzXxm/raft-lite/utils"
-	"github.com/goinggo/mapstructure"
+	"github.com/gofrs/flock"
 	"github.com/sirupsen/logrus"
 )
 
-type raftConfig struct {
+type peerConfig struct {
 	Timeout          time.Duration
 	NodeAddrMap      map[rpccore.NodeID]string
 	NodeID           rpccore.NodeID
@@ -26,15 +27,21 @@ type raftConfig struct {
 }
 
 func StartPeerFromFile(filepath string) error {
-	configMap, err := utils.ReadClientFromJSON(raftConfig{}, filepath)
+	var config peerConfig
+	err := utils.ReadClientFromJSON(&config, filepath)
 	if err != nil {
 		return err
 	}
-	var config raftConfig
-	err = mapstructure.Decode(configMap, &config)
-	if err != nil {
-		return err
+
+	fl := flock.New(filepath)
+	if locked, _ := fl.TryLock(); !locked {
+		return errors.New("Unable to lock the config file," +
+			" make sure there isn't another instance running.")
 	}
+	defer func() {
+		_ = fl.Unlock()
+	}()
+
 	//set logger
 	logger := logrus.New()
 	logger.Out = os.Stdout
@@ -45,7 +52,10 @@ func StartPeerFromFile(filepath string) error {
 		return err
 	}
 	for nodeID, addr := range config.NodeAddrMap {
-		n.NewRemoteNode(nodeID, addr)
+		err = n.NewRemoteNode(nodeID, addr)
+		if err != nil {
+			return err
+		}
 	}
 	ps := pstorage.NewFileBasedPersistentStorage(config.PstorageFilePath)
 	//new peer
@@ -61,21 +71,15 @@ func StartPeerFromFile(filepath string) error {
 		return err
 	}
 	p.Start()
-	setupSignalHandler(p)
-	select {}
-}
 
-func setupSignalHandler(p *raft.Peer) (stopCh <-chan struct{}) {
-	var shutdownSignals = []os.Signal{os.Interrupt, syscall.SIGTERM}
-	stop := make(chan struct{})
-	c := make(chan os.Signal, 2)
-	signal.Notify(c, shutdownSignals...)
-	go func() {
-		<-c
-		p.ShutDown()
-		fmt.Println("Shutting down peer...")
-		os.Exit(1)
-	}()
+	// wait for stop signal
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	<-c
 
-	return stop
+	// start shutdown process
+	fmt.Println("Shutting down peer...")
+	p.ShutDown()
+	time.Sleep(2 * time.Second)
+	return nil
 }
