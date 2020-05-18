@@ -84,8 +84,8 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 			return
 		}
 		nextIndex := p.nextIndex[target]
-		// do install snapshot
 		if p.toLogIndex(nextIndex) < 0 && p.snapshot != nil {
+			// do install snapshot
 			p.mutex.Unlock()
 			req := installSnapshotReq{Term: p.currentTerm, LeaderID: leaderID, LastIncludedIndex: p.snapshot.LastIncludedIndex,
 				LastIncludedTerm: p.snapshot.LastIncludedTerm, Snapshot: p.snapshot}
@@ -98,8 +98,8 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 				p.nextIndex[target] = p.snapshot.LastIncludedIndex + 1
 				p.mutex.Unlock()
 			}
-			// do append entries
 		} else {
+			// do append entries
 			currentTerm := p.currentTerm
 			if nextIndex <= 0 {
 				p.logger.Warn("nextIndex out of range")
