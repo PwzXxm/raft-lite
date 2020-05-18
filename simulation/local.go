@@ -259,10 +259,10 @@ func (l *local) PrintAllNodeInfo() {
 }
 
 func (l *local) ResetPeer(nodeID rpccore.NodeID) error {
-	return l.ResetPeer_optional(nodeID, defaultSnapshotThreshold)
+	return l.ResetPeerOptional(nodeID, defaultSnapshotThreshold)
 }
 
-func (l *local) ResetPeer_optional(nodeID rpccore.NodeID, snapshotThreshold int) error {
+func (l *local) ResetPeerOptional(nodeID rpccore.NodeID, snapshotThreshold int) error {
 	peer := l.raftPeers[nodeID]
 	peer.ShutDown()
 	nodeIDs := make([]rpccore.NodeID, 0, len(l.raftPeers)-1)

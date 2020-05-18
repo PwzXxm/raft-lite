@@ -20,12 +20,12 @@ func (p *Peer) makeSnapshot(lastIncludedIndex int) (*Snapshot, error) {
 }
 
 func (p *Peer) saveToSnapshot() error {
-	new_snapshot, err := p.makeSnapshot(p.commitIndex)
+	newSnapshot, err := p.makeSnapshot(p.commitIndex)
 	if err != nil {
 		return err
 	}
 	p.log = p.log[p.toLogIndex(p.commitIndex+1):]
-	p.snapshot = new_snapshot
+	p.snapshot = newSnapshot
 	// p.logger.Infof("Success save to snapshot: current log %v, current snapshot %v", p.log, p.snapshot)
 	return nil
 }
