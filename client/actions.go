@@ -47,7 +47,7 @@ var usageMp = map[string]string{
 	cmdSet:            "<key> <value>",
 	cmdIncre:          "<key> <value>",
 	cmdMove:           "<source> <target> <value>",
-	cmdSetLoggerLevel: "<level> (error, info, debug)",
+	cmdSetLoggerLevel: "<level> (warn, info, debug)",
 }
 
 func NewClientFromConfig(config clientConfig) (*Client, error) {

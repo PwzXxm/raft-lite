@@ -1,11 +1,9 @@
 package client
 
 import (
-	"encoding/json"
-	"fmt"
-	"io/ioutil"
-
 	"github.com/PwzXxm/raft-lite/rpccore"
+	"github.com/PwzXxm/raft-lite/utils"
+	"github.com/goinggo/mapstructure"
 )
 
 type clientConfig struct {
@@ -13,29 +11,20 @@ type clientConfig struct {
 	ClientID    string
 }
 
-func StartClientFromFile(filePath string) error {
-	config, err := readClientFromJSON(filePath)
+func StartClientFromFile(filepath string) error {
+	config, err := utils.ReadClientFromJSON(clientConfig{}, filepath)
 	if err != nil {
 		return err
 	}
-	fmt.Println(config)
-	c, err := NewClientFromConfig(config)
+	var cconfig clientConfig
+	err = mapstructure.Decode(config, &cconfig)
+	if err != nil {
+		return err
+	}
+	c, err := NewClientFromConfig(cconfig)
 	if err != nil {
 		return err
 	}
 	c.startReadingCmd()
 	return nil
-}
-
-func readClientFromJSON(filepath string) (clientConfig, error) {
-	v := clientConfig{}
-	data, err := ioutil.ReadFile(filepath)
-	if err != nil {
-		return v, err
-	}
-	err = json.Unmarshal(data, &v)
-	if err != nil {
-		return v, err
-	}
-	return v, nil
 }

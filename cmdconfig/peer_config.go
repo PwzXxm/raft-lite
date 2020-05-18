@@ -1,15 +1,18 @@
 package cmdconfig
 
 import (
-	"encoding/json"
-	"io/ioutil"
+	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/PwzXxm/raft-lite/pstorage"
 	"github.com/PwzXxm/raft-lite/raft"
 	"github.com/PwzXxm/raft-lite/rpccore"
 	"github.com/PwzXxm/raft-lite/sm"
+	"github.com/PwzXxm/raft-lite/utils"
+	"github.com/goinggo/mapstructure"
 	"github.com/sirupsen/logrus"
 )
 
@@ -23,7 +26,12 @@ type raftConfig struct {
 }
 
 func StartPeerFromFile(filepath string) error {
-	config, err := readPeerFromJSON(filepath)
+	configMap, err := utils.ReadClientFromJSON(raftConfig{}, filepath)
+	if err != nil {
+		return err
+	}
+	var config raftConfig
+	err = mapstructure.Decode(configMap, &config)
 	if err != nil {
 		return err
 	}
@@ -53,20 +61,21 @@ func StartPeerFromFile(filepath string) error {
 		return err
 	}
 	p.Start()
-	for {
-	}
-	return nil
+	setupSignalHandler(p)
+	select {}
 }
 
-func readPeerFromJSON(filepath string) (raftConfig, error) {
-	v := raftConfig{}
-	data, err := ioutil.ReadFile(filepath)
-	if err != nil {
-		return v, err
-	}
-	err = json.Unmarshal(data, &v)
-	if err != nil {
-		return v, err
-	}
-	return v, nil
+func setupSignalHandler(p *raft.Peer) (stopCh <-chan struct{}) {
+	var shutdownSignals = []os.Signal{os.Interrupt, syscall.SIGTERM}
+	stop := make(chan struct{})
+	c := make(chan os.Signal, 2)
+	signal.Notify(c, shutdownSignals...)
+	go func() {
+		<-c
+		p.ShutDown()
+		fmt.Println("Shutting down peer...")
+		os.Exit(1)
+	}()
+
+	return stop
 }

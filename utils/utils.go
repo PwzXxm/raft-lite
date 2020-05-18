@@ -5,6 +5,8 @@ import (
 	"math/rand"
 	"sort"
 	"time"
+	"io/ioutil"
+	"encoding/json"
 )
 
 func init() {
@@ -61,4 +63,16 @@ func PrintUsage(m map[string]string) {
 	for _, cmd := range rst {
 		fmt.Printf("\t%-*v %v\n", longest, cmd, m[cmd])
 	}
+}
+
+func ReadClientFromJSON(v interface{}, filepath string) (interface{}, error) {
+	data, err := ioutil.ReadFile(filepath)
+	if err != nil {
+		return v, err
+	}
+	err = json.Unmarshal(data, &v)
+	if err != nil {
+		return v, err
+	}
+	return v, nil
 }
