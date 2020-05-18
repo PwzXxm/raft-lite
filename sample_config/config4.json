@@ -9,6 +9,6 @@
     },
     "NodeID": "delta",
     "ListenAddr": "127.0.0.1:8004",
-    "PstorageFilePath": "./pstorage.dat",
+    "PstorageFilePath": "./pstorage_file/pstorage4.dat",
     "TimingFactor": 1
 }

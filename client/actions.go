@@ -1,6 +1,7 @@
 package client
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"strconv"
@@ -32,12 +33,9 @@ type Client struct {
 func NewClientFromConfig(config clientConfig) (*Client, error) {
 	c := new(Client)
 
-	// TODO: init
 	c.n = len(config.NodeAddrMap)
 	c.clientID = config.ClientID
 	c.net = rpccore.NewTCPNetwork(tcpTimeout)
-
-	// TODO: change to no server version
 	cnode, err := c.net.NewLocalClientOnlyNode(rpccore.NodeID(config.ClientID))
 	if err != nil {
 		return nil, err
@@ -69,6 +67,7 @@ func (c *Client) startReadingCmd() {
 	var err error
 
 	fmt.Print(">:")
+	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		cmd := strings.Fields(scanner.Text())
 
@@ -242,25 +241,4 @@ func (c *Client) executeQueryRequest(query sm.TSMQuery) (interface{}, error) {
 			continue
 		}
 	}
-}
-
-func (c *Client) Request(cmd interface{}) error {
-	// tsmAction, err := parseAndBuild(cmd)
-
-	// if err != nil {
-	// 	return err
-	// }
-
-	// for {
-
-	// 	if leaderRes.HasLeader {
-	// 		l := leaderRes.LeaderID
-
-	// 		c.callRPC(l)
-
-	// 		sm.NewTSMLatestRequestQuery()
-	// 	}
-	// }
-	// return nil
-	return nil
 }

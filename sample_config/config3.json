@@ -3,10 +3,12 @@
     "NodeAddrMap": {
         "alpha": "127.0.0.1:8001",
         "bravo": "127.0.0.1:8002",
-        "charlie": "127.0.0.1:8003"
+        "charlie": "127.0.0.1:8003",
+        "delta": "127.0.0.1:8004",
+        "echo": "127.0.0.1:8005"
     },
     "NodeID": "charlie",
     "ListenAddr": "127.0.0.1:8003",
-    "PstorageFilePath": "./pstorage.dat",
+    "PstorageFilePath": "./pstorage_file/pstorage3.dat",
     "TimingFactor": 5
 }

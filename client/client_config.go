@@ -1,11 +1,9 @@
 package client
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"os"
 
 	"github.com/PwzXxm/raft-lite/rpccore"
 )
@@ -24,18 +22,11 @@ var usageMp = map[string]string{
 	cmdMove:  "<source> <target> <value>",
 }
 
-var scanner *bufio.Scanner
-
-func init() {
-	scanner = bufio.NewScanner(os.Stdin)
-}
-
 type clientConfig struct {
 	NodeAddrMap map[rpccore.NodeID]string
 	ClientID    string
 }
 
-//StartClientFromFile is good
 func StartClientFromFile(filePath string) error {
 	config, err := readClientFromJSON(filePath)
 	if err != nil {
