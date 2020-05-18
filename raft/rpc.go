@@ -11,8 +11,9 @@ import (
 )
 
 const (
-	rpcMethodRequestVote   = "rv"
-	rpcMethodAppendEntries = "ae"
+	rpcMethodRequestVote     = "rv"
+	rpcMethodAppendEntries   = "ae"
+	rpcMethodInstallSnapshot = "is"
 )
 
 type appendEntriesReq struct {
@@ -39,6 +40,27 @@ type requestVoteReq struct {
 type requestVoteRes struct {
 	Term        int
 	VoteGranted bool
+}
+
+type installSnapshotReq struct {
+	Term              int
+	LeaderID          rpccore.NodeID
+	LastIncludedIndex int
+	LastIncludedTerm  int
+	Snapshot          *Snapshot
+}
+
+type installSnapshotRes struct {
+	Term int
+}
+
+func (p *Peer) installSnapshot(target rpccore.NodeID, arg installSnapshotReq) *installSnapshotRes {
+	var res installSnapshotRes
+	if p.callRPCAndLogError(target, rpcMethodInstallSnapshot, arg, &res) == nil {
+		return &res
+	} else {
+		return nil
+	}
 }
 
 func (p *Peer) requestVote(target rpccore.NodeID, arg requestVoteReq) *requestVoteRes {
@@ -128,6 +150,18 @@ func (p *Peer) handleRPCCall(source rpccore.NodeID, method string, data []byte) 
 		}
 		p.mutex.Lock()
 		res := p.handleAppendEntries(req)
+		p.mutex.Unlock()
+		var buf bytes.Buffer
+		err = gob.NewEncoder(&buf).Encode(res)
+		return buf.Bytes(), errors.WithStack(err)
+	case rpcMethodInstallSnapshot:
+		var req installSnapshotReq
+		err := gob.NewDecoder(bytes.NewReader(data)).Decode(&req)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+		p.mutex.Lock()
+		res := p.handleInstallSnapshot(req)
 		p.mutex.Unlock()
 		var buf bytes.Buffer
 		err = gob.NewEncoder(&buf).Encode(res)

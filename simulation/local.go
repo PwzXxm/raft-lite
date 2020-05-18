@@ -1,6 +1,7 @@
 package simulation
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 	"sync"
@@ -16,9 +17,10 @@ import (
 )
 
 const (
-	testTimingFactor     = 1
-	clientRequestTimeout = 1 * time.Second
-	rpcTimeout           = 80 * testTimingFactor * time.Millisecond
+	testTimingFactor         = 1
+	clientRequestTimeout     = 1 * time.Second
+	rpcTimeout               = 80 * testTimingFactor * time.Millisecond
+	defaultSnapshotThreshold = 10000
 )
 
 type local struct {
@@ -46,9 +48,13 @@ func init() {
 }
 
 func RunLocally(n int) *local {
+	return RunLocallyOptional(n, defaultSnapshotThreshold, sm.NewEmptyStateMachine())
+}
+
+func RunLocallyOptional(n int, snapshotThreshold int, stateMachine sm.StateMachine) *local {
 	log.Info("Starting simulation locally ...")
 
-	l, err := newLocal(n)
+	l, err := newLocalOptional(n, snapshotThreshold, stateMachine)
 	if err != nil {
 		log.Panicln(err)
 	}
@@ -95,6 +101,10 @@ func (l *local) delayGenerator(source, target rpccore.NodeID) time.Duration {
 }
 
 func newLocal(n int) (*local, error) {
+	return newLocalOptional(n, defaultSnapshotThreshold, sm.NewEmptyStateMachine())
+}
+
+func newLocalOptional(n int, snapshotThreshold int, stateMachine sm.StateMachine) (*local, error) {
 	if n <= 0 {
 		err := errors.Errorf("The number of peers should be positive, but got %v", n)
 		return nil, err
@@ -146,7 +156,7 @@ func newLocal(n int) (*local, error) {
 		var err error
 		l.raftPeers[id], err = raft.NewPeer(node, nodeIDs[:n-1], l.logger.WithFields(logrus.Fields{
 			"nodeID": node.NodeID(),
-		}), sm.NewEmptyStateMachine(), l.pstorages[id], testTimingFactor)
+		}), stateMachine, l.pstorages[id], testTimingFactor, snapshotThreshold)
 		if err != nil {
 			return nil, err
 		}
@@ -238,6 +248,10 @@ func (l *local) getAllNodeIDs() []rpccore.NodeID {
 	return rst
 }
 
+func (l *local) GetAllNodeIDs() []rpccore.NodeID {
+	return l.getAllNodeIDs()
+}
+
 func (l *local) PrintAllNodeInfo() {
 	m := l.getAllNodeInfo()
 	for k, v := range m {
@@ -246,6 +260,10 @@ func (l *local) PrintAllNodeInfo() {
 }
 
 func (l *local) ResetPeer(nodeID rpccore.NodeID) error {
+	return l.ResetPeerOptional(nodeID, defaultSnapshotThreshold)
+}
+
+func (l *local) ResetPeerOptional(nodeID rpccore.NodeID, snapshotThreshold int) error {
 	peer := l.raftPeers[nodeID]
 	peer.ShutDown()
 	nodeIDs := make([]rpccore.NodeID, 0, len(l.raftPeers)-1)
@@ -258,7 +276,7 @@ func (l *local) ResetPeer(nodeID rpccore.NodeID) error {
 	l.raftPeers[nodeID], err = raft.NewPeer(l.rpcPeers[nodeID], nodeIDs,
 		l.logger.WithFields(logrus.Fields{
 			"nodeID": nodeID,
-		}), sm.NewEmptyStateMachine(), l.pstorages[nodeID], testTimingFactor)
+		}), sm.NewEmptyStateMachine(), l.pstorages[nodeID], testTimingFactor, snapshotThreshold)
 	return err
 }
 
@@ -273,7 +291,7 @@ func (l *local) getAllNodeInfo() map[rpccore.NodeID]map[string]string {
 func (l *local) getAllNodeLogs() map[rpccore.NodeID][]raft.LogEntry {
 	m := make(map[rpccore.NodeID][]raft.LogEntry)
 	for nodeID, peer := range l.raftPeers {
-		m[nodeID] = peer.GetLog()
+		m[nodeID] = peer.GetRestLog()
 	}
 	return m
 }
@@ -315,11 +333,11 @@ func (l *local) AgreeOnTerm() (int, error) {
 func (l *local) IdenticalLogEntries() error {
 	var peerLogs1 []raft.LogEntry
 	for _, peer := range l.raftPeers {
-		peerLogs1 = peer.GetLog()
+		peerLogs1 = peer.GetRestLog()
 		break
 	}
 	for _, peer := range l.raftPeers {
-		peerLogs2 := peer.GetLog()
+		peerLogs2 := peer.GetRestLog()
 		if len(peerLogs1) != len(peerLogs2) {
 			return errors.Errorf("not identical log entries.\n\n%v\n",
 				l.getAllNodeInfo())
@@ -363,6 +381,36 @@ func (l *local) AgreeOnLogEntries() error {
 		}
 	}
 	return nil
+}
+
+func (l *local) AgreeOnSnapshot() (int, int, error) {
+	var ss *raft.Snapshot
+	for _, peer := range l.raftPeers {
+		if peer.GetRecentSnapshot() == nil {
+			return -1, -1, errors.Errorf("Node %v does not have snapshot. \n", peer.GetNodeID())
+		}
+		if ss == nil {
+			ss = peer.GetRecentSnapshot()
+		} else {
+			ss2 := peer.GetRecentSnapshot()
+			isEqual, err := raft.SnapshotEqual(ss, ss2)
+			if err != nil {
+				fmt.Printf("fail to compare snapshots, %v\n", err)
+				return -1, -1, err
+			}
+			if !isEqual {
+				return -1, -1, errors.Errorf("Node %v has different snapshot\n s1:\n%v\nlast term:%v\nlast index:%v, \n s2:\n%v\nlast term:%v\nlast index:%v",
+					peer.GetNodeID(),
+					sm.TSMToStringHuman(ss.StateMachineSnapshot),
+					ss.LastIncludedTerm,
+					ss.LastIncludedIndex,
+					sm.TSMToStringHuman(ss2.StateMachineSnapshot),
+					ss2.LastIncludedTerm,
+					ss2.LastIncludedIndex)
+			}
+		}
+	}
+	return ss.LastIncludedIndex, ss.LastIncludedTerm, nil
 }
 
 func (l *local) SetNetworkReliability(oneWayLatencyMin, oneWayLatencyMax time.Duration, packetLossRate float64) {
