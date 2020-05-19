@@ -7,8 +7,15 @@ import (
 
 type persistentData struct {
 	// TODO: check this
+	CurrentTerm int
+	VotedFor    *rpccore.NodeID
+	VoteCount   int
 	Log         []LogEntry
+
 	CommitIndex int
+
+	Snapshot          *Snapshot
+	SnapshotThreshold int
 
 	// for validation
 	NodeID    rpccore.NodeID
@@ -27,8 +34,13 @@ func (p *Peer) loadFromPersistentStorage() error {
 		if data.NumOfNode != len(p.rpcPeersIds) || data.NodeID != p.node.NodeID() {
 			return errors.Errorf("Invalid data: %v", data)
 		}
+		p.currentTerm = data.CurrentTerm
+		p.votedFor = data.VotedFor
+		p.voteCount = data.VoteCount
 		p.log = data.Log
 		p.commitIndex = data.CommitIndex
+		p.snapshot = data.Snapshot
+		p.snapshotThreshold = data.SnapshotThreshold
 		// update state machine
 		for i := 0; i <= p.commitIndex; i++ {
 			err := p.stateMachine.ApplyAction(p.log[p.toLogIndex(i)])
@@ -42,8 +54,13 @@ func (p *Peer) loadFromPersistentStorage() error {
 
 func (p *Peer) saveToPersistentStorage() error {
 	var data persistentData
+	data.CurrentTerm = p.currentTerm
+	data.VotedFor = p.votedFor
+	data.VoteCount = p.voteCount
 	data.Log = p.log
 	data.CommitIndex = p.commitIndex
+	data.Snapshot = p.snapshot
+	data.SnapshotThreshold = p.snapshotThreshold
 	data.NodeID = p.node.NodeID()
 	data.NumOfNode = len(p.rpcPeersIds)
 	return p.persistentStorage.Save(data)

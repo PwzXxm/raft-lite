@@ -522,3 +522,59 @@ func caseSaveToSnapshot() error {
 	fmt.Printf("LastIdx: %v LastTerm: %v\n %v", li, lt, err)
 	return err
 }
+
+func caseSaveToPersistentStorage() (err error) {
+	sl := simulation.RunLocally(5)
+	defer sl.StopAll()
+
+	// leader election
+	time.Sleep(5 * time.Second)
+	leader, err := sl.AgreeOnLeader()
+	if err != nil {
+		return
+	}
+
+	fmt.Print("Start sending request.\n")
+
+	for i := 0; i < 5; i++ {
+		sl.RequestRaw(i)
+		time.Sleep(150 * time.Millisecond)
+	}
+	time.Sleep(2 * time.Second)
+
+	// save data here
+
+	// isolate node i who is not leader
+	var isolater rpccore.NodeID
+	for _, p := range sl.GetAllNodeIDs() {
+		if p != *leader {
+			isolater = p
+		}
+	}
+	// shut down particular peer
+	sl.ShutDownPeer(isolater)
+	fmt.Printf("ShutDown Peer %v\n", isolater)
+
+	for i := 5; i < 10; i++ {
+		sl.RequestRaw(i)
+		time.Sleep(150 * time.Millisecond)
+	}
+	time.Sleep(5 * time.Second)
+
+	err = sl.AgreeOnLogEntries()
+	if err != nil {
+		return
+	}
+	err = sl.ResetPeer(isolater)
+	if err != nil {
+		return
+	}
+
+	// recover particular peer
+	sl.StartPeer(isolater)
+	fmt.Printf("Restart Peer %v\n", isolater)
+
+	// check persistent storage here
+
+	return
+}

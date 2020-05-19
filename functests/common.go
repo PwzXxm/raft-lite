@@ -61,6 +61,10 @@ var testCases = []testCase{
 		name:   "save to snapshots",
 		action: caseSaveToSnapshot,
 	},
+	{
+		name:   "save to persistent storage",
+		action: caseSaveToPersistentStorage,
+	},
 }
 
 func List() {
