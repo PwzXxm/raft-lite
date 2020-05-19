@@ -67,7 +67,6 @@ func (t *TSM) ApplyAction(action interface{}) error {
 
 // return the value of the given key.
 // key is string and return value is int
-// TODO: Temp fakes func
 func (t *TSM) Query(req interface{}) (interface{}, error) {
 	query := req.(TSMQuery)
 	switch query.Query {
@@ -75,18 +74,18 @@ func (t *TSM) Query(req interface{}) (interface{}, error) {
 		key := query.Key
 		v, ok := t.Data[key]
 		if !ok {
-			return nil, nil
+			return nil, errors.New("key does not exist")
 		}
 		return v, nil
 	case tsmQueryLatestRequest:
 		client := query.Key
 		v, ok := t.LatestRequestID[client]
 		if !ok {
-			return nil, nil
+			return nil, errors.New("key does not exist")
 		}
 		return v, nil
 	}
-	return nil, nil
+	return nil, errors.New("invalid query")
 }
 
 func (t *TSM) TakeSnapshot() ([]byte, error) {
@@ -142,6 +141,10 @@ const (
 	tsmActionIncr
 	tsmActionMove
 )
+
+func (a TSMAction) GetRequestID() uint32 {
+	return a.RequestID
+}
 
 type TSMActionBuilder struct {
 	clientID      string

@@ -4,11 +4,11 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/PwzXxm/raft-lite/rpccore"
+	"github.com/PwzXxm/raft-lite/utils"
 	"github.com/pkg/errors"
 )
 
@@ -67,7 +67,7 @@ func (rf *local) StartReadingCMD() {
 				case cmdStopAll:
 					rf.StopAll()
 				case cmdHelp:
-					printUsage()
+					utils.PrintUsage(usageMp)
 				}
 			case cmdNodeInfo, cmdShutdown:
 				if l < 2 {
@@ -146,26 +146,6 @@ func (rf *local) getSeconds(sec string) (int, error) {
 		return 0, err
 	}
 	return x, nil
-}
-
-func printUsage() {
-	fmt.Println("Usage: <cmd> <args> ...")
-	var longest int = -1
-
-	rst := make([]string, 0, len(usageMp))
-	for cmd := range usageMp {
-		l := len(cmd)
-		if longest < l {
-			longest = l
-		}
-		rst = append(rst, cmd)
-	}
-
-	sort.Strings(rst)
-
-	for _, cmd := range rst {
-		fmt.Printf("%-*v %v\n", longest, cmd, usageMp[cmd])
-	}
 }
 
 func (rf *local) printIDs() {

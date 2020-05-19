@@ -71,6 +71,8 @@ type Peer struct {
 
 	// follower only
 	heardFromLeader bool
+
+	leaderID *rpccore.NodeID
 }
 
 func NewPeer(node rpccore.Node, peers []rpccore.NodeID, logger *logrus.Entry,
@@ -115,7 +117,6 @@ func NewPeer(node rpccore.Node, peers []rpccore.NodeID, logger *logrus.Entry,
 	}
 
 	p.changeState(Follower)
-
 	return p, nil
 }
 
@@ -204,6 +205,7 @@ func (p *Peer) changeState(state PeerState) {
 	case Follower:
 		p.heardFromLeader = false
 	case Candidate:
+		p.leaderID = nil
 		p.startElection()
 	case Leader:
 		p.nextIndex = make(map[rpccore.NodeID]int)
