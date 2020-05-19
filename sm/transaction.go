@@ -29,7 +29,6 @@ func (t *TSM) Reset() {
 }
 
 func (t *TSM) ApplyAction(action interface{}) error {
-	fmt.Printf("Apply actions\n")
 	tsmAction := action.(TSMAction)
 	// check duplicate
 	lastID, ok := t.LatestRequestID[tsmAction.ClientID]
@@ -44,17 +43,14 @@ func (t *TSM) ApplyAction(action interface{}) error {
 	// execute action
 	switch tsmAction.Action {
 	case tsmActionSet:
-		fmt.Printf("Action1\n")
 		t.Data[tsmAction.Target] = tsmAction.Value
 	case tsmActionIncr:
-		fmt.Printf("Action2\n")
 		v, ok := t.Data[tsmAction.Target]
 		if !ok {
 			return errors.Errorf("invalid key: %v", tsmAction.Target)
 		}
 		t.Data[tsmAction.Target] = v + tsmAction.Value
 	case tsmActionMove:
-		fmt.Printf("Action3\n")
 		sv, ok := t.Data[tsmAction.Source]
 		if !ok {
 			return errors.Errorf("invalid key for source: %v", tsmAction.Source)

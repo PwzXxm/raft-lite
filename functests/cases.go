@@ -476,7 +476,7 @@ func caseCandidateTimeout() error {
 }
 
 func caseSaveToSnapshot() error {
-	sl := simulation.RunLocallyOptional(5, 5, sm.NewTransactionStateMachine())
+	sl := simulation.RunLocallyOptional(5, 5, func() sm.StateMachine { return sm.NewTransactionStateMachine() })
 	defer sl.StopAll()
 	actioinBuilder := sm.NewTSMActionBuilder("client")
 	// leader election
@@ -493,6 +493,7 @@ func caseSaveToSnapshot() error {
 		sl.RequestSync(actioinBuilder.TSMActionIncrValue("key_a", 10))
 		time.Sleep(150 * time.Millisecond)
 	}
+	time.Sleep(2 * time.Second)
 	li, lt, err := sl.AgreeOnSnapshot()
 	fmt.Printf("LastIdx: %v LastTerm: %v\n", li, lt)
 	if err != nil {
