@@ -24,12 +24,14 @@ const (
 )
 
 type local struct {
-	n         int
-	network   *rpccore.ChanNetwork
-	rpcPeers  map[rpccore.NodeID]*rpccore.ChanNode
-	raftPeers map[rpccore.NodeID]*raft.Peer
-	logger    *logrus.Logger
-	pstorages map[rpccore.NodeID]pstorage.PersistentStorage
+	n                 int
+	network           *rpccore.ChanNetwork
+	rpcPeers          map[rpccore.NodeID]*rpccore.ChanNode
+	raftPeers         map[rpccore.NodeID]*raft.Peer
+	logger            *logrus.Logger
+	pstorages         map[rpccore.NodeID]pstorage.PersistentStorage
+	smMaker           stateMachineMaker
+	snapshotThreshold int
 
 	// network related
 	netLock          sync.RWMutex
@@ -125,6 +127,8 @@ func newLocalOptional(n int, snapshotThreshold int, smMaker stateMachineMaker) (
 		TimestampFormat: "15:04:05.999999999Z07:00",
 	})
 	l.pstorages = make(map[rpccore.NodeID]pstorage.PersistentStorage, n)
+	l.smMaker = smMaker
+	l.snapshotThreshold = snapshotThreshold
 
 	// create rpc nodes
 	for i := 0; i < n; i++ {
@@ -262,10 +266,6 @@ func (l *local) PrintAllNodeInfo() {
 }
 
 func (l *local) ResetPeer(nodeID rpccore.NodeID) error {
-	return l.ResetPeerOptional(nodeID, defaultSnapshotThreshold)
-}
-
-func (l *local) ResetPeerOptional(nodeID rpccore.NodeID, snapshotThreshold int) error {
 	peer := l.raftPeers[nodeID]
 	peer.ShutDown()
 	nodeIDs := make([]rpccore.NodeID, 0, len(l.raftPeers)-1)
@@ -278,7 +278,7 @@ func (l *local) ResetPeerOptional(nodeID rpccore.NodeID, snapshotThreshold int) 
 	l.raftPeers[nodeID], err = raft.NewPeer(l.rpcPeers[nodeID], nodeIDs,
 		l.logger.WithFields(logrus.Fields{
 			"nodeID": nodeID,
-		}), sm.NewEmptyStateMachine(), l.pstorages[nodeID], testTimingFactor, snapshotThreshold)
+		}), l.smMaker(), l.pstorages[nodeID], testTimingFactor, l.snapshotThreshold)
 	return err
 }
 
