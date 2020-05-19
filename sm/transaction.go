@@ -3,62 +3,64 @@ package sm
 import (
 	"bytes"
 	"encoding/gob"
+	"fmt"
 	"math/rand"
+	"reflect"
 
 	"github.com/pkg/errors"
 )
 
 // This state machine is not thread-safe
 type TSM struct {
-	data            map[string]int
-	latestRequestID map[string]uint32
+	Data            map[string]int
+	LatestRequestID map[string]uint32
 }
 
 func NewTransactionStateMachine() *TSM {
 	t := new(TSM)
-	t.data = make(map[string]int)
-	t.latestRequestID = make(map[string]uint32)
+	t.Data = make(map[string]int)
+	t.LatestRequestID = make(map[string]uint32)
 	return t
 }
 
 func (t *TSM) Reset() {
-	t.data = make(map[string]int)
-	t.latestRequestID = make(map[string]uint32)
+	t.Data = make(map[string]int)
+	t.LatestRequestID = make(map[string]uint32)
 }
 
 func (t *TSM) ApplyAction(action interface{}) error {
 	tsmAction := action.(TSMAction)
 	// check duplicate
-	lastID, ok := t.latestRequestID[tsmAction.ClientID]
+	lastID, ok := t.LatestRequestID[tsmAction.ClientID]
 	if ok {
 		if lastID == tsmAction.RequestID {
 			// duplicate request, ignore it
 			return nil
 		}
 	}
-	t.latestRequestID[tsmAction.ClientID] = tsmAction.RequestID
+	t.LatestRequestID[tsmAction.ClientID] = tsmAction.RequestID
 
 	// execute action
 	switch tsmAction.Action {
 	case tsmActionSet:
-		t.data[tsmAction.Target] = tsmAction.Value
+		t.Data[tsmAction.Target] = tsmAction.Value
 	case tsmActionIncr:
-		v, ok := t.data[tsmAction.Target]
+		v, ok := t.Data[tsmAction.Target]
 		if !ok {
 			return errors.Errorf("invalid key: %v", tsmAction.Target)
 		}
-		t.data[tsmAction.Target] = v + tsmAction.Value
+		t.Data[tsmAction.Target] = v + tsmAction.Value
 	case tsmActionMove:
-		sv, ok := t.data[tsmAction.Source]
+		sv, ok := t.Data[tsmAction.Source]
 		if !ok {
 			return errors.Errorf("invalid key for source: %v", tsmAction.Source)
 		}
-		tv, ok := t.data[tsmAction.Target]
+		tv, ok := t.Data[tsmAction.Target]
 		if !ok {
 			return errors.Errorf("invalid key for target: %v", tsmAction.Target)
 		}
-		t.data[tsmAction.Source] = sv - tsmAction.Value
-		t.data[tsmAction.Target] = tv + tsmAction.Value
+		t.Data[tsmAction.Source] = sv - tsmAction.Value
+		t.Data[tsmAction.Target] = tv + tsmAction.Value
 	}
 	return nil
 }
@@ -70,14 +72,14 @@ func (t *TSM) Query(req interface{}) (interface{}, error) {
 	switch query.Query {
 	case tsmQueryData:
 		key := query.Key
-		v, ok := t.data[key]
+		v, ok := t.Data[key]
 		if !ok {
 			return nil, errors.New("key does not exist")
 		}
 		return v, nil
 	case tsmQueryLatestRequest:
 		client := query.Key
-		v, ok := t.latestRequestID[client]
+		v, ok := t.LatestRequestID[client]
 		if !ok {
 			return nil, errors.New("key does not exist")
 		}
@@ -98,20 +100,29 @@ func (t *TSM) TakeSnapshot() ([]byte, error) {
 }
 
 func (t *TSM) ResetWithSnapshot(b []byte) error {
+	newTSM, err := decodeTSMFromBytes(b)
+	if err == nil {
+		t.Data = newTSM.Data
+		t.LatestRequestID = newTSM.LatestRequestID
+	}
+	return err
+}
+
+func decodeTSMFromBytes(b []byte) (TSM, error) {
 	buf := bytes.NewBuffer(b)
 	dec := gob.NewDecoder(buf)
 	var newTSM TSM
 	err := dec.Decode(&newTSM)
-	if err == nil {
-		t.data = newTSM.data
-		t.latestRequestID = newTSM.latestRequestID
-	}
-	return err
+	return newTSM, err
 }
 
 // I really don't like the non-type-safe approach below, but I couldn't find a
 // better way. There is an another approach that use anonymous functions as
 // [TSMAction] but it can't be serialized.
+
+func init() {
+	gob.Register(TSMAction{})
+}
 
 type TSMAction struct {
 	Action tsmActionType
@@ -204,4 +215,25 @@ func NewTSMLatestRequestQuery(clientID string) TSMQuery {
 		Query: tsmQueryLatestRequest,
 		Key:   clientID,
 	}
+	return fmt.Sprint(tSM)
+}
+
+func TSMIsSnapshotEqual(b1 []byte, b2 []byte) (bool, error) {
+	tSM1, err := decodeTSMFromBytes(b1)
+	if err != nil {
+		return false, err
+	}
+	tSM2, err := decodeTSMFromBytes(b2)
+	if err != nil {
+		return false, err
+	}
+	return reflect.DeepEqual(tSM1, tSM2), nil
+}
+
+func TSMToStringHuman(b []byte) string {
+	tSM, err := decodeTSMFromBytes(b)
+	if err != nil {
+		return fmt.Sprintf("Unable to decode snapshot: %v", err)
+	}
+	return fmt.Sprint(tSM)
 }

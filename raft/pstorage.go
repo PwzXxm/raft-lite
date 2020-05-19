@@ -31,7 +31,7 @@ func (p *Peer) loadFromPersistentStorage() error {
 		p.commitIndex = data.CommitIndex
 		// update state machine
 		for i := 0; i <= p.commitIndex; i++ {
-			action := p.log[i].Cmd
+			action := p.log[p.toLogIndex(i)].Cmd
 			if action != nil {
 				err := p.stateMachine.ApplyAction(action)
 				if err != nil {

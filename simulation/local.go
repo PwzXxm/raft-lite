@@ -1,6 +1,7 @@
 package simulation
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 	"sync"
@@ -16,18 +17,21 @@ import (
 )
 
 const (
-	testTimingFactor     = 1
-	clientRequestTimeout = 1 * time.Second
-	rpcTimeout           = 80 * testTimingFactor * time.Millisecond
+	testTimingFactor         = 1
+	clientRequestTimeout     = 1 * time.Second
+	rpcTimeout               = 80 * testTimingFactor * time.Millisecond
+	defaultSnapshotThreshold = 10000
 )
 
 type local struct {
-	n         int
-	network   *rpccore.ChanNetwork
-	rpcPeers  map[rpccore.NodeID]*rpccore.ChanNode
-	raftPeers map[rpccore.NodeID]*raft.Peer
-	logger    *logrus.Logger
-	pstorages map[rpccore.NodeID]pstorage.PersistentStorage
+	n                 int
+	network           *rpccore.ChanNetwork
+	rpcPeers          map[rpccore.NodeID]*rpccore.ChanNode
+	raftPeers         map[rpccore.NodeID]*raft.Peer
+	logger            *logrus.Logger
+	pstorages         map[rpccore.NodeID]pstorage.PersistentStorage
+	smMaker           stateMachineMaker
+	snapshotThreshold int
 
 	// network related
 	netLock          sync.RWMutex
@@ -38,6 +42,8 @@ type local struct {
 	packetLossRate   float64
 }
 
+type stateMachineMaker func() sm.StateMachine
+
 var log *logrus.Logger
 
 func init() {
@@ -46,9 +52,13 @@ func init() {
 }
 
 func RunLocally(n int) *local {
+	return RunLocallyOptional(n, defaultSnapshotThreshold, func() sm.StateMachine { return sm.NewEmptyStateMachine() })
+}
+
+func RunLocallyOptional(n int, snapshotThreshold int, smMaker stateMachineMaker) *local {
 	log.Info("Starting simulation locally ...")
 
-	l, err := newLocal(n)
+	l, err := newLocalOptional(n, snapshotThreshold, smMaker)
 	if err != nil {
 		log.Panicln(err)
 	}
@@ -95,6 +105,10 @@ func (l *local) delayGenerator(source, target rpccore.NodeID) time.Duration {
 }
 
 func newLocal(n int) (*local, error) {
+	return newLocalOptional(n, defaultSnapshotThreshold, func() sm.StateMachine { return sm.NewEmptyStateMachine() })
+}
+
+func newLocalOptional(n int, snapshotThreshold int, smMaker stateMachineMaker) (*local, error) {
 	if n <= 0 {
 		err := errors.Errorf("The number of peers should be positive, but got %v", n)
 		return nil, err
@@ -113,6 +127,8 @@ func newLocal(n int) (*local, error) {
 		TimestampFormat: "15:04:05.999999999Z07:00",
 	})
 	l.pstorages = make(map[rpccore.NodeID]pstorage.PersistentStorage, n)
+	l.smMaker = smMaker
+	l.snapshotThreshold = snapshotThreshold
 
 	// create rpc nodes
 	for i := 0; i < n; i++ {
@@ -146,7 +162,7 @@ func newLocal(n int) (*local, error) {
 		var err error
 		l.raftPeers[id], err = raft.NewPeer(node, nodeIDs[:n-1], l.logger.WithFields(logrus.Fields{
 			"nodeID": node.NodeID(),
-		}), sm.NewEmptyStateMachine(), l.pstorages[id], testTimingFactor)
+		}), smMaker(), l.pstorages[id], testTimingFactor, snapshotThreshold)
 		if err != nil {
 			return nil, err
 		}
@@ -238,6 +254,10 @@ func (l *local) getAllNodeIDs() []rpccore.NodeID {
 	return rst
 }
 
+func (l *local) GetAllNodeIDs() []rpccore.NodeID {
+	return l.getAllNodeIDs()
+}
+
 func (l *local) PrintAllNodeInfo() {
 	m := l.getAllNodeInfo()
 	for k, v := range m {
@@ -258,7 +278,7 @@ func (l *local) ResetPeer(nodeID rpccore.NodeID) error {
 	l.raftPeers[nodeID], err = raft.NewPeer(l.rpcPeers[nodeID], nodeIDs,
 		l.logger.WithFields(logrus.Fields{
 			"nodeID": nodeID,
-		}), sm.NewEmptyStateMachine(), l.pstorages[nodeID], testTimingFactor)
+		}), l.smMaker(), l.pstorages[nodeID], testTimingFactor, l.snapshotThreshold)
 	return err
 }
 
@@ -273,7 +293,7 @@ func (l *local) getAllNodeInfo() map[rpccore.NodeID]map[string]string {
 func (l *local) getAllNodeLogs() map[rpccore.NodeID][]raft.LogEntry {
 	m := make(map[rpccore.NodeID][]raft.LogEntry)
 	for nodeID, peer := range l.raftPeers {
-		m[nodeID] = peer.GetLog()
+		m[nodeID] = peer.GetRestLog()
 	}
 	return m
 }
@@ -315,11 +335,11 @@ func (l *local) AgreeOnTerm() (int, error) {
 func (l *local) IdenticalLogEntries() error {
 	var peerLogs1 []raft.LogEntry
 	for _, peer := range l.raftPeers {
-		peerLogs1 = peer.GetLog()
+		peerLogs1 = peer.GetRestLog()
 		break
 	}
 	for _, peer := range l.raftPeers {
-		peerLogs2 := peer.GetLog()
+		peerLogs2 := peer.GetRestLog()
 		if len(peerLogs1) != len(peerLogs2) {
 			return errors.Errorf("not identical log entries.\n\n%v\n",
 				l.getAllNodeInfo())
@@ -363,6 +383,59 @@ func (l *local) AgreeOnLogEntries() error {
 		}
 	}
 	return nil
+}
+
+func (l *local) AgreeOnSnapshot() (int, int, error) {
+	var ss *raft.Snapshot
+	for _, peer := range l.raftPeers {
+		if peer.GetRecentSnapshot() == nil {
+			return -1, -1, errors.Errorf("Node %v does not have snapshot. \n", peer.GetNodeID())
+		}
+		if ss == nil {
+			ss = peer.GetRecentSnapshot()
+		} else {
+			ss2 := peer.GetRecentSnapshot()
+			isEqual, err := raft.SnapshotEqual(ss, ss2)
+			if err != nil {
+				fmt.Printf("fail to compare snapshots, %v\n", err)
+				return -1, -1, err
+			}
+			if !isEqual {
+				return -1, -1, errors.Errorf("Node %v has different snapshot\n s1:\n%v\nlast term:%v\nlast index:%v, \n s2:\n%v\nlast term:%v\nlast index:%v",
+					peer.GetNodeID(),
+					sm.TSMToStringHuman(ss.StateMachineSnapshot),
+					ss.LastIncludedTerm,
+					ss.LastIncludedIndex,
+					sm.TSMToStringHuman(ss2.StateMachineSnapshot),
+					ss2.LastIncludedTerm,
+					ss2.LastIncludedIndex)
+			}
+		}
+	}
+	return ss.LastIncludedIndex, ss.LastIncludedTerm, nil
+}
+
+func (l *local) AgreeOnStateMachine() ([]byte, error) {
+	var ss []byte
+	for _, peer := range l.raftPeers {
+		if ss == nil {
+			ss = peer.TakeStateMachineSnapshot()
+		} else {
+			ss2 := peer.TakeStateMachineSnapshot()
+			isEqual, err := sm.TSMIsSnapshotEqual(ss, ss2)
+			if err != nil {
+				fmt.Printf("fail to compare snapshots, %v\n", err)
+				return nil, err
+			}
+			if !isEqual {
+				return nil, errors.Errorf("Node %v has different StateMachine, ss: %v, ss2: %v\n",
+					peer.GetNodeID(),
+					sm.TSMToStringHuman(ss),
+					sm.TSMToStringHuman(ss2))
+			}
+		}
+	}
+	return ss, nil
 }
 
 func (l *local) SetNetworkReliability(oneWayLatencyMin, oneWayLatencyMax time.Duration, packetLossRate float64) {
