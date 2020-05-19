@@ -21,11 +21,11 @@ func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
 		prevLogIndex := req.PrevLogIndex
 		newLogIndex := 0
 		// find the index that the peer is consistent with the new entries
-		for len(p.log) > (prevLogIndex+newLogIndex+1) &&
-			p.log[prevLogIndex+newLogIndex+1].Term == req.Entries[newLogIndex].Term {
+		for p.logLen() > (prevLogIndex+newLogIndex+1) &&
+			p.log[p.toLogIndex(prevLogIndex+newLogIndex+1)].Term == req.Entries[newLogIndex].Term {
 			newLogIndex++
 		}
-		p.log = append(p.log[0:prevLogIndex+newLogIndex+1], req.Entries[newLogIndex:]...)
+		p.log = append(p.log[0:p.toLogIndex(prevLogIndex+newLogIndex+1)], req.Entries[newLogIndex:]...)
 		if len(req.Entries) > newLogIndex {
 			p.logger.Infof("Delete and append new logs from index %v", prevLogIndex+newLogIndex+1)
 		}
@@ -44,7 +44,16 @@ func (p *Peer) consitencyCheck(req appendEntriesReq) bool {
 		p.updateTerm(req.Term)
 		p.changeState(Follower)
 	}
-	if len(p.log) <= req.PrevLogIndex || p.log[req.PrevLogIndex].Term != req.PrevLogTerm {
+	if p.logLen() <= req.PrevLogIndex {
+		return false
+	}
+	var myPrevLogTerm int
+	if p.toLogIndex(req.PrevLogIndex+1) == 0 && p.snapshot != nil {
+		myPrevLogTerm = p.snapshot.LastIncludedTerm
+	} else {
+		myPrevLogTerm = p.log[p.toLogIndex(req.PrevLogIndex)].Term
+	}
+	if myPrevLogTerm != req.PrevLogTerm {
 		return false
 	}
 	return true
@@ -83,48 +92,70 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 			return
 		}
 		nextIndex := p.nextIndex[target]
-		currentTerm := p.currentTerm
-		if nextIndex <= 0 {
-			p.logger.Warn("nextIndex out of range")
-		}
-		prevLogTerm := p.log[nextIndex-1].Term
-		leaderCommit := p.commitIndex
-		entries := p.log[nextIndex:]
-		p.mutex.Unlock()
-		// if no more entries need to be updated, return
-		if len(entries) == 0 && !isFirstTime {
-			return
-		}
-		isFirstTime = false
-		req := appendEntriesReq{Term: currentTerm, LeaderID: leaderID, PrevLogIndex: nextIndex - 1,
-			PrevLogTerm: prevLogTerm, LeaderCommit: leaderCommit, Entries: entries}
-		res := p.appendEntries(target, req)
-		if res == nil {
-			// retry call appendEntries rpc if response is nil
-			continue
-		} else if !res.Success {
-			// update nextIndex for target node
-			p.mutex.Lock()
-			if res.Term > currentTerm {
-				p.updateTerm(res.Term)
-				p.changeState(Follower)
+		if p.toLogIndex(nextIndex) < 0 && p.snapshot != nil {
+			// do install snapshot
+			p.mutex.Unlock()
+			req := installSnapshotReq{Term: p.currentTerm, LeaderID: leaderID, LastIncludedIndex: p.snapshot.LastIncludedIndex,
+				LastIncludedTerm: p.snapshot.LastIncludedTerm, Snapshot: p.snapshot}
+			res := p.installSnapshot(target, req)
+			if res == nil {
+				continue
 			} else {
-				p.nextIndex[target]--
+				p.mutex.Lock()
+				p.handleInstallSnapshotRes(res)
+				p.nextIndex[target] = p.snapshot.LastIncludedIndex + 1
+				p.mutex.Unlock()
 			}
-			p.mutex.Unlock()
 		} else {
-			// if success, update nextIndex for the node
-			p.mutex.Lock()
-			commitIndex := p.commitIndex
-			p.nextIndex[target] = nextIndex + len(entries)
-			// send signal to the channels for index greater than commit index
-			for i := commitIndex + 1; i < p.nextIndex[target]; i++ {
-				c, ok := p.logIndexMajorityCheckChannel[i]
-				if ok {
-					c <- target
-				}
+			// do append entries
+			currentTerm := p.currentTerm
+			if nextIndex <= 0 {
+				p.logger.Warn("nextIndex out of range")
 			}
+			var prevLogTerm int
+			if p.toLogIndex(nextIndex) == 0 && p.snapshot != nil {
+				prevLogTerm = p.snapshot.LastIncludedTerm
+			} else {
+				prevLogTerm = p.log[p.toLogIndex(nextIndex-1)].Term
+			}
+			leaderCommit := p.commitIndex
+			entries := p.log[p.toLogIndex(nextIndex):]
 			p.mutex.Unlock()
+			// if no more entries need to be updated, return
+			if len(entries) == 0 && !isFirstTime {
+				return
+			}
+			isFirstTime = false
+			req := appendEntriesReq{Term: currentTerm, LeaderID: leaderID, PrevLogIndex: nextIndex - 1,
+				PrevLogTerm: prevLogTerm, LeaderCommit: leaderCommit, Entries: entries}
+			res := p.appendEntries(target, req)
+			if res == nil {
+				// retry call appendEntries rpc if response is nil
+				continue
+			} else if !res.Success {
+				// update nextIndex for target node
+				p.mutex.Lock()
+				if res.Term > currentTerm {
+					p.updateTerm(res.Term)
+					p.changeState(Follower)
+				} else {
+					p.nextIndex[target]--
+				}
+				p.mutex.Unlock()
+			} else {
+				// if success, update nextIndex for the node
+				p.mutex.Lock()
+				commitIndex := p.commitIndex
+				p.nextIndex[target] = nextIndex + len(entries)
+				// send signal to the channels for index greater than commit index
+				for i := commitIndex + 1; i < p.nextIndex[target]; i++ {
+					c, ok := p.logIndexMajorityCheckChannel[i]
+					if ok {
+						c <- target
+					}
+				}
+				p.mutex.Unlock()
+			}
 		}
 	}
 }
@@ -138,7 +169,7 @@ func (p *Peer) onReceiveClientRequest(cmd interface{}) bool {
 	}
 	newlog := LogEntry{Term: p.currentTerm, Cmd: cmd}
 	p.log = append(p.log, newlog)
-	newLogIndex := len(p.log) - 1
+	newLogIndex := p.logLen() - 1
 	totalPeers := p.getTotalPeers()
 	majorityCheckChannel := make(chan rpccore.NodeID, totalPeers)
 	majorityCheckChannel <- p.node.NodeID()
@@ -166,7 +197,7 @@ func (p *Peer) onReceiveClientRequest(cmd interface{}) bool {
 
 // TODO: maybe respond to client and commit change to the state machine later
 func (p *Peer) respondClient(logIndex int) {
-	p.logger.Infof("New log %v has been commited with log index %v", p.log[logIndex], logIndex)
+	p.logger.Infof("New log has been commited with log index %v", logIndex)
 }
 
 func (p *Peer) HandleClientRequest(cmd interface{}) bool {

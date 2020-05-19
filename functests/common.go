@@ -57,6 +57,10 @@ var testCases = []testCase{
 		name:   "candidate timeout",
 		action: caseCandidateTimeout,
 	},
+	{
+		name:   "save to snapshots",
+		action: caseSaveToSnapshot,
+	},
 }
 
 func List() {

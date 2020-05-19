@@ -24,6 +24,13 @@ type LogEntry struct {
 	Term int
 }
 
+type Snapshot struct {
+	LastIncludedIndex    int
+	LastIncludedTerm     int
+	StateMachineSnapshot []byte
+	// TODO: add membership config
+}
+
 type Peer struct {
 	state       PeerState
 	mutex       sync.Mutex
@@ -41,6 +48,11 @@ type Peer struct {
 	shutdown    bool
 	logger      *logrus.Entry
 
+	// snapshot
+	snapshot          *Snapshot
+	snapshotThreshold int
+
+	// state machine
 	stateMachine      sm.StateMachine
 	persistentStorage pstorage.PersistentStorage
 
@@ -62,7 +74,7 @@ type Peer struct {
 }
 
 func NewPeer(node rpccore.Node, peers []rpccore.NodeID, logger *logrus.Entry,
-	sm sm.StateMachine, ps pstorage.PersistentStorage, timingFactor int) (*Peer, error) {
+	sm sm.StateMachine, ps pstorage.PersistentStorage, timingFactor int, snapshotThreshold int) (*Peer, error) {
 	p := new(Peer)
 
 	// initialisation
@@ -82,6 +94,8 @@ func NewPeer(node rpccore.Node, peers []rpccore.NodeID, logger *logrus.Entry,
 	p.shutdown = true
 	p.logger = logger
 	p.stateMachine = sm
+	p.snapshot = nil
+	p.snapshotThreshold = snapshotThreshold
 	p.stateMachine.Reset()
 	p.timingFactor = timingFactor
 
@@ -196,7 +210,7 @@ func (p *Peer) changeState(state PeerState) {
 		p.matchIndex = make(map[rpccore.NodeID]int)
 		p.logIndexMajorityCheckChannel = make(map[int]chan rpccore.NodeID)
 		for _, peers := range p.rpcPeersIds {
-			p.nextIndex[peers] = len(p.log)
+			p.nextIndex[peers] = p.logLen()
 
 			// TODO: grind in the furture
 			p.matchIndex[peers] = 0
@@ -246,7 +260,7 @@ func (p *Peer) startElection() {
 	p.votedFor = &voteID
 
 	term := p.currentTerm
-	req := requestVoteReq{Term: p.currentTerm, CandidateID: p.node.NodeID(), LastLogIndex: len(p.log) - 1, LastLogTerm: p.log[len(p.log)-1].Term}
+	req := requestVoteReq{Term: p.currentTerm, CandidateID: p.node.NodeID(), LastLogIndex: p.logLen() - 1, LastLogTerm: p.log[p.toLogIndex(p.logLen()-1)].Term}
 	for _, peerID := range p.rpcPeersIds {
 		go func(peerID rpccore.NodeID, term int) {
 			for {
@@ -280,15 +294,21 @@ func (p *Peer) updateTerm(term int) {
 }
 
 func (p *Peer) updateCommitIndex(idx int) {
-	idx = utils.Min(idx, len(p.log)-1)
+	idx = utils.Min(idx, p.logLen()-1)
 	if idx > p.commitIndex {
 		for i := p.commitIndex + 1; i <= idx; i++ {
-			action := p.log[i].Cmd
+			action := p.log[p.toLogIndex(i)].Cmd
 			if action != nil {
-				err := p.stateMachine.ApplyAction(p.log[i])
+				err := p.stateMachine.ApplyAction(action)
 				if err != nil {
 					p.logger.Errorf("Error happened during applying actions to "+
 						"state machine, logIdx: %v, err: %v", i, err)
+				}
+			}
+			if p.toLogIndex(i)+1 >= p.snapshotThreshold {
+				err := p.saveToSnapshot(i)
+				if err != nil {
+					p.logger.Errorf("Unable to save Snapshot: %+v.", err)
 				}
 			}
 		}
@@ -313,7 +333,7 @@ func (p *Peer) GetState() PeerState {
 	return p.state
 }
 
-func (p *Peer) GetLog() []LogEntry {
+func (p *Peer) GetRestLog() []LogEntry {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 	var peerLog = make([]LogEntry, len(p.log))
@@ -327,6 +347,23 @@ func (p *Peer) GetNodeID() rpccore.NodeID {
 	return p.node.NodeID()
 }
 
+func (p *Peer) GetRecentSnapshot() *Snapshot {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+	return p.snapshot
+}
+
+func (p *Peer) TakeStateMachineSnapshot() []byte {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+	data, err := p.stateMachine.TakeSnapshot()
+	if err != nil {
+		p.logger.Errorf("Unable to get current state machine state, %+v", err)
+		data = nil
+	}
+	return data
+}
+
 func (p *Peer) GetVoteCount() int {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
@@ -335,4 +372,24 @@ func (p *Peer) GetVoteCount() int {
 
 func (p *Peer) getTotalPeers() int {
 	return len(p.rpcPeersIds) + 1
+}
+
+func (p *Peer) toLogIndex(trueIndex int) int {
+	if p.snapshot == nil {
+		return trueIndex
+	}
+	logidx := trueIndex - p.snapshot.LastIncludedIndex - 1
+	if logidx < 0 {
+		p.logger.Info("Access to invalid log index (inside snapshot)")
+		return logidx
+	}
+	return logidx
+}
+
+func (p *Peer) logLen() int {
+	if p.snapshot == nil {
+		return len(p.log)
+	} else {
+		return len(p.log) + p.snapshot.LastIncludedIndex + 1
+	}
 }
