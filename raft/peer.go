@@ -1,7 +1,6 @@
 package raft
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
@@ -284,7 +283,6 @@ func (p *Peer) updateCommitIndex(idx int) {
 	if idx > p.commitIndex {
 		for i := p.commitIndex + 1; i <= idx; i++ {
 			action := p.log[p.toLogIndex(i)].Cmd
-			fmt.Printf("action is %v\n", action)
 			if action != nil {
 				err := p.stateMachine.ApplyAction(action)
 				if err != nil {
