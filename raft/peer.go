@@ -293,7 +293,7 @@ func (p *Peer) updateCommitIndex(idx int) {
 				}
 			}
 			if p.toLogIndex(i)+1 >= p.snapshotThreshold {
-				err := p.saveToSnapshot()
+				err := p.saveToSnapshot(i)
 				if err != nil {
 					p.logger.Errorf("Unable to save Snapshot: %+v.", err)
 				}
