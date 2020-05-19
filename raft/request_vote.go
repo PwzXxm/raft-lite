@@ -30,9 +30,6 @@ func (p *Peer) logPriorCheck(lastLogIndex int, lastLogTerm int) bool {
 
 // Called by go routine, plz check lock status first
 func (p *Peer) handleRequestVoteRespond(res requestVoteRes) {
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
-
 	if res.Term < p.currentTerm {
 		return
 	}

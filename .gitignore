@@ -106,3 +106,6 @@ $RECYCLE.BIN/
 
 # End of https://www.gitignore.io/api/go,linux,macos,windows,visualstudiocode
 .vscode/settings.json
+
+# persistent storage data file
+pstorage_file/

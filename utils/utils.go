@@ -1,7 +1,11 @@
 package utils
 
 import (
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"math/rand"
+	"sort"
 	"time"
 )
 
@@ -38,4 +42,33 @@ func RandomTime(a, b time.Duration) time.Duration {
 
 func RandomBool(prob float64) bool {
 	return rand.Float64() < prob
+}
+
+func PrintUsage(m map[string]string) {
+	fmt.Println("Usage: <cmd> <args> ...")
+	var longest int = -1
+
+	rst := make([]string, 0, len(m))
+	for cmd := range m {
+		l := len(cmd)
+		if longest < l {
+			longest = l
+		}
+		rst = append(rst, cmd)
+	}
+
+	sort.Strings(rst)
+
+	fmt.Printf("\nCommands:\n")
+	for _, cmd := range rst {
+		fmt.Printf("\t%-*v %v\n", longest, cmd, m[cmd])
+	}
+}
+
+func ReadClientFromJSON(v interface{}, filepath string) error {
+	data, err := ioutil.ReadFile(filepath)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(data, v)
 }

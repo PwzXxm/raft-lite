@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/PwzXxm/raft-lite/sm"
 	"github.com/pkg/errors"
 	"github.com/valyala/gorpc"
 )
@@ -16,6 +17,7 @@ import (
 func init() {
 	gob.Register(tcpReqMsg{})
 	gob.Register(tcpResMsg{})
+	gob.Register(sm.TSMAction{})
 }
 
 type TCPNetwork struct {
@@ -56,10 +58,11 @@ func (n *TCPNetwork) NewLocalNode(nodeID NodeID, remoteAddr, listenAddr string) 
 	}
 
 	node := &TCPNode{
-		id:        nodeID,
-		network:   n,
-		callback:  defaultCallback,
-		clientMap: make(map[NodeID]*gorpc.Client),
+		id:             nodeID,
+		network:        n,
+		callback:       defaultCallback,
+		clientMap:      make(map[NodeID]*gorpc.Client),
+		clientOnlyMode: false,
 	}
 
 	s := &gorpc.Server{
@@ -85,12 +88,30 @@ func (n *TCPNetwork) NewLocalNode(nodeID NodeID, remoteAddr, listenAddr string) 
 	return node, nil
 }
 
+func (n *TCPNetwork) NewLocalClientOnlyNode(nodeID NodeID) (*TCPNode, error) {
+	n.lock.Lock()
+	defer n.lock.Unlock()
+	if _, ok := n.nodeAddrMap[nodeID]; ok {
+		return nil, errors.New(fmt.Sprintf(
+			"Node with same ID already exists. NodeID: %v.", nodeID))
+	}
+
+	node := &TCPNode{
+		id:             nodeID,
+		network:        n,
+		clientMap:      make(map[NodeID]*gorpc.Client),
+		clientOnlyMode: true,
+	}
+	return node, nil
+}
+
 type TCPNode struct {
-	id        NodeID
-	network   *TCPNetwork
-	callback  Callback
-	clientMap map[NodeID]*gorpc.Client
-	lock      sync.RWMutex
+	id             NodeID
+	network        *TCPNetwork
+	callback       Callback
+	clientMap      map[NodeID]*gorpc.Client
+	clientOnlyMode bool
+	lock           sync.RWMutex
 }
 
 func (node *TCPNode) NodeID() NodeID {
