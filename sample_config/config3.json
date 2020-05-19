@@ -10,5 +10,6 @@
     "NodeID": "charlie",
     "ListenAddr": "127.0.0.1:8003",
     "PstorageFilePath": "./pstorage_file/pstorage3.dat",
-    "TimingFactor": 5
+    "TimingFactor": 5,
+    "SnapshotThreshold": 5
 }

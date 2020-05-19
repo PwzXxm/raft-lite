@@ -215,7 +215,6 @@ func NewTSMLatestRequestQuery(clientID string) TSMQuery {
 		Query: tsmQueryLatestRequest,
 		Key:   clientID,
 	}
-	return fmt.Sprint(tSM)
 }
 
 func TSMIsSnapshotEqual(b1 []byte, b2 []byte) (bool, error) {

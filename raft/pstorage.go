@@ -30,6 +30,9 @@ func (p *Peer) loadFromPersistentStorage() error {
 		p.log = data.Log
 		p.commitIndex = data.CommitIndex
 		// update state machine
+		// TODO: should add snapshot to persistentData, apply the statemachine in snapshot first, 
+		// and change the for loop to be the following line
+		// for i := p.snapshot.LastIncludedIndex +1; i <= p.commitIndex; i++ {
 		for i := 0; i <= p.commitIndex; i++ {
 			action := p.log[p.toLogIndex(i)].Cmd
 			if action != nil {

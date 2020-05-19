@@ -18,12 +18,13 @@ import (
 )
 
 type peerConfig struct {
-	Timeout          time.Duration
-	NodeAddrMap      map[rpccore.NodeID]string
-	NodeID           rpccore.NodeID
-	ListenAddr       string
-	PstorageFilePath string
-	TimingFactor     int
+	Timeout           time.Duration
+	NodeAddrMap       map[rpccore.NodeID]string
+	NodeID            rpccore.NodeID
+	ListenAddr        string
+	PstorageFilePath  string
+	TimingFactor      int
+	SnapshotThreshold int
 }
 
 func StartPeerFromFile(filepath string) error {
@@ -68,7 +69,8 @@ func StartPeerFromFile(filepath string) error {
 		}
 	}
 	p, err := raft.NewPeer(node, peers, logger.WithFields(logrus.Fields{
-		"nodeID": node.NodeID()}), sm.NewTransactionStateMachine(), ps, config.TimingFactor)
+		"nodeID": node.NodeID()}), sm.NewTransactionStateMachine(), ps, 
+		config.TimingFactor, config.SnapshotThreshold)
 	if err != nil {
 		return err
 	}

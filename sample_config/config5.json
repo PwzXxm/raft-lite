@@ -10,5 +10,6 @@
     "NodeID": "echo",
     "ListenAddr": "127.0.0.1:8005",
     "PstorageFilePath": "./pstorage_file/pstorage5.dat",
-    "TimingFactor": 1
+    "TimingFactor": 5,
+    "SnapshotThreshold": 5
 }

@@ -187,7 +187,7 @@ func (p *Peer) onReceiveClientRequest(cmd interface{}) bool {
 			delete(p.logIndexMajorityCheckChannel, newLogIndex)
 			close(majorityCheckChannel)
 			p.mutex.Unlock()
-			p.logger.Infof("New log %v has been commited with log index %v", p.log[newLogIndex], newLogIndex)
+			p.logger.Infof("New log %v has been commited with log index %v", newlog, newLogIndex)
 			break
 		}
 	}
