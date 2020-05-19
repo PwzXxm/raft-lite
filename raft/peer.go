@@ -220,6 +220,11 @@ func (p *Peer) changeState(state PeerState) {
 		p.triggerLeaderHeartbeat()
 	}
 	p.resetTimeout()
+
+	err := p.saveToPersistentStorage()
+	if err != nil {
+		p.logger.Errorf("Unable to save state: %+v.", err)
+	}
 }
 
 // Start fire up this peer
@@ -262,6 +267,12 @@ func (p *Peer) startElection() {
 	p.votedFor = &voteID
 
 	term := p.currentTerm
+
+	err := p.saveToPersistentStorage()
+	if err != nil {
+		p.logger.Errorf("Unable to save state: %+v.", err)
+	}
+
 	req := requestVoteReq{Term: p.currentTerm, CandidateID: p.node.NodeID(), LastLogIndex: p.logLen() - 1, LastLogTerm: p.log[p.toLogIndex(p.logLen()-1)].Term}
 	for _, peerID := range p.rpcPeersIds {
 		go func(peerID rpccore.NodeID, term int) {
@@ -394,4 +405,13 @@ func (p *Peer) logLen() int {
 	} else {
 		return len(p.log) + p.snapshot.LastIncludedIndex + 1
 	}
+}
+
+func (p *Peer) GetPersistentData() PersistentData {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+
+	var data PersistentData
+	_, _ = p.persistentStorage.Load(&data)
+	return data
 }

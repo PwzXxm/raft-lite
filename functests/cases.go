@@ -527,6 +527,8 @@ func caseSaveToPersistentStorage() (err error) {
 	sl := simulation.RunLocally(5)
 	defer sl.StopAll()
 
+	sl.SetNetworkReliability(10*time.Millisecond, 40*time.Millisecond, 0)
+
 	// leader election
 	time.Sleep(5 * time.Second)
 	leader, err := sl.AgreeOnLeader()
@@ -542,8 +544,6 @@ func caseSaveToPersistentStorage() (err error) {
 	}
 	time.Sleep(2 * time.Second)
 
-	// save data here
-
 	// isolate node i who is not leader
 	var isolater rpccore.NodeID
 	for _, p := range sl.GetAllNodeIDs() {
@@ -551,6 +551,9 @@ func caseSaveToPersistentStorage() (err error) {
 			isolater = p
 		}
 	}
+
+	data1 := sl.GetPersistentStorage(isolater)
+
 	// shut down particular peer
 	sl.ShutDownPeer(isolater)
 	fmt.Printf("ShutDown Peer %v\n", isolater)
@@ -561,20 +564,17 @@ func caseSaveToPersistentStorage() (err error) {
 	}
 	time.Sleep(5 * time.Second)
 
-	err = sl.AgreeOnLogEntries()
-	if err != nil {
-		return
-	}
-	err = sl.ResetPeer(isolater)
-	if err != nil {
-		return
-	}
-
 	// recover particular peer
 	sl.StartPeer(isolater)
 	fmt.Printf("Restart Peer %v\n", isolater)
 
-	// check persistent storage here
+	// check persistent storage
+	data2 := sl.GetPersistentStorage(isolater)
+
+	err = sl.AgreeOnPersistentStorage(data1, data2)
+	if err != nil {
+		return
+	}
 
 	return
 }

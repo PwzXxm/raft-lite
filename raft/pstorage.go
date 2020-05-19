@@ -5,7 +5,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-type persistentData struct {
+type PersistentData struct {
 	// TODO: check this
 	CurrentTerm int
 	VotedFor    *rpccore.NodeID
@@ -23,7 +23,7 @@ type persistentData struct {
 }
 
 func (p *Peer) loadFromPersistentStorage() error {
-	var data persistentData
+	var data PersistentData
 	hasData, err := p.persistentStorage.Load(&data)
 	if err != nil {
 		return err
@@ -42,7 +42,7 @@ func (p *Peer) loadFromPersistentStorage() error {
 		p.snapshot = data.Snapshot
 		p.snapshotThreshold = data.SnapshotThreshold
 		// update state machine
-		// TODO: should add snapshot to persistentData, apply the statemachine in snapshot first, 
+		// TODO: should add snapshot to persistentData, apply the statemachine in snapshot first,
 		// and change the for loop to be the following line
 		// for i := p.snapshot.LastIncludedIndex +1; i <= p.commitIndex; i++ {
 		for i := 0; i <= p.commitIndex; i++ {
@@ -59,7 +59,7 @@ func (p *Peer) loadFromPersistentStorage() error {
 }
 
 func (p *Peer) saveToPersistentStorage() error {
-	var data persistentData
+	var data PersistentData
 	data.CurrentTerm = p.currentTerm
 	data.VotedFor = p.votedFor
 	data.VoteCount = p.voteCount
