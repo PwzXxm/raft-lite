@@ -35,7 +35,7 @@ The focus of this project is to explore the detailed implementation of the Raft 
 
 ## Usage
 ### Unit Test
-```
+```js
 go test -v ./...
 ```
 
