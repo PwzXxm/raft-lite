@@ -143,7 +143,7 @@ func (c *Client) startReadingCmd() {
 					c.core.logger.SetLevel(logrus.WarnLevel)
 					_, _ = green.Println("Logger level set to warn")
 				case loggerLevelError:
-					c.logger.SetLevel(logrus.ErrorLevel)
+					c.core.logger.SetLevel(logrus.ErrorLevel)
 					_, _ = green.Println("Logger level set to error")
 				default:
 					err = combineErrorUsage(invalidCommandError, cmd[0])
