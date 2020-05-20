@@ -290,7 +290,7 @@ func ExecuteActionRequest(core *ClientCore, act sm.TSMAction) (bool, string) {
 			logErrAndBackoff(core, "send action request failed. ", err)
 			continue
 		}
-		resetBackOffDuration()
+		resetBackOffDuration(core)
 
 		// TODO: avg success time?
 		time.Sleep(100 * time.Millisecond)
@@ -302,7 +302,7 @@ func ExecuteActionRequest(core *ClientCore, act sm.TSMAction) (bool, string) {
 			}
 
 			if info != nil && info.RequestID == reqID {
-				resetBackOffDuration()
+				resetBackOffDuration(core)
 				if info.Err != nil {
 					return false, *info.Err
 				}
@@ -325,7 +325,7 @@ func ExecuteQueryRequest(core *ClientCore, query sm.TSMQuery) (interface{}, erro
 		err := callRPC(core, leader, RPCMethodQueryRequest, queryReq, &queryRes)
 		if err == nil {
 			if queryRes.Success {
-				resetBackOffDuration()
+				resetBackOffDuration(core)
 				if queryRes.QueryErr == nil {
 					return queryRes.Data, nil
 				}
