@@ -27,7 +27,7 @@ func (p *Peer) handleRequestVote(req requestVoteReq) requestVoteRes {
 // Consider case one node seprate from others and increase its term to high number sololy.
 func (p *Peer) logPriorCheck(lastLogIndex int, lastLogTerm int) bool {
 	myLastLogIndex := p.logLen() - 1
-	myLastLogTerm := p.log[p.toLogIndex(myLastLogIndex)].Term
+	myLastLogTerm := p.getLogTermByIndex(myLastLogIndex)
 	return myLastLogTerm > lastLogTerm ||
 		(myLastLogTerm == lastLogTerm && myLastLogIndex > lastLogIndex)
 }
@@ -39,8 +39,7 @@ func (p *Peer) handleRequestVoteRespond(res requestVoteRes) {
 	}
 
 	if res.VoteGranted {
-		p.voteCount += 1
-
+		p.voteCount++
 		// Note that p.rpcPeersIds dose not include itself
 		totalPeers := p.getTotalPeers()
 		// received majority votes, become leader

@@ -13,7 +13,7 @@ func (p *Peer) makeSnapshot(lastIncludedIndex int) (*Snapshot, error) {
 
 	return &Snapshot{
 		LastIncludedIndex:    lastIncludedIndex,
-		LastIncludedTerm:     p.log[p.toLogIndex(lastIncludedIndex)].Term,
+		LastIncludedTerm:     p.getLogTermByIndex(lastIncludedIndex),
 		StateMachineSnapshot: stateMachineSnapshot,
 		// TODO: write membership config into ss
 	}, nil
@@ -38,7 +38,7 @@ func (p *Peer) handleInstallSnapshot(req installSnapshotReq) installSnapshotRes 
 	}
 	// retain following logs if mine is longer
 	myLastRecoredIndex := p.logLen() - 1
-	if req.LastIncludedIndex < myLastRecoredIndex && p.log[p.toLogIndex(req.LastIncludedIndex)].Term == req.LastIncludedTerm {
+	if req.LastIncludedIndex < myLastRecoredIndex && p.getLogTermByIndex(req.LastIncludedIndex) == req.LastIncludedTerm {
 		p.log = p.log[p.toLogIndex(req.LastIncludedIndex+1):]
 	} else {
 		p.log = []LogEntry{}
