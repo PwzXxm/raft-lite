@@ -448,7 +448,7 @@ func (l *local) AgreeOnPersistentData(data1 raft.PersistentData, data2 raft.Pers
 	identical := true
 
 	// CommitIndex, Snapshot
-	if data1.CurrentTerm != data2.CurrentTerm || *data1.VotedFor != *data2.VotedFor || data1.VoteCount != data2.VoteCount || data1.SnapshotThreshold != data2.SnapshotThreshold {
+	if data1.CurrentTerm != data2.CurrentTerm || *data1.VotedFor != *data2.VotedFor || data1.VoteCount != data2.VoteCount {
 		identical = false
 	}
 

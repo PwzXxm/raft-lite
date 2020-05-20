@@ -523,26 +523,39 @@ func caseSaveToSnapshot() error {
 	return err
 }
 
-func caseSaveToPersistentStorage() (err error) {
-	sl := simulation.RunLocally(5)
+func caseCheckEventualConsistency() (err error) {
+	sl := simulation.RunLocallyOptional(5, 5, func() sm.StateMachine {
+		return sm.NewTransactionStateMachine()
+	})
 	defer sl.StopAll()
-
-	sl.SetNetworkReliability(10*time.Millisecond, 40*time.Millisecond, 0)
+	actioinBuilder := sm.NewTSMActionBuilder("client")
 
 	// leader election
-	time.Sleep(5 * time.Second)
+	time.Sleep(2 * time.Second)
 	leader, err := sl.AgreeOnLeader()
 	if err != nil {
 		return
 	}
 
+	// make requests, check each node has the same snapshot
 	fmt.Print("Start sending request.\n")
-
-	for i := 0; i < 5; i++ {
-		sl.RequestRaw(i)
+	sl.RequestSync(actioinBuilder.TSMActionSetValue("key_a", 0))
+	for i := 0; i < 20; i++ {
+		sl.RequestSync(actioinBuilder.TSMActionIncrValue("key_a", 10))
 		time.Sleep(150 * time.Millisecond)
 	}
 	time.Sleep(2 * time.Second)
+	li, lt, err := sl.AgreeOnSnapshot()
+	fmt.Printf("LastIndex: %v LastTerm: %v\n", li, lt)
+	if err != nil {
+		return
+	}
+
+	ss, err := sl.AgreeOnStateMachine()
+	fmt.Printf("Snapshot: %v\n", ss)
+	if err != nil {
+		return
+	}
 
 	// isolate node i who is not leader
 	var isolater rpccore.NodeID
@@ -552,34 +565,33 @@ func caseSaveToPersistentStorage() (err error) {
 		}
 	}
 
-	// check persistent storage
-	data1 := sl.GetPersistentData(isolater)
-
-	// shut down particular peer
-	sl.ShutDownPeer(isolater)
 	fmt.Printf("ShutDown Peer %v\n", isolater)
+	sl.ShutDownPeer(isolater)
 
-	for i := 5; i < 10; i++ {
-		sl.RequestRaw(i)
+	fmt.Printf("Reset Peer %v\n", isolater)
+	sl.ResetPeer(isolater)
+
+	fmt.Print("Start sending request.\n")
+	for i := 0; i < 20; i++ {
+		sl.RequestRaw(actioinBuilder.TSMActionIncrValue("key_a", 10))
 		time.Sleep(150 * time.Millisecond)
 	}
-	time.Sleep(5 * time.Second)
 
-	// recover particular peer
-	sl.StartPeer(isolater)
 	fmt.Printf("Restart Peer %v\n", isolater)
+	sl.StartPeer(isolater)
+	time.Sleep(4 * time.Second)
 
-	// check persistent storage
-	data2 := sl.GetPersistentData(isolater)
-
-	err = sl.AgreeOnPersistentData(data1, data2)
+	li, lt, err = sl.AgreeOnSnapshot()
+	fmt.Printf("LastIndex: %v LastTerm: %v\n %v", li, lt, err)
 	if err != nil {
 		return
 	}
 
-	return
-}
+	ss, err = sl.AgreeOnStateMachine()
+	fmt.Printf("Snapshot: %v\n", ss)
+	if err != nil {
+		return
+	}
 
-func caseCheckEventualConsistency() (err error) {
 	return
 }

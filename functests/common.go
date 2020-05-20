@@ -62,10 +62,6 @@ var testCases = []testCase{
 		action: caseSaveToSnapshot,
 	},
 	{
-		name:   "save to persistent storage",
-		action: caseSaveToPersistentStorage,
-	},
-	{
 		name:   "check eventual consistency",
 		action: caseCheckEventualConsistency,
 	},

@@ -29,7 +29,7 @@ func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
 
 	p.updateCommitIndex(req.LeaderCommit)
 
-	// Update CommitIndex
+	// Update CommitIndex, Term
 	err := p.saveToPersistentStorage()
 	if err != nil {
 		p.logger.Errorf("Unable to save state: %+v.", err)
