@@ -234,10 +234,10 @@ func (p *Peer) isValidLeader() bool {
 	now := time.Now()
 	count := 0
 	for _, lastHeard := range p.lastHeardFromFollower {
-		if now.Sub(lastHeard) < time.Duration(250 * p.timingFactor) * time.Millisecond{
-			count ++
+		if now.Sub(lastHeard) < time.Duration(250*p.timingFactor)*time.Millisecond {
+			count++
 		}
-		if 2 * count > len(p.rpcPeersIds) {
+		if 2*count > len(p.rpcPeersIds) {
 			return true
 		}
 	}
