@@ -109,7 +109,7 @@ func (c *Client) startReadingCmd() {
 					err = c.combineErrorUsage(invalidCommandError, cmd[0])
 					break
 				}
-				res, err := c.executeQueryRequest(sm.NewTSMDataQuery(cmd[1]))
+				res, err := c.ExecuteQueryRequest(sm.NewTSMDataQuery(cmd[1]))
 				if err != nil {
 					_, _ = red.Println(err)
 				} else {
@@ -284,7 +284,7 @@ func (c *Client) executeActionRequest(act sm.TSMAction) (bool, string) {
 	}
 }
 
-func (c *Client) executeQueryRequest(query sm.TSMQuery) (interface{}, error) {
+func (c *Client) ExecuteQueryRequest(query sm.TSMQuery) (interface{}, error) {
 	queryReq := QueryReq{Cmd: query}
 	for {
 		leader := c.lookForLeader()

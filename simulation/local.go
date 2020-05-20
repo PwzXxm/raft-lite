@@ -32,6 +32,7 @@ type local struct {
 	pstorages         map[rpccore.NodeID]pstorage.PersistentStorage
 	smMaker           stateMachineMaker
 	snapshotThreshold int
+	clientNode        *rpccore.ChanNode
 
 	// network related
 	netLock          sync.RWMutex
@@ -129,6 +130,12 @@ func newLocalOptional(n int, snapshotThreshold int, smMaker stateMachineMaker) (
 	l.pstorages = make(map[rpccore.NodeID]pstorage.PersistentStorage, n)
 	l.smMaker = smMaker
 	l.snapshotThreshold = snapshotThreshold
+
+	cliNode, err := l.network.NewNode("client")
+	if err != nil {
+		return nil, err
+	}
+	l.clientNode = cliNode
 
 	// create rpc nodes
 	for i := 0; i < n; i++ {

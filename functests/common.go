@@ -61,6 +61,14 @@ var testCases = []testCase{
 		name:   "save to snapshots",
 		action: caseSaveToSnapshot,
 	},
+	{
+		name:   "various number of nodes",
+		action: caseTestVariousNumberOfNode,
+	},
+	{
+		name:   "local mutiple write requests",
+		action: caseLocalMultiWrite,
+	},
 }
 
 func List() {

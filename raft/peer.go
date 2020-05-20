@@ -261,6 +261,11 @@ func (p *Peer) startElection() {
 	p.updateTerm(p.currentTerm + 1)
 	p.votedFor = &voteID
 
+	if len(p.rpcPeersIds) == 0 {
+		p.changeState(Leader)
+		return
+	}
+
 	term := p.currentTerm
 	req := requestVoteReq{Term: p.currentTerm, CandidateID: p.node.NodeID(), LastLogIndex: p.logLen() - 1, LastLogTerm: p.log[p.toLogIndex(p.logLen()-1)].Term}
 	for _, peerID := range p.rpcPeersIds {

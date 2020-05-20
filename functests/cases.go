@@ -2,6 +2,7 @@ package functests
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/PwzXxm/raft-lite/rpccore"
@@ -521,4 +522,84 @@ func caseSaveToSnapshot() error {
 	li, lt, err = sl.AgreeOnSnapshot()
 	fmt.Printf("LastIdx: %v LastTerm: %v\n %v", li, lt, err)
 	return err
+}
+
+func caseTestVariousNumberOfNode() error {
+	sizes := []int{1, 2, 3}
+	for _, size := range sizes {
+		sl := simulation.RunLocallyOptional(size, 5, func() sm.StateMachine { return sm.NewTransactionStateMachine() })
+		ab := sm.NewTSMActionBuilder("client")
+
+		// leader election
+		time.Sleep(5 * time.Second)
+		if _, err := sl.AgreeOnLeader(); err != nil {
+			return err
+		}
+
+		// log replication
+		sl.RequestRaw(ab.TSMActionSetValue("accA", 0))
+		time.Sleep(2 * time.Second)
+		if err := sl.IdenticalLogEntries(); err != nil {
+			return err
+		}
+
+		// log compaction
+		for i := 0; i < 20; i++ {
+			sl.RequestRaw(ab.TSMActionIncrValue("accA", i))
+			time.Sleep(150 * time.Millisecond)
+		}
+
+		time.Sleep(4 * time.Second)
+
+		if _, _, err := sl.AgreeOnSnapshot(); err != nil {
+			return err
+		}
+
+		if _, err := sl.AgreeOnStateMachine(); err != nil {
+			return err
+		}
+
+		sl.StopAll()
+	}
+	return nil
+}
+
+func caseLocalMultiWrite() error {
+	sl := simulation.RunLocallyOptional(5, 5, func() sm.StateMachine { return sm.NewTransactionStateMachine() })
+
+	time.Sleep(2 * time.Second)
+
+	var abSlice []*sm.TSMActionBuilder
+	var clientIDs []string
+
+	for i := 0; i < 10; i++ {
+		cID := "acc" + strconv.Itoa(i)
+
+		newAb := sm.NewTSMActionBuilder(cID)
+		sl.RequestRaw(newAb.TSMActionSetValue(cID, 0))
+
+		clientIDs = append(clientIDs, cID)
+		abSlice = append(abSlice, newAb)
+	}
+
+	time.Sleep(4 * time.Second)
+
+	for req := 0; req < 20; req++ {
+		for c := 0; c < 10; c++ {
+			// already async
+			sl.RequestRaw(abSlice[c].TSMActionIncrValue(clientIDs[c], req))
+		}
+	}
+
+	time.Sleep(10 * time.Second)
+
+	if _, _, err := sl.AgreeOnSnapshot(); err != nil {
+		return err
+	}
+
+	if _, err := sl.AgreeOnStateMachine(); err != nil {
+		return err
+	}
+
+	return nil
 }
