@@ -62,6 +62,10 @@ var testCases = []testCase{
 		action: caseSaveToSnapshot,
 	},
 	{
+		name:   "check eventual consistency",
+		action: caseCheckEventualConsistency,
+	},
+	{
 		name:   "odd even number of nodes",
 		action: caseTestOddEvenNumberOfNode,
 	},
