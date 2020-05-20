@@ -38,13 +38,13 @@ type QueryRes struct {
 	Data     interface{}
 }
 
-func (c *Client) callRPC(target rpccore.NodeID, method string, req, res interface{}) error {
+func callRPC(core ClientCore, target rpccore.NodeID, method string, req, res interface{}) error {
 	var buf bytes.Buffer
 	err := gob.NewEncoder(&buf).Encode(req)
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	resData, err := c.node.SendRawRequest(target, method, buf.Bytes())
+	resData, err := core.node.SendRawRequest(target, method, buf.Bytes())
 	if err != nil {
 		// already wrapped
 		return err

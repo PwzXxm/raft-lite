@@ -66,8 +66,8 @@ var testCases = []testCase{
 		action: caseTestVariousNumberOfNode,
 	},
 	{
-		name:   "local mutiple write requests",
-		action: caseLocalMultiWrite,
+		name:   "transcation action query",
+		action: caseTransActionQuery,
 	},
 }
 
