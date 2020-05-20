@@ -18,7 +18,7 @@ func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
 		newLogIndex := 0
 		// find the index that the peer is consistent with the new entries
 		for p.logLen() > (prevLogIndex+newLogIndex+1) &&
-			p.log[p.toLogIndex(prevLogIndex+newLogIndex+1)].Term == req.Entries[newLogIndex].Term {
+			p.getLogTermByIndex(prevLogIndex+newLogIndex+1) == req.Entries[newLogIndex].Term {
 			newLogIndex++
 		}
 		p.log = append(p.log[0:p.toLogIndex(prevLogIndex+newLogIndex+1)], req.Entries[newLogIndex:]...)
@@ -46,12 +46,7 @@ func (p *Peer) consitencyCheck(req appendEntriesReq) bool {
 	if p.logLen() <= req.PrevLogIndex {
 		return false
 	}
-	var myPrevLogTerm int
-	if p.toLogIndex(req.PrevLogIndex+1) == 0 && p.snapshot != nil {
-		myPrevLogTerm = p.snapshot.LastIncludedTerm
-	} else {
-		myPrevLogTerm = p.log[p.toLogIndex(req.PrevLogIndex)].Term
-	}
+	myPrevLogTerm := p.getLogTermByIndex(req.PrevLogIndex)
 	if myPrevLogTerm != req.PrevLogTerm {
 		return false
 	}
@@ -111,12 +106,7 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 			if nextIndex <= 0 {
 				p.logger.Warn("nextIndex out of range")
 			}
-			var prevLogTerm int
-			if p.toLogIndex(nextIndex) == 0 && p.snapshot != nil {
-				prevLogTerm = p.snapshot.LastIncludedTerm
-			} else {
-				prevLogTerm = p.log[p.toLogIndex(nextIndex-1)].Term
-			}
+			prevLogTerm := p.getLogTermByIndex(nextIndex - 1)
 			leaderCommit := p.commitIndex
 			entries := p.log[p.toLogIndex(nextIndex):]
 			p.mutex.Unlock()

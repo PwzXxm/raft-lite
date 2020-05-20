@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/PwzXxm/raft-lite/client"
 	"github.com/PwzXxm/raft-lite/pstorage"
 	"github.com/PwzXxm/raft-lite/raft"
 	"github.com/PwzXxm/raft-lite/rpccore"
@@ -32,6 +33,7 @@ type local struct {
 	pstorages         map[rpccore.NodeID]pstorage.PersistentStorage
 	smMaker           stateMachineMaker
 	snapshotThreshold int
+	clientCore        client.ClientCore
 
 	// network related
 	netLock          sync.RWMutex
@@ -109,7 +111,7 @@ func newLocal(n int) (*local, error) {
 }
 
 func newLocalOptional(n int, snapshotThreshold int, smMaker stateMachineMaker) (*local, error) {
-	if n <= 0 {
+	if n <= 1 {
 		err := errors.Errorf("The number of peers should be positive, but got %v", n)
 		return nil, err
 	}
@@ -177,6 +179,14 @@ func newLocalOptional(n int, snapshotThreshold int, smMaker stateMachineMaker) (
 	l.oneWayLatencyMin = 10 * time.Millisecond
 	l.oneWayLatencyMax = 40 * time.Millisecond
 	l.packetLossRate = 0.01
+
+	cNode, err := l.network.NewNode("client")
+	if err != nil {
+		return nil, err
+	}
+
+	l.clientCore = client.NewClientCore("client", nodeIDs, cNode, log)
+
 	return l, nil
 }
 
@@ -224,6 +234,19 @@ func (l *local) RequestSync(cmd interface{}) bool {
 		log.Warn("Client request timeout")
 		return false
 	}
+}
+
+func (l *local) RequestActionSync(act sm.TSMAction) error {
+	ok, msg := client.ExecuteActionRequest(l.clientCore, act)
+	if ok {
+		return nil
+	}
+
+	return errors.New(msg)
+}
+
+func (l *local) RequestQuerySync(key string) (interface{}, error) {
+	return client.ExecuteQueryRequest(l.clientCore, sm.NewTSMDataQuery(key))
 }
 
 func (l *local) ShutDownPeer(id rpccore.NodeID) {
@@ -459,4 +482,8 @@ func (l *local) SetNetworkPartition(pMap map[rpccore.NodeID]int) {
 	for k := range l.rpcPeers {
 		l.nodePartition[k] = pMap[k]
 	}
+}
+
+func (l *local) GetActionBuilder() *sm.TSMActionBuilder {
+	return l.clientCore.ActBuilder
 }

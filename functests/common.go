@@ -61,6 +61,14 @@ var testCases = []testCase{
 		name:   "save to snapshots",
 		action: caseSaveToSnapshot,
 	},
+	{
+		name:   "odd even number of nodes",
+		action: caseTestOddEvenNumberOfNode,
+	},
+	{
+		name:   "transcation action query",
+		action: caseTransActionQuery,
+	},
 }
 
 func List() {

@@ -284,7 +284,7 @@ func (p *Peer) startElection() {
 	p.votedFor = &voteID
 
 	term := p.currentTerm
-	req := requestVoteReq{Term: p.currentTerm, CandidateID: p.node.NodeID(), LastLogIndex: p.logLen() - 1, LastLogTerm: p.log[p.toLogIndex(p.logLen()-1)].Term}
+	req := requestVoteReq{Term: p.currentTerm, CandidateID: p.node.NodeID(), LastLogIndex: p.logLen() - 1, LastLogTerm: p.getLogTermByIndex(p.logLen() - 1)}
 	for _, peerID := range p.rpcPeersIds {
 		go func(peerID rpccore.NodeID, term int) {
 			for {
@@ -413,7 +413,13 @@ func (p *Peer) toLogIndex(trueIndex int) int {
 func (p *Peer) logLen() int {
 	if p.snapshot == nil {
 		return len(p.log)
-	} else {
-		return len(p.log) + p.snapshot.LastIncludedIndex + 1
 	}
+	return len(p.log) + p.snapshot.LastIncludedIndex + 1
+}
+
+func (p *Peer) getLogTermByIndex(trueIndex int) int {
+	if p.snapshot != nil && trueIndex == p.snapshot.LastIncludedIndex {
+		return p.snapshot.LastIncludedTerm
+	}
+	return p.log[p.toLogIndex(trueIndex)].Term
 }
