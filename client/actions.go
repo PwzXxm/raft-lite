@@ -42,6 +42,7 @@ const (
 	loggerLevelDebug  = "debug"
 	loggerLevelInfo   = "info"
 	loggerLevelWarn   = "warn"
+	loggerLevelError  = "error"
 )
 
 var usageMp = map[string]string{
@@ -49,7 +50,7 @@ var usageMp = map[string]string{
 	cmdSet:            "<key> <value>",
 	cmdIncre:          "<key> <value>",
 	cmdMove:           "<source> <target> <value>",
-	cmdSetLoggerLevel: "<level> (warn, info, debug)",
+	cmdSetLoggerLevel: "<level> (warn, info, debug, error)",
 }
 
 func NewClientFromConfig(config clientConfig) (*Client, error) {
@@ -65,7 +66,7 @@ func NewClientFromConfig(config clientConfig) (*Client, error) {
 	nl := make([]rpccore.NodeID, len(config.NodeAddrMap))
 	i := 0
 	for nodeID, addr := range config.NodeAddrMap {
-		c.core.nl[i] = nodeID
+		nl[i] = nodeID
 		i++
 		err := c.net.NewRemoteNode(nodeID, addr)
 		if err != nil {
@@ -141,6 +142,9 @@ func (c *Client) startReadingCmd() {
 				case loggerLevelWarn:
 					c.core.logger.SetLevel(logrus.WarnLevel)
 					_, _ = green.Println("Logger level set to warn")
+				case loggerLevelError:
+					c.core.logger.SetLevel(logrus.ErrorLevel)
+					_, _ = green.Println("Logger level set to error")
 				default:
 					err = combineErrorUsage(invalidCommandError, cmd[0])
 				}
