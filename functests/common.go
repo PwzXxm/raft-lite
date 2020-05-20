@@ -65,6 +65,14 @@ var testCases = []testCase{
 		name:   "check eventual consistency",
 		action: caseCheckEventualConsistency,
 	},
+	{
+		name:   "odd even number of nodes",
+		action: caseTestOddEvenNumberOfNode,
+	},
+	{
+		name:   "transcation action query",
+		action: caseTransActionQuery,
+	},
 }
 
 func List() {
