@@ -40,6 +40,7 @@ const (
 	loggerLevelDebug  = "debug"
 	loggerLevelInfo   = "info"
 	loggerLevelWarn   = "warn"
+	loggerLevelError  = "error"
 )
 
 var usageMp = map[string]string{
@@ -47,7 +48,7 @@ var usageMp = map[string]string{
 	cmdSet:            "<key> <value>",
 	cmdIncre:          "<key> <value>",
 	cmdMove:           "<source> <target> <value>",
-	cmdSetLoggerLevel: "<level> (warn, info, debug)",
+	cmdSetLoggerLevel: "<level> (warn, info, debug, error)",
 }
 
 func NewClientFromConfig(config clientConfig) (*Client, error) {
@@ -130,6 +131,9 @@ func (c *Client) startReadingCmd() {
 				case loggerLevelWarn:
 					c.logger.SetLevel(logrus.WarnLevel)
 					green.Println("Logger level set to warn")
+				case loggerLevelError:
+					c.logger.SetLevel(logrus.ErrorLevel)
+					green.Println("Logger level set to error")
 				default:
 					err = c.combineErrorUsage(invalidCommandError, cmd[0])
 					break

@@ -153,6 +153,7 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 						c <- target
 					}
 				}
+				p.updateLastHeard(target)
 				p.mutex.Unlock()
 			}
 		}

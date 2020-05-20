@@ -68,6 +68,7 @@ type Peer struct {
 	matchIndex                   map[rpccore.NodeID]int
 	appendingEntries             map[rpccore.NodeID]bool
 	logIndexMajorityCheckChannel map[int]chan rpccore.NodeID
+	lastHeardFromFollower        map[rpccore.NodeID]time.Time
 
 	// follower only
 	heardFromLeader bool
@@ -197,6 +198,7 @@ func (p *Peer) changeState(state PeerState) {
 			close(c)
 		}
 		p.logIndexMajorityCheckChannel = nil
+		p.lastHeardFromFollower = nil
 	}
 
 	p.state = state
@@ -208,18 +210,38 @@ func (p *Peer) changeState(state PeerState) {
 		p.leaderID = nil
 		p.startElection()
 	case Leader:
-		p.nextIndex = make(map[rpccore.NodeID]int)
-		p.matchIndex = make(map[rpccore.NodeID]int)
+		p.nextIndex = make(map[rpccore.NodeID]int, len(p.rpcPeersIds))
+		p.matchIndex = make(map[rpccore.NodeID]int, len(p.rpcPeersIds))
 		p.logIndexMajorityCheckChannel = make(map[int]chan rpccore.NodeID)
+		p.lastHeardFromFollower = make(map[rpccore.NodeID]time.Time, len(p.rpcPeersIds))
 		for _, peers := range p.rpcPeersIds {
 			p.nextIndex[peers] = p.logLen()
 
 			// TODO: grind in the furture
 			p.matchIndex[peers] = 0
+			p.lastHeardFromFollower[peers] = time.Now()
 		}
 		p.triggerLeaderHeartbeat()
 	}
 	p.resetTimeout()
+}
+
+func (p *Peer) updateLastHeard(target rpccore.NodeID) {
+	p.lastHeardFromFollower[target] = time.Now()
+}
+
+func (p *Peer) isValidLeader() bool {
+	now := time.Now()
+	count := 0
+	for _, lastHeard := range p.lastHeardFromFollower {
+		if now.Sub(lastHeard) < time.Duration(250 * p.timingFactor) * time.Millisecond{
+			count ++
+		}
+		if 2 * count > len(p.rpcPeersIds) {
+			return true
+		}
+	}
+	return false
 }
 
 // Start fire up this peer
