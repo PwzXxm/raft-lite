@@ -522,3 +522,87 @@ func caseSaveToSnapshot() error {
 	fmt.Printf("LastIdx: %v LastTerm: %v\n %v", li, lt, err)
 	return err
 }
+
+func caseTestOddEvenNumberOfNode() error {
+	sizes := []int{2, 3}
+	for _, size := range sizes {
+		sl := simulation.RunLocallyOptional(size, 5, func() sm.StateMachine { return sm.NewTransactionStateMachine() })
+
+		// leader election
+		time.Sleep(2 * time.Second)
+		if _, err := sl.AgreeOnLeader(); err != nil {
+			return err
+		}
+
+		// log replication
+		sl.RequestActionSync(sl.GetActionBuilder().TSMActionSetValue("accA", 0))
+		time.Sleep(150 * time.Millisecond)
+		if err := sl.IdenticalLogEntries(); err != nil {
+			return err
+		}
+
+		// log compaction
+		for i := 0; i < 20; i++ {
+			sl.RequestActionSync(sl.GetActionBuilder().TSMActionIncrValue("accA", i))
+			time.Sleep(150 * time.Millisecond)
+		}
+
+		time.Sleep(4 * time.Second)
+
+		if _, _, err := sl.AgreeOnSnapshot(); err != nil {
+			return err
+		}
+
+		if _, err := sl.AgreeOnStateMachine(); err != nil {
+			return err
+		}
+
+		sl.StopAll()
+	}
+	return nil
+}
+
+func caseTransActionQuery() error {
+	sl := simulation.RunLocallyOptional(5, 5, func() sm.StateMachine { return sm.NewTransactionStateMachine() })
+	accA := "accA"
+	accB := "accB"
+
+	time.Sleep(2 * time.Second)
+	if _, err := sl.RequestQuerySync(accA); err == nil {
+		return errors.New("The key should not exist")
+	}
+
+	// init two accounts
+	if err := sl.RequestActionSync(sl.GetActionBuilder().TSMActionSetValue(accA, 0)); err != nil {
+		return err
+	}
+	if err := sl.RequestActionSync(sl.GetActionBuilder().TSMActionSetValue(accB, 0)); err != nil {
+		return err
+	}
+
+	// increment account A
+	if err := sl.RequestActionSync(sl.GetActionBuilder().TSMActionIncrValue(accA, 10)); err != nil {
+		return err
+	}
+
+	// move 3 from A to B
+	if err := sl.RequestActionSync(sl.GetActionBuilder().TSMActionMoveValue(accA, accB, 3)); err != nil {
+		return err
+	}
+
+	// query balance in the accounts
+	a, err := sl.RequestQuerySync(accA)
+	if err != nil {
+		return err
+	}
+	b, err := sl.RequestQuerySync(accB)
+	if err != nil {
+		return err
+	}
+
+	if a != 7 || b != 3 {
+		return errors.New(fmt.Sprintf("accA should have 7 but having %v; accB should have 3 but having %v", accA, accB))
+	}
+
+	return nil
+}
