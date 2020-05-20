@@ -121,30 +121,31 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 			if res == nil {
 				// retry call appendEntries rpc if response is nil
 				continue
-			} else if !res.Success {
-				// update nextIndex for target node
-				p.mutex.Lock()
-				if res.Term > currentTerm {
-					p.updateTerm(res.Term)
-					p.changeState(Follower)
-				} else {
-					p.nextIndex[target]--
-				}
-				p.mutex.Unlock()
 			} else {
-				// if success, update nextIndex for the node
 				p.mutex.Lock()
-				commitIndex := p.commitIndex
-				p.nextIndex[target] = nextIndex + len(entries)
-				// send signal to the channels for index greater than commit index
-				for i := commitIndex + 1; i < p.nextIndex[target]; i++ {
-					c, ok := p.logIndexMajorityCheckChannel[i]
-					if ok {
-						c <- target
-					}
-				}
 				p.updateLastHeard(target)
-				p.mutex.Unlock()
+				if !res.Success {
+					// update nextIndex for target node
+					if res.Term > currentTerm {
+						p.updateTerm(res.Term)
+						p.changeState(Follower)
+					} else {
+						p.nextIndex[target]--
+					}
+					p.mutex.Unlock()
+				} else {
+					// if success, update nextIndex for the node
+					commitIndex := p.commitIndex
+					p.nextIndex[target] = nextIndex + len(entries)
+					// send signal to the channels for index greater than commit index
+					for i := commitIndex + 1; i < p.nextIndex[target]; i++ {
+						c, ok := p.logIndexMajorityCheckChannel[i]
+						if ok {
+							c <- target
+						}
+					}
+					p.mutex.Unlock()
+				}
 			}
 		}
 	}

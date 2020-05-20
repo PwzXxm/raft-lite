@@ -227,7 +227,9 @@ func (p *Peer) changeState(state PeerState) {
 }
 
 func (p *Peer) updateLastHeard(target rpccore.NodeID) {
-	p.lastHeardFromFollower[target] = time.Now()
+	if p.lastHeardFromFollower != nil {
+		p.lastHeardFromFollower[target] = time.Now()
+	}
 }
 
 func (p *Peer) isValidLeader() bool {
