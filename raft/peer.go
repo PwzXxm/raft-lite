@@ -258,14 +258,11 @@ func (p *Peer) startElection() {
 	p.logger.Info("Start election.")
 	p.voteCount = 1
 	voteID := p.node.NodeID()
-	p.votedFor = &voteID
 	p.updateTerm(p.currentTerm + 1)
+	p.votedFor = &voteID
 
-	// Update CurrentTerm, VoteCount, VotedFor
-	err := p.saveToPersistentStorage()
-	if err != nil {
-		p.logger.Errorf("Unable to save state: %+v.", err)
-	}
+	// update CurrentTerm, VoteCount, VotedFor
+	p.saveToPersistentStorageAndLogError()
 
 	term := p.currentTerm
 	req := requestVoteReq{Term: p.currentTerm, CandidateID: p.node.NodeID(), LastLogIndex: p.logLen() - 1, LastLogTerm: p.log[p.toLogIndex(p.logLen()-1)].Term}
@@ -323,11 +320,8 @@ func (p *Peer) updateCommitIndex(idx int) {
 		p.logger.Infof("CommitIndex is incremented from %v to %v.", p.commitIndex, idx)
 		p.commitIndex = idx
 
-		// Update CommitIndex
-		err := p.saveToPersistentStorage()
-		if err != nil {
-			p.logger.Errorf("Unable to save state: %+v.", err)
-		}
+		// update CommitIndex
+		p.saveToPersistentStorageAndLogError()
 	}
 }
 

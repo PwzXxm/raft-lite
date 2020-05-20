@@ -29,11 +29,8 @@ func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
 
 	p.updateCommitIndex(req.LeaderCommit)
 
-	// Update CommitIndex, Term
-	err := p.saveToPersistentStorage()
-	if err != nil {
-		p.logger.Errorf("Unable to save state: %+v.", err)
-	}
+	// update CommitIndex, Term, Log
+	p.saveToPersistentStorageAndLogError()
 
 	return &appendEntriesRes{Term: p.currentTerm, Success: true}
 }
@@ -47,6 +44,9 @@ func (p *Peer) consitencyCheck(req appendEntriesReq) bool {
 	p.heardFromLeader = true
 	p.updateTerm(req.Term)
 	p.changeState(Follower)
+	// update CurrentTerm, VotedFor
+	p.saveToPersistentStorageAndLogError()
+
 	// TODO: check this, will the whole request will be kept?
 	p.leaderID = &req.LeaderID
 
@@ -144,6 +144,8 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 				if res.Term > currentTerm {
 					p.updateTerm(res.Term)
 					p.changeState(Follower)
+					// update CurrentTerm, VotedFor
+					p.saveToPersistentStorageAndLogError()
 				} else {
 					p.nextIndex[target]--
 				}
@@ -175,6 +177,8 @@ func (p *Peer) onReceiveClientRequest(cmd interface{}) bool {
 	}
 	newlog := LogEntry{Term: p.currentTerm, Cmd: cmd}
 	p.log = append(p.log, newlog)
+	// update Log
+	p.saveToPersistentStorageAndLogError()
 	newLogIndex := p.logLen() - 1
 	totalPeers := p.getTotalPeers()
 	majorityCheckChannel := make(chan rpccore.NodeID, totalPeers)
@@ -190,6 +194,8 @@ func (p *Peer) onReceiveClientRequest(cmd interface{}) bool {
 			p.mutex.Lock()
 			// update commitIndex, use max in case commitIndex is already updated by other client request
 			p.updateCommitIndex(newLogIndex)
+			// update CommitIndex
+			p.saveToPersistentStorageAndLogError()
 			// delete channel for the committed index
 			delete(p.logIndexMajorityCheckChannel, newLogIndex)
 			close(majorityCheckChannel)

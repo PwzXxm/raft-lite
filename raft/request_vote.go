@@ -17,11 +17,8 @@ func (p *Peer) handleRequestVote(req requestVoteReq) requestVoteRes {
 	// TODO: double check with paper
 	p.resetTimeout()
 
-	// Update CurrentTerm, VotedFor
-	err := p.saveToPersistentStorage()
-	if err != nil {
-		p.logger.Errorf("Unable to save state: %+v.", err)
-	}
+	// update CurrentTerm, VotedFor
+	p.saveToPersistentStorageAndLogError()
 
 	return requestVoteRes{Term: p.currentTerm, VoteGranted: true}
 }
@@ -55,12 +52,9 @@ func (p *Peer) handleRequestVoteRespond(res requestVoteRes) {
 		if res.Term > p.currentTerm {
 			p.updateTerm(res.Term)
 			p.changeState(Follower)
-
-			// Update CurrentTerm when Candidate steps down to Follower
-			err := p.saveToPersistentStorage()
-			if err != nil {
-				p.logger.Errorf("Unable to save state: %+v.", err)
-			}
 		}
 	}
+	// 1. update VoteCount if vote is granted
+	// 2. update CurrentTerm, VotedFor if steps down
+	p.saveToPersistentStorageAndLogError()
 }

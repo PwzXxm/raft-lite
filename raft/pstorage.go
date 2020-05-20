@@ -12,9 +12,7 @@ type PersistentData struct {
 	VoteCount   int
 	VotedFor    *rpccore.NodeID
 	Log         []LogEntry
-
-	Snapshot          *Snapshot
-	SnapshotThreshold int
+	Snapshot    *Snapshot
 
 	// for validation
 	NodeID    rpccore.NodeID
@@ -38,9 +36,7 @@ func (p *Peer) loadFromPersistentStorage() error {
 		p.voteCount = data.VoteCount
 		p.votedFor = data.VotedFor
 		p.log = data.Log
-
 		p.snapshot = data.Snapshot
-		p.snapshotThreshold = data.SnapshotThreshold
 		// update state machine
 		// TODO: should add snapshot to persistentData, apply the statemachine in snapshot first,
 		// and change the for loop to be the following line
@@ -65,11 +61,17 @@ func (p *Peer) saveToPersistentStorage() error {
 	data.VoteCount = p.voteCount
 	data.VotedFor = p.votedFor
 	data.Log = p.log
-
 	data.Snapshot = p.snapshot
-	data.SnapshotThreshold = p.snapshotThreshold
 
 	data.NodeID = p.node.NodeID()
 	data.NumOfNode = len(p.rpcPeersIds)
 	return p.persistentStorage.Save(data)
+}
+
+func (p *Peer) saveToPersistentStorageAndLogError() error {
+	err := p.saveToPersistentStorage()
+	if err != nil {
+		p.logger.Errorf("Unable to save state: %+v.", err)
+	}
+	return err
 }
