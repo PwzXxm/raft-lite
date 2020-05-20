@@ -19,7 +19,7 @@ func init() {
 	gob.Register(tcpResMsg{})
 	gob.Register(sm.TSMAction{})
 
-	// ignore all log print by [gorpc]
+	// ignore all log printed by [gorpc]
 	gorpc.SetErrorLogger(func(format string, args ...interface{}) {})
 }
 
