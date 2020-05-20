@@ -10,6 +10,11 @@ import (
 	"github.com/pkg/errors"
 )
 
+func init() {
+	gob.Register(TSMAction{})
+	gob.Register(TSMRequestInfo{})
+}
+
 // This state machine is not thread-safe
 type TSM struct {
 	Data              map[string]int
@@ -55,11 +60,11 @@ func (t *TSM) ApplyAction(action interface{}) error {
 	case tsmActionIncr:
 		v, ok := t.Data[tsmAction.Target]
 		if !ok {
-			errStr = fmt.Sprintf("invalid key: %v", tsmAction.Target)
+			errStr = fmt.Sprintf("invalid key: [%v]", tsmAction.Target)
 			break
 		}
 		if v+tsmAction.Value < 0 {
-			errStr = fmt.Sprintf("the value (%v) in key %v will be negative after this request",
+			errStr = fmt.Sprintf("the value [%v] of key [%v] will be negative after this request, which is not allowed",
 				v, tsmAction.Target)
 			break
 		}
@@ -67,21 +72,21 @@ func (t *TSM) ApplyAction(action interface{}) error {
 	case tsmActionMove:
 		sv, ok := t.Data[tsmAction.Source]
 		if !ok {
-			errStr = fmt.Sprintf("invalid key for source: %v", tsmAction.Source)
+			errStr = fmt.Sprintf("invalid key for source: [%v]", tsmAction.Source)
 			break
 		}
 		tv, ok := t.Data[tsmAction.Target]
 		if !ok {
-			errStr = fmt.Sprintf("invalid key for target: %v", tsmAction.Target)
+			errStr = fmt.Sprintf("invalid key for target: [%v]", tsmAction.Target)
 			break
 		}
 		if sv-tsmAction.Value < 0 {
-			errStr = fmt.Sprintf("the value (%v) in key %v will be negative after this request",
+			errStr = fmt.Sprintf("the value [%v] in key [%v] will be negative after this request, which is not allowed",
 				sv, tsmAction.Source)
 			break
 		}
 		if tv+tsmAction.Value < 0 {
-			errStr = fmt.Sprintf("the value (%v) in key %v will be negative after this request",
+			errStr = fmt.Sprintf("the value [%v] in key [%v] will be negative after this request, which is not allowed",
 				tv, tsmAction.Target)
 			break
 		}
@@ -157,10 +162,6 @@ func decodeTSMFromBytes(b []byte) (TSM, error) {
 // I really don't like the non-type-safe approach below, but I couldn't find a
 // better way. There is an another approach that use anonymous functions as
 // [TSMAction] but it can't be serialized.
-
-func init() {
-	gob.Register(TSMAction{})
-}
 
 type TSMAction struct {
 	Action tsmActionType
