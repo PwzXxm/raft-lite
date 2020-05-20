@@ -16,6 +16,10 @@ func (p *Peer) handleRequestVote(req requestVoteReq) requestVoteRes {
 	p.votedFor = &req.CandidateID
 	// TODO: double check with paper
 	p.resetTimeout()
+
+	// update CurrentTerm, VotedFor
+	p.saveToPersistentStorageAndLogError()
+
 	return requestVoteRes{Term: p.currentTerm, VoteGranted: true}
 }
 
@@ -49,4 +53,7 @@ func (p *Peer) handleRequestVoteRespond(res requestVoteRes) {
 			p.changeState(Follower)
 		}
 	}
+	// 1. update VoteCount if vote is granted
+	// 2. update CurrentTerm, VotedFor if steps down
+	p.saveToPersistentStorageAndLogError()
 }

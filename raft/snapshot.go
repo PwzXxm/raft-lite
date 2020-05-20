@@ -48,6 +48,10 @@ func (p *Peer) handleInstallSnapshot(req installSnapshotReq) installSnapshotRes 
 	p.snapshot = req.Snapshot
 	p.heardFromLeader = true
 	p.stateMachine.ResetWithSnapshot(p.snapshot.StateMachineSnapshot)
+
+	// update CommitIndex, Snapshot
+	p.saveToPersistentStorageAndLogError()
+
 	// TODO: write membership config from ss
 	return res
 }
@@ -57,6 +61,8 @@ func (p *Peer) handleInstallSnapshotRes(res *installSnapshotRes) {
 	if res.Term > p.currentTerm {
 		p.updateTerm(res.Term)
 		p.changeState(Follower)
+		// update CurrentTerm, VotedFor
+		p.saveToPersistentStorageAndLogError()
 	}
 }
 
