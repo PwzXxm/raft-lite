@@ -38,7 +38,7 @@ type QueryRes struct {
 	Data     interface{}
 }
 
-func callRPC(core ClientCore, target rpccore.NodeID, method string, req, res interface{}) error {
+func callRPC(core *ClientCore, target rpccore.NodeID, method string, req, res interface{}) error {
 	var buf bytes.Buffer
 	err := gob.NewEncoder(&buf).Encode(req)
 	if err != nil {
