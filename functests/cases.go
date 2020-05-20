@@ -523,8 +523,8 @@ func caseSaveToSnapshot() error {
 	return err
 }
 
-func caseTestVariousNumberOfNode() error {
-	sizes := []int{1, 2, 3}
+func caseTestOddEvenNumberOfNode() error {
+	sizes := []int{2, 3}
 	for _, size := range sizes {
 		sl := simulation.RunLocallyOptional(size, 5, func() sm.StateMachine { return sm.NewTransactionStateMachine() })
 

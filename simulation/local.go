@@ -111,7 +111,7 @@ func newLocal(n int) (*local, error) {
 }
 
 func newLocalOptional(n int, snapshotThreshold int, smMaker stateMachineMaker) (*local, error) {
-	if n <= 0 {
+	if n <= 1 {
 		err := errors.Errorf("The number of peers should be positive, but got %v", n)
 		return nil, err
 	}

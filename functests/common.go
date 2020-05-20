@@ -62,8 +62,8 @@ var testCases = []testCase{
 		action: caseSaveToSnapshot,
 	},
 	{
-		name:   "various number of nodes",
-		action: caseTestVariousNumberOfNode,
+		name:   "odd even number of nodes",
+		action: caseTestOddEvenNumberOfNode,
 	},
 	{
 		name:   "transcation action query",
