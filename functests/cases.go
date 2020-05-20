@@ -241,7 +241,7 @@ func caseLeaderOffline() (err error) {
 	time.Sleep(10 * time.Second)
 	fmt.Println("Start the check.")
 
-	leader2, err := sl.AgreeOnLeader()
+	_, err = sl.AgreeOnLeader()
 	if err != nil {
 		return
 	}
@@ -249,10 +249,10 @@ func caseLeaderOffline() (err error) {
 	if err != nil {
 		return
 	}
+	err = sl.IdenticalLogEntries()
 
-	if *leader2 == *leader1 || term2 == term1 {
-		return errors.Errorf("Leader and term need to be different. l1: %v, l2: %v, t1: %v, t2: %v",
-			*leader1, *leader2, term1, term2)
+	if term2 == term1 {
+		return errors.Errorf("Term need to be different. t1: %v, t2: %v", term1, term2)
 	}
 
 	return nil
