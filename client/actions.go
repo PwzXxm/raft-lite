@@ -66,7 +66,7 @@ func NewClientFromConfig(config clientConfig) (*Client, error) {
 	nl := make([]rpccore.NodeID, len(config.NodeAddrMap))
 	i := 0
 	for nodeID, addr := range config.NodeAddrMap {
-		c.core.nl[i] = nodeID
+		nl[i] = nodeID
 		i++
 		err := c.net.NewRemoteNode(nodeID, addr)
 		if err != nil {
