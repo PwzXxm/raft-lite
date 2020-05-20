@@ -10,59 +10,102 @@ import (
 	"github.com/pkg/errors"
 )
 
+func init() {
+	gob.Register(TSMAction{})
+	gob.Register(TSMRequestInfo{})
+}
+
 // This state machine is not thread-safe
 type TSM struct {
-	Data            map[string]int
-	LatestRequestID map[string]uint32
+	Data              map[string]int
+	LatestRequestInfo map[string]TSMRequestInfo
+}
+
+type TSMRequestInfo struct {
+	RequestID uint32
+	Err       *string
 }
 
 func NewTransactionStateMachine() *TSM {
 	t := new(TSM)
-	t.Data = make(map[string]int)
-	t.LatestRequestID = make(map[string]uint32)
+	t.Reset()
 	return t
 }
 
 func (t *TSM) Reset() {
 	t.Data = make(map[string]int)
-	t.LatestRequestID = make(map[string]uint32)
+	t.LatestRequestInfo = make(map[string]TSMRequestInfo)
 }
 
 func (t *TSM) ApplyAction(action interface{}) error {
 	tsmAction := action.(TSMAction)
 	// check duplicate
-	lastID, ok := t.LatestRequestID[tsmAction.ClientID]
+	lastRequest, ok := t.LatestRequestInfo[tsmAction.ClientID]
 	if ok {
-		if lastID == tsmAction.RequestID {
+		if lastRequest.RequestID == tsmAction.RequestID {
 			// duplicate request, ignore it
 			return nil
 		}
 	}
-	t.LatestRequestID[tsmAction.ClientID] = tsmAction.RequestID
 
+	var errStr string
 	// execute action
 	switch tsmAction.Action {
 	case tsmActionSet:
+		if tsmAction.Value < 0 {
+			errStr = "negative value is not allowed"
+			break
+		}
 		t.Data[tsmAction.Target] = tsmAction.Value
 	case tsmActionIncr:
 		v, ok := t.Data[tsmAction.Target]
 		if !ok {
-			return errors.Errorf("invalid key: %v", tsmAction.Target)
+			errStr = fmt.Sprintf("invalid key: [%v]", tsmAction.Target)
+			break
+		}
+		if v+tsmAction.Value < 0 {
+			errStr = fmt.Sprintf("the value [%v] of key [%v] will be negative after this request, which is not allowed",
+				v, tsmAction.Target)
+			break
 		}
 		t.Data[tsmAction.Target] = v + tsmAction.Value
 	case tsmActionMove:
 		sv, ok := t.Data[tsmAction.Source]
 		if !ok {
-			return errors.Errorf("invalid key for source: %v", tsmAction.Source)
+			errStr = fmt.Sprintf("invalid key for source: [%v]", tsmAction.Source)
+			break
 		}
 		tv, ok := t.Data[tsmAction.Target]
 		if !ok {
-			return errors.Errorf("invalid key for target: %v", tsmAction.Target)
+			errStr = fmt.Sprintf("invalid key for target: [%v]", tsmAction.Target)
+			break
+		}
+		if sv-tsmAction.Value < 0 {
+			errStr = fmt.Sprintf("the value [%v] in key [%v] will be negative after this request, which is not allowed",
+				sv, tsmAction.Source)
+			break
+		}
+		if tv+tsmAction.Value < 0 {
+			errStr = fmt.Sprintf("the value [%v] in key [%v] will be negative after this request, which is not allowed",
+				tv, tsmAction.Target)
+			break
 		}
 		t.Data[tsmAction.Source] = sv - tsmAction.Value
 		t.Data[tsmAction.Target] = tv + tsmAction.Value
+	default:
+		errStr = "invalid request"
 	}
-	return nil
+	var errStrp *string
+	var err error
+	if errStr != "" {
+		errStrp = &errStr
+		err = errors.New(errStr)
+	}
+	t.LatestRequestInfo[tsmAction.ClientID] = TSMRequestInfo{
+		RequestID: tsmAction.RequestID,
+		Err:       errStrp,
+	}
+	return err
 }
 
 // return the value of the given key.
@@ -79,7 +122,7 @@ func (t *TSM) Query(req interface{}) (interface{}, error) {
 		return v, nil
 	case tsmQueryLatestRequest:
 		client := query.Key
-		v, ok := t.LatestRequestID[client]
+		v, ok := t.LatestRequestInfo[client]
 		if !ok {
 			return nil, errors.New("key does not exist")
 		}
@@ -103,7 +146,7 @@ func (t *TSM) ResetWithSnapshot(b []byte) error {
 	newTSM, err := decodeTSMFromBytes(b)
 	if err == nil {
 		t.Data = newTSM.Data
-		t.LatestRequestID = newTSM.LatestRequestID
+		t.LatestRequestInfo = newTSM.LatestRequestInfo
 	}
 	return err
 }
@@ -119,10 +162,6 @@ func decodeTSMFromBytes(b []byte) (TSM, error) {
 // I really don't like the non-type-safe approach below, but I couldn't find a
 // better way. There is an another approach that use anonymous functions as
 // [TSMAction] but it can't be serialized.
-
-func init() {
-	gob.Register(TSMAction{})
-}
 
 type TSMAction struct {
 	Action tsmActionType
