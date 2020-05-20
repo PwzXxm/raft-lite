@@ -552,7 +552,8 @@ func caseSaveToPersistentStorage() (err error) {
 		}
 	}
 
-	data1 := sl.GetPersistentStorage(isolater)
+	// check persistent storage
+	data1 := sl.GetPersistentData(isolater)
 
 	// shut down particular peer
 	sl.ShutDownPeer(isolater)
@@ -569,12 +570,16 @@ func caseSaveToPersistentStorage() (err error) {
 	fmt.Printf("Restart Peer %v\n", isolater)
 
 	// check persistent storage
-	data2 := sl.GetPersistentStorage(isolater)
+	data2 := sl.GetPersistentData(isolater)
 
-	err = sl.AgreeOnPersistentStorage(data1, data2)
+	err = sl.AgreeOnPersistentData(data1, data2)
 	if err != nil {
 		return
 	}
 
+	return
+}
+
+func caseCheckEventualConsistency() (err error) {
 	return
 }

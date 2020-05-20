@@ -65,6 +65,10 @@ var testCases = []testCase{
 		name:   "save to persistent storage",
 		action: caseSaveToPersistentStorage,
 	},
+	{
+		name:   "check eventual consistency",
+		action: caseCheckEventualConsistency,
+	},
 }
 
 func List() {

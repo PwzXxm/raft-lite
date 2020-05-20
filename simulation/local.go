@@ -265,7 +265,7 @@ func (l *local) PrintAllNodeInfo() {
 	}
 }
 
-func (l *local) GetPersistentStorage(nodeID rpccore.NodeID) raft.PersistentData {
+func (l *local) GetPersistentData(nodeID rpccore.NodeID) raft.PersistentData {
 	var data raft.PersistentData
 	l.pstorages[nodeID].Load(&data)
 	return data
@@ -444,7 +444,7 @@ func (l *local) AgreeOnStateMachine() ([]byte, error) {
 	return ss, nil
 }
 
-func (l *local) AgreeOnPersistentStorage(data1 raft.PersistentData, data2 raft.PersistentData) error {
+func (l *local) AgreeOnPersistentData(data1 raft.PersistentData, data2 raft.PersistentData) error {
 	identical := true
 
 	// CommitIndex, Snapshot

@@ -48,6 +48,13 @@ func (p *Peer) handleInstallSnapshot(req installSnapshotReq) installSnapshotRes 
 	p.snapshot = req.Snapshot
 	p.heardFromLeader = true
 	p.stateMachine.ResetWithSnapshot(p.snapshot.StateMachineSnapshot)
+
+	// Update CommitIndex, Snapshot
+	err := p.saveToPersistentStorage()
+	if err != nil {
+		p.logger.Errorf("Unable to save state: %+v.", err)
+	}
+
 	// TODO: write membership config from ss
 	return res
 }
