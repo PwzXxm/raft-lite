@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -27,14 +28,14 @@ type peerConfig struct {
 	SnapshotThreshold int
 }
 
-func StartPeerFromFile(filepath string) error {
+func StartPeerFromFile(configFilepath string) error {
 	var config peerConfig
-	err := utils.ReadClientFromJSON(&config, filepath)
+	err := utils.ReadClientFromJSON(&config, configFilepath)
 	if err != nil {
 		return err
 	}
 
-	fl := flock.New(filepath)
+	fl := flock.New(configFilepath)
 	if locked, _ := fl.TryLock(); !locked {
 		return errors.New("Unable to lock the config file," +
 			" make sure there isn't another instance running.")
@@ -60,6 +61,16 @@ func StartPeerFromFile(filepath string) error {
 			}
 		}
 	}
+
+	// create directory for Pstorage if needed
+	pFilePath := filepath.Dir(config.PstorageFilePath)
+
+	if _, err := os.Stat(pFilePath); os.IsNotExist(err) {
+		err = os.MkdirAll(pFilePath, os.ModePerm)
+		if err != nil {
+			return err
+		}
+	}
 	ps := pstorage.NewFileBasedPersistentStorage(config.PstorageFilePath)
 	//new peer
 	peers := []rpccore.NodeID{}
@@ -69,7 +80,7 @@ func StartPeerFromFile(filepath string) error {
 		}
 	}
 	p, err := raft.NewPeer(node, peers, logger.WithFields(logrus.Fields{
-		"nodeID": node.NodeID()}), sm.NewTransactionStateMachine(), ps, 
+		"nodeID": node.NodeID()}), sm.NewTransactionStateMachine(), ps,
 		config.TimingFactor, config.SnapshotThreshold)
 	if err != nil {
 		return err

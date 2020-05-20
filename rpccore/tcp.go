@@ -18,6 +18,9 @@ func init() {
 	gob.Register(tcpReqMsg{})
 	gob.Register(tcpResMsg{})
 	gob.Register(sm.TSMAction{})
+
+	// ignore all log printed by [gorpc]
+	gorpc.SetErrorLogger(func(format string, args ...interface{}) {})
 }
 
 type TCPNetwork struct {

@@ -112,7 +112,7 @@ func (c *Client) startReadingCmd() {
 				}
 				res, err := c.executeQueryRequest(sm.NewTSMDataQuery(cmd[1]))
 				if err != nil {
-					red.Println(err)
+					_, _ = red.Println(err)
 				} else {
 					green.Printf("The query result for key %v: %v\n", cmd[1], res)
 				}
@@ -124,19 +124,18 @@ func (c *Client) startReadingCmd() {
 				switch cmd[1] {
 				case loggerLevelDebug:
 					c.logger.SetLevel(logrus.DebugLevel)
-					green.Println("Logger level set to debug")
+					_, _ = green.Println("Logger level set to debug")
 				case loggerLevelInfo:
 					c.logger.SetLevel(logrus.InfoLevel)
-					green.Println("Logger level set to info")
+					_, _ = green.Println("Logger level set to info")
 				case loggerLevelWarn:
 					c.logger.SetLevel(logrus.WarnLevel)
-					green.Println("Logger level set to warn")
+					_, _ = green.Println("Logger level set to warn")
 				case loggerLevelError:
 					c.logger.SetLevel(logrus.ErrorLevel)
-					green.Println("Logger level set to error")
+					_, _ = green.Println("Logger level set to error")
 				default:
 					err = c.combineErrorUsage(invalidCommandError, cmd[0])
-					break
 				}
 			case cmdSet, cmdIncre:
 				if l != 3 {
@@ -150,9 +149,9 @@ func (c *Client) startReadingCmd() {
 				}
 				switch cmd[0] {
 				case cmdSet:
-					c.executeActionRequest(c.ab.TSMActionSetValue(cmd[1], value))
+					c.executeActionRequestAndPrint(c.ab.TSMActionSetValue(cmd[1], value))
 				case cmdIncre:
-					c.executeActionRequest(c.ab.TSMActionIncrValue(cmd[1], value))
+					c.executeActionRequestAndPrint(c.ab.TSMActionIncrValue(cmd[1], value))
 				}
 			case cmdMove:
 				if l != 4 {
@@ -164,14 +163,14 @@ func (c *Client) startReadingCmd() {
 					err = errors.New("value should be an integer")
 					break
 				}
-				c.executeActionRequest(c.ab.TSMActionMoveValue(cmd[1], cmd[2], value))
+				c.executeActionRequestAndPrint(c.ab.TSMActionMoveValue(cmd[1], cmd[2], value))
 			default:
-				red.Fprintln(os.Stderr, invalidCommandError)
+				_, _ = red.Fprintln(os.Stderr, invalidCommandError)
 				utils.PrintUsage(usageMp)
 			}
 		}
 		if err != nil {
-			red.Fprintln(os.Stderr, err)
+			_, _ = red.Fprintln(os.Stderr, err)
 		}
 		green.Print("> ")
 	}
@@ -179,6 +178,17 @@ func (c *Client) startReadingCmd() {
 	if err := scanner.Err(); err != nil {
 		fmt.Fprintln(os.Stderr, "Failed reading stdout: ", err)
 	}
+}
+
+func (c *Client) executeActionRequestAndPrint(act sm.TSMAction) {
+	success, msg := c.executeActionRequest(act)
+	var ca color.Attribute
+	if success {
+		ca = color.FgGreen
+	} else {
+		ca = color.FgHiRed
+	}
+	_, _ = color.New(ca).Println(msg)
 }
 
 func (c *Client) combineErrorUsage(e error, cmd string) error {
@@ -225,21 +235,27 @@ func (c *Client) sendActionRequest(actReq ActionReq) error {
 	return err
 }
 
-func (c *Client) checkActionRequest(queryReq QueryReq, reqID uint32) (bool, error) {
+func (c *Client) checkActionRequest(queryReq QueryReq) (*sm.TSMRequestInfo, error) {
 	leader := c.lookForLeader()
 	var queryRes QueryRes
 	err := c.callRPC(leader, RPCMethodQueryRequest, queryReq, &queryRes)
 	if err == nil {
 		if queryRes.Success {
-			return (queryRes.QueryErr == nil && queryRes.Data.(uint32) == reqID), nil
+			if queryRes.QueryErr == nil {
+				info := queryRes.Data.(sm.TSMRequestInfo)
+				return &info, nil
+			} else {
+				// query success, but there is no related request info
+				return nil, nil
+			}
 		} else {
 			err = errors.Errorf("Node %v decliend the query request.", leader)
 		}
 	}
-	return false, err
+	return nil, err
 }
 
-func (c *Client) executeActionRequest(act sm.TSMAction) {
+func (c *Client) executeActionRequest(act sm.TSMAction) (bool, string) {
 	actReq := ActionReq{Cmd: act}
 	queryReq := QueryReq{Cmd: sm.NewTSMLatestRequestQuery(c.clientID)}
 	reqID := act.GetRequestID()
@@ -254,13 +270,16 @@ func (c *Client) executeActionRequest(act sm.TSMAction) {
 		time.Sleep(100 * time.Millisecond)
 
 		for i := 0; i < 4; i++ {
-			success, err := c.checkActionRequest(queryReq, reqID)
+			info, err := c.checkActionRequest(queryReq)
 			if err != nil {
 				c.logErrAndBackoff("check action request failed. ", err)
 			}
-			if success {
-				c.logger.Infof("action success.")
-				return
+			if info != nil && info.RequestID == reqID {
+				if info.Err != nil {
+					return false, *info.Err
+				} else {
+					return true, "action success"
+				}
 			} else {
 				// TODO: another backoff?
 				time.Sleep(100 * time.Millisecond)
