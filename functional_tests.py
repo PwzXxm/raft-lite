@@ -81,7 +81,7 @@ def run_tests(times: int, parallel: int, timeout: int, single_testcase: int) -> 
         raise RuntimeError("Unable to load test cases")
     tests_n = int(out)
     if single_testcase != 0:
-        tasks = [(single_testcase+1, j+1, timeout) for j in range(times)]
+        tasks = [(single_testcase, j+1, timeout) for j in range(times)]
     else:
         tasks = [(i+1, j+1, timeout)
                  for i in range(tests_n) for j in range(times)]

@@ -80,12 +80,18 @@ func (p *Peer) handleInstallSnapshotRes(res *installSnapshotRes) {
 
 // SnapshotEqual returns a bool value whether two snapshots are equal and error value if occurs
 func SnapshotEqual(s1 *Snapshot, s2 *Snapshot) (bool, error) {
-	smEqual, err := sm.TSMIsSnapshotEqual(s1.StateMachineSnapshot, s2.StateMachineSnapshot)
-	if err != nil {
-		return false, err
-	}
-	if smEqual && s1.LastIncludedIndex == s2.LastIncludedIndex && s1.LastIncludedTerm == s2.LastIncludedTerm {
+	if s1 == nil && s2 == nil {
 		return true, nil
+	}
+	if s1 != nil && s2 != nil {
+		smEqual, err := sm.TSMIsSnapshotEqual(s1.StateMachineSnapshot, s2.StateMachineSnapshot)
+		if err != nil {
+			return false, err
+		}
+		if smEqual && s1.LastIncludedIndex == s2.LastIncludedIndex && s1.LastIncludedTerm == s2.LastIncludedTerm {
+			return true, nil
+		}
+		return false, nil
 	}
 	return false, nil
 }

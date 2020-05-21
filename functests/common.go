@@ -85,6 +85,10 @@ var testCases = []testCase{
 		name:   "transcation action query",
 		action: caseTransActionQuery,
 	},
+	{
+		name:   "identical restarted peer",
+		action: caseIdenticalRestartedPeer,
+	},
 }
 
 // list test cases
