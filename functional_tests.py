@@ -44,8 +44,6 @@ def main():
         sys.exit(1)
 
 # build the go binary executable
-
-
 def build_executable() -> None:
     res = subprocess.run(["go", "build", "."],
                          timeout=20, stdout=subprocess.PIPE,
@@ -56,8 +54,6 @@ def build_executable() -> None:
 # Return values are (passed, timeout, output)
 
 # run raft-lite programme supplying with given running arguments
-
-
 def execute_raft_lite(args: List[str], timeout: int) -> Tuple[bool, bool, str]:
     try:
         res = subprocess.run(['./raft-lite']+args,
