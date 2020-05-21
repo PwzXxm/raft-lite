@@ -112,7 +112,7 @@ func clientRandomlySendRequest(clientName string, sl *simulation.Local) {
 		_, _ = clientCore.ExecuteActionRequest(action)
 		localStateMachine[key] = value
 	}
-	for true {
+	for {
 		// time.Sleep(time.Duration(utils.Random(0, 10000)))
 		time.Sleep(time.Duration(1000 * time.Millisecond))
 		switch getRandomAction() {
@@ -171,7 +171,7 @@ func clientRandomlySendRequest(clientName string, sl *simulation.Local) {
 }
 
 func complexTest(ctx context.Context, wg *sync.WaitGroup, rst map[string]int) error {
-	sl := simulation.RunLocallyOptional(5, 5, func() sm.StateMachine { return sm.NewTransactionStateMachine() })
+	sl := simulation.RunLocallyOptional(5, 50, func() sm.StateMachine { return sm.NewTransactionStateMachine() })
 	defer sl.StopAll()
 	nodeIDs := []rpccore.NodeID{"0", "1", "2", "3", "4"}
 	// process inital election normally
@@ -185,13 +185,13 @@ func complexTest(ctx context.Context, wg *sync.WaitGroup, rst map[string]int) er
 
 		for i := 0; ; i++ {
 			time.Sleep(10 * time.Second)
-			err := sl.AgreeOnLogEntries()
-			if err == nil {
-				_, _ = green.Printf("Check %v passed, agree on log entries\n", i)
-			} else {
-				c <- err
-				return
-			}
+			// err := sl.AgreeOnLogEntries()
+			// if err == nil {
+			// 	_, _ = green.Printf("Check %v passed, agree on log entries\n", i)
+			// } else {
+			// 	c <- err
+			// 	return
+			// }
 
 			select {
 			case <-ctx.Done():

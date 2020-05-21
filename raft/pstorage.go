@@ -66,10 +66,9 @@ func (p *Peer) saveToPersistentStorage() error {
 	return p.persistentStorage.Save(data)
 }
 
-func (p *Peer) saveToPersistentStorageAndLogError() error {
+func (p *Peer) saveToPersistentStorageAndLogError() {
 	err := p.saveToPersistentStorage()
 	if err != nil {
 		p.logger.Errorf("Unable to save state: %+v.", err)
 	}
-	return err
 }

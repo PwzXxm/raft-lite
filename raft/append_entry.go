@@ -53,6 +53,10 @@ func (p *Peer) consitencyCheck(req appendEntriesReq) bool {
 	}
 	myPrevLogTerm := p.getLogTermByIndex(req.PrevLogIndex)
 	if myPrevLogTerm != req.PrevLogTerm {
+		if req.PrevLogIndex <= p.commitIndex {
+			p.logger.Errorf("invalid case! prevLogIndex:%v, logreq:%v, loglocal:%v", req.PrevLogIndex, req.Entries, p.log)
+			panic("")
+		}
 		return false
 	}
 	return true
