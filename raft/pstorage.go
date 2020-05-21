@@ -5,6 +5,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+// PersistentData takes relevant attributes from Peer
+// in order to maintain the data for later recovery
 type PersistentData struct {
 	CurrentTerm int
 	CommitIndex int

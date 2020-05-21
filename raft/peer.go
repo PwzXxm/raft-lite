@@ -38,10 +38,9 @@ type Peer struct {
 	votedFor    *rpccore.NodeID // candidateID that peer votes in this term, nil if none
 	voteCount   int             // count for other peers vote me in this term
 	log         []LogEntry      // log entries
+	commitIndex int             // index of highest log entry known to be committed (increases monotonically)
 
-	commitIndex int //index of highest log entry known to be committed (increases monotonically)
-
-	rpcPeersIds []rpccore.NodeID // array of other peer IDs
+	rpcPeersIds []rpccore.NodeID // array of other peer IDs, excludes self
 	node        rpccore.Node     // node
 	shutdown    bool             // bool value to check whether this peer starts
 	logger      *logrus.Entry    // logger
@@ -315,11 +314,12 @@ func (p *Peer) startElection() {
 	}
 }
 
-// updateTerm updates the term and resets the votedFor in this new term
+// updateTerm updates the term and resets the votedFor
 func (p *Peer) updateTerm(term int) {
 	if term > p.currentTerm {
 		p.logger.Infof("Term is incremented from %v to %v.", p.currentTerm, term)
 		p.currentTerm = term
+		// clear votedFor in the new term
 		p.votedFor = nil
 	}
 }

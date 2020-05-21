@@ -1,5 +1,7 @@
 package raft
 
+// handleRequestVote takes a requestVoteRes struct and returns a requestVoteRes
+// checks the required qualifications and responds with a term and bool value
 func (p *Peer) handleRequestVote(req requestVoteReq) requestVoteRes {
 	// check candidate's qualification:
 	//  1. Deny if its term is samller than mine
@@ -22,9 +24,15 @@ func (p *Peer) handleRequestVote(req requestVoteReq) requestVoteRes {
 	return requestVoteRes{Term: p.currentTerm, VoteGranted: true}
 }
 
+// logPriorCheck takes a log index and term, returns the check result
+// it is used for determining two logs which is more up-to-date
 func (p *Peer) logPriorCheck(lastLogIndex int, lastLogTerm int) bool {
 	myLastLogIndex := p.logLen() - 1
 	myLastLogTerm := p.getLogTermByIndex(myLastLogIndex)
+	// return logic: 1 || 2
+	//  1. Two logs have last entries with different terms,
+	//     log with later term is more up-to-date
+	//  2. Logs with the same term, then longer log is more up-to-date
 	return myLastLogTerm > lastLogTerm ||
 		(myLastLogTerm == lastLogTerm && myLastLogIndex > lastLogIndex)
 }
@@ -37,9 +45,8 @@ func (p *Peer) handleRequestVoteRespond(res requestVoteRes) {
 
 	if res.VoteGranted {
 		p.voteCount++
-		// Note that p.rpcPeersIds dose not include itself
 		totalPeers := p.getTotalPeers()
-		// received majority votes, become leader
+		// received majority votes (more than half), become leader
 		if p.voteCount > totalPeers/2 && p.state == Candidate {
 			p.logger.Info("Change to leader.")
 			p.changeState(Leader)
