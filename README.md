@@ -34,7 +34,15 @@ The focus of this project is to explore the detailed implementation of the Raft 
 ```
 
 ## Usage
-### Unit Test
+### Start
+```js
+// Sample: start peer with configuration 1
+go run . peer -c sample-config/sample-config1.json
+// Sample: start client with client configuration
+go run . client -c sample_config/client_config.json
+```
+
+### Unit test
 ```js
 go test -v ./...
 ```
@@ -43,6 +51,6 @@ go test -v ./...
 ```js
 // Helper command
 python3 functional_tests.py --help
-// Sample
+// Sample: 4 tests in parallel, 120s timeout, 10 times for each test case
 python3 functional_tests.py --parallel 4 --timeout 120 --times 10
 ```
