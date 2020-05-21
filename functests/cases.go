@@ -695,9 +695,12 @@ func caseIdenticalRestartedPeer() error {
 
 	// make requests
 	fmt.Print("Start sending request.\n")
-	sl.RequestSync(actioinBuilder.TSMActionSetValue("key_a", 0))
+	_ = sl.RequestActionSync(actioinBuilder.TSMActionSetValue("key_a", 0))
+	if err != nil {
+		return err
+	}
 	for i := 0; i < 20; i++ {
-		sl.RequestSync(actioinBuilder.TSMActionIncrValue("key_a", 10))
+		_ = sl.RequestActionSync(actioinBuilder.TSMActionIncrValue("key_a", 10))
 		time.Sleep(150 * time.Millisecond)
 	}
 
