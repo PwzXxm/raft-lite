@@ -24,13 +24,34 @@ type TCPNetwork struct {
 	lock        sync.RWMutex
 	nodeAddrMap map[NodeID]string
 	timeout     time.Duration
+	localNodes  map[NodeID]*TCPNode
 }
 
 func NewTCPNetwork(timeout time.Duration) *TCPNetwork {
 	n := new(TCPNetwork)
 	n.nodeAddrMap = make(map[NodeID]string)
+	n.localNodes = make(map[NodeID]*TCPNode)
 	n.timeout = timeout
 	return n
+}
+
+func (n *TCPNetwork) Shutdown() {
+	n.lock.Lock()
+	defer n.lock.Unlock()
+	for _, node := range n.localNodes {
+		node.lock.Lock()
+		for _, client := range node.clientMap {
+			client.Stop()
+		}
+		if !node.clientOnlyMode {
+			node.s.Stop()
+			node.s = nil
+		}
+		node.clientMap = nil
+		node.lock.Unlock()
+	}
+	n.localNodes = nil
+	n.nodeAddrMap = nil
 }
 
 func (n *TCPNetwork) NewRemoteNode(nodeID NodeID, addr string) error {
@@ -45,7 +66,6 @@ func (n *TCPNetwork) NewRemoteNode(nodeID NodeID, addr string) error {
 }
 
 func (n *TCPNetwork) NewLocalNode(nodeID NodeID, remoteAddr, listenAddr string) (*TCPNode, error) {
-
 	n.lock.Lock()
 	defer n.lock.Unlock()
 	if _, ok := n.nodeAddrMap[nodeID]; ok {
@@ -83,8 +103,9 @@ func (n *TCPNetwork) NewLocalNode(nodeID NodeID, remoteAddr, listenAddr string) 
 	if err := s.Start(); err != nil {
 		return nil, err
 	}
-	// TODO: support graceful shutdown or at least clean shutdown
+	node.s = s
 	n.nodeAddrMap[nodeID] = remoteAddr
+	n.localNodes[nodeID] = node
 	return node, nil
 }
 
@@ -102,6 +123,7 @@ func (n *TCPNetwork) NewLocalClientOnlyNode(nodeID NodeID) (*TCPNode, error) {
 		clientMap:      make(map[NodeID]*gorpc.Client),
 		clientOnlyMode: true,
 	}
+	n.localNodes[nodeID] = node
 	return node, nil
 }
 
@@ -112,6 +134,7 @@ type TCPNode struct {
 	clientMap      map[NodeID]*gorpc.Client
 	clientOnlyMode bool
 	lock           sync.RWMutex
+	s              *gorpc.Server
 }
 
 func (node *TCPNode) NodeID() NodeID {
