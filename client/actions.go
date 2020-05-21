@@ -2,11 +2,11 @@
  * Project: raft-lite
  * ---------------------
  * Authors:
- * Minjian Chen 813534
- * Shijie Liu   813277
- * Weizhi Xu    752454
- * Wenqing Xue  813044
- * Zijun Chen   813190
+ *   Minjian Chen 813534
+ *   Shijie Liu   813277
+ *   Weizhi Xu    752454
+ *   Wenqing Xue  813044
+ *   Zijun Chen   813190
  */
 
 package client
