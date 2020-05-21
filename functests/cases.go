@@ -508,7 +508,7 @@ func caseSaveToSnapshot() error {
 		}
 	}
 	fmt.Printf("ShutDown Peer %v\n", isolater)
-	sl.ShutDownPeer(isolater)
+	sl.ResetPeer(isolater)
 	fmt.Print("Start sending request.\n")
 	for i := 0; i < 20; i++ {
 		sl.RequestRaw(actioinBuilder.TSMActionIncrValue("key_a", 10))
@@ -565,10 +565,7 @@ func caseCheckEventualConsistency() (err error) {
 		}
 	}
 
-	fmt.Printf("ShutDown Peer %v\n", isolater)
-	sl.ShutDownPeer(isolater)
-
-	fmt.Printf("Reset Peer %v\n", isolater)
+	fmt.Printf("Shutdown and Reset Peer %v\n", isolater)
 	sl.ResetPeer(isolater)
 
 	fmt.Print("Start sending request.\n")
