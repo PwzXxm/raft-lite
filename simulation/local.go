@@ -237,7 +237,7 @@ func (l *local) RequestSync(cmd interface{}) bool {
 }
 
 func (l *local) RequestActionSync(act sm.TSMAction) error {
-	ok, msg := client.ExecuteActionRequest(l.clientCore, act)
+	ok, msg := client.ExecuteActionRequest(&l.clientCore, act)
 	if ok {
 		return nil
 	}
@@ -246,7 +246,7 @@ func (l *local) RequestActionSync(act sm.TSMAction) error {
 }
 
 func (l *local) RequestQuerySync(key string) (interface{}, error) {
-	return client.ExecuteQueryRequest(l.clientCore, sm.NewTSMDataQuery(key))
+	return client.ExecuteQueryRequest(&l.clientCore, sm.NewTSMDataQuery(key))
 }
 
 func (l *local) ShutDownPeer(id rpccore.NodeID) {
