@@ -82,7 +82,7 @@ func NewClientFromConfig(config clientConfig) (*Client, error) {
 
 	logger := logrus.New()
 	logger.Out = os.Stdout
-	logger.SetLevel(logrus.DebugLevel)
+	logger.SetLevel(logrus.InfoLevel)
 
 	c.core = NewClientCore(config.ClientID, nl, cnode, logger)
 

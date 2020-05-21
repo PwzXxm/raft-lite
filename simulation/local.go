@@ -124,6 +124,7 @@ func newLocalOptional(n int, snapshotThreshold int, smMaker stateMachineMaker) (
 	l.raftPeers = make(map[rpccore.NodeID]*raft.Peer, n)
 	l.logger = logrus.New()
 	l.logger.Out = os.Stdout
+	l.logger.SetLevel(logrus.DebugLevel)
 	l.logger.SetFormatter(&logrus.TextFormatter{
 		FullTimestamp:   true,
 		TimestampFormat: "15:04:05.999999999Z07:00",
