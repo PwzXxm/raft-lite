@@ -283,6 +283,10 @@ func (l *Local) GetAllNodeIDs() []rpccore.NodeID {
 	return l.getAllNodeIDs()
 }
 
+func (l *Local) GetNetWork() *rpccore.ChanNetwork {
+	return l.network
+}
+
 func (l *Local) PrintAllNodeInfo() {
 	m := l.getAllNodeInfo()
 	for k, v := range m {
@@ -307,8 +311,8 @@ func (l *Local) ResetPeer(nodeID rpccore.NodeID) error {
 	return err
 }
 
-func (l *Local) getAllNodeInfo() map[rpccore.NodeID]map[string]string {
-	m := make(map[rpccore.NodeID]map[string]string)
+func (l *Local) getAllNodeInfo() map[rpccore.NodeID]string {
+	m := make(map[rpccore.NodeID]string)
 	for nodeID, peer := range l.raftPeers {
 		m[nodeID] = peer.GetInfo()
 	}
@@ -402,7 +406,7 @@ func (l *Local) AgreeOnLogEntries() error {
 			if peer1 != peer2 {
 				_, err := l.AgreeOnTwoLogEntries(logEntry1, logEntry2)
 				if err != nil {
-					return errors.Errorf("node %v and %v not agree on log entries. \n", peer1, peer2)
+					return errors.Errorf("node %v and %v not agree on log entries. \n%v", peer1, peer2, l.getAllNodeInfo())
 				}
 			}
 		}
