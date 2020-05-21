@@ -379,7 +379,7 @@ func (l *local) IdenticalLogEntries() error {
 	return nil
 }
 
-func (l *local) agreeOnTwoLogEntries(logEntry1, logEntry2 []raft.LogEntry) error {
+func (l *local) AgreeOnTwoLogEntries(logEntry1, logEntry2 []raft.LogEntry) (bool, error) {
 	cmdIdentical := true
 	for i := 0; i < utils.Min(len(logEntry1), len(logEntry2)); i++ {
 		if logEntry1[i].Cmd != logEntry2[i].Cmd {
@@ -387,11 +387,11 @@ func (l *local) agreeOnTwoLogEntries(logEntry1, logEntry2 []raft.LogEntry) error
 		}
 		if logEntry1[i].Term == logEntry2[i].Term {
 			if !cmdIdentical {
-				return errors.Errorf("not agree on log entries .\n\n%v\n", l.getAllNodeInfo())
+				return false, errors.Errorf("not agree on log entries .\n\n%v\n", l.getAllNodeInfo())
 			}
 		}
 	}
-	return nil
+	return true, nil
 }
 
 func (l *local) AgreeOnLogEntries() error {
@@ -399,7 +399,7 @@ func (l *local) AgreeOnLogEntries() error {
 	for peer1, logEntry1 := range logEntriesMap {
 		for peer2, logEntry2 := range logEntriesMap {
 			if peer1 != peer2 {
-				err := l.agreeOnTwoLogEntries(logEntry1, logEntry2)
+				_, err := l.AgreeOnTwoLogEntries(logEntry1, logEntry2)
 				if err != nil {
 					return errors.Errorf("node %v and %v not agree on log entries. \n", peer1, peer2)
 				}
@@ -487,4 +487,8 @@ func (l *local) SetNetworkPartition(pMap map[rpccore.NodeID]int) {
 
 func (l *local) GetActionBuilder() *sm.TSMActionBuilder {
 	return l.clientCore.ActBuilder
+}
+
+func (l *local) GetPeer(nodeID rpccore.NodeID) *raft.Peer {
+	return l.raftPeers[nodeID]
 }
