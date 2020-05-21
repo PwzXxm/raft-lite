@@ -8,7 +8,7 @@ import (
 
 type MemoryBased struct {
 	lock sync.Mutex
-	data bytes.Buffer
+	data []byte
 }
 
 func NewMemoryBasedPersistentStorage() *MemoryBased {
@@ -18,16 +18,26 @@ func NewMemoryBasedPersistentStorage() *MemoryBased {
 func (f *MemoryBased) Save(data interface{}) error {
 	f.lock.Lock()
 	defer f.lock.Unlock()
-	enc := gob.NewEncoder(&f.data)
-	return enc.Encode(data)
+
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+	err := enc.Encode(data)
+	if err == nil {
+		f.data = buf.Bytes()
+	}
+
+	return err
 }
 
 func (f *MemoryBased) Load(data interface{}) (bool, error) {
 	f.lock.Lock()
 	defer f.lock.Unlock()
-	if f.data.Len() == 0 {
+
+	if len(f.data) == 0 {
 		return false, nil
 	}
-	dec := gob.NewDecoder(&f.data)
+
+	dec := gob.NewDecoder(bytes.NewBuffer(f.data))
+
 	return true, dec.Decode(data)
 }

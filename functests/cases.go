@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/PwzXxm/raft-lite/raft"
 	"github.com/PwzXxm/raft-lite/rpccore"
 	"github.com/PwzXxm/raft-lite/simulation"
 	"github.com/PwzXxm/raft-lite/sm"
@@ -508,7 +509,7 @@ func caseSaveToSnapshot() error {
 		}
 	}
 	fmt.Printf("ShutDown Peer %v\n", isolater)
-	sl.ShutDownPeer(isolater)
+	sl.ResetPeer(isolater)
 	fmt.Print("Start sending request.\n")
 	for i := 0; i < 20; i++ {
 		sl.RequestRaw(actioinBuilder.TSMActionIncrValue("key_a", 10))
@@ -565,10 +566,7 @@ func caseCheckEventualConsistency() (err error) {
 		}
 	}
 
-	fmt.Printf("ShutDown Peer %v\n", isolater)
-	sl.ShutDownPeer(isolater)
-
-	fmt.Printf("Reset Peer %v\n", isolater)
+	fmt.Printf("Shutdown and Reset Peer %v\n", isolater)
 	sl.ResetPeer(isolater)
 
 	fmt.Print("Start sending request.\n")
@@ -678,4 +676,68 @@ func caseTransActionQuery() error {
 	}
 
 	return nil
+}
+
+func caseIdenticalRestartedPeer() error {
+	sl := simulation.RunLocallyOptional(5, 5, func() sm.StateMachine { return sm.NewTransactionStateMachine() })
+	defer sl.StopAll()
+	actioinBuilder := sm.NewTSMActionBuilder("client")
+
+	// leader election
+	time.Sleep(2 * time.Second)
+	_, err := sl.AgreeOnLeader()
+	if err != nil {
+		return err
+	}
+
+	// make requests
+	fmt.Print("Start sending request.\n")
+	_ = sl.RequestActionSync(actioinBuilder.TSMActionSetValue("key_a", 0))
+	if err != nil {
+		return err
+	}
+	for i := 0; i < 20; i++ {
+		_ = sl.RequestActionSync(actioinBuilder.TSMActionIncrValue("key_a", 10))
+		time.Sleep(150 * time.Millisecond)
+	}
+
+	// shut down peer for a while
+	fmt.Printf("Shut down Peer 2\n")
+	peer := sl.GetPeer("2")
+	prevSnapshot := peer.GetRecentSnapshot()
+	prevStatemachine := peer.TakeStateMachineSnapshot()
+	prevLog := peer.GetRestLog()
+	sl.ShutDownPeer("2")
+	time.Sleep(2 * time.Second)
+
+	// restart peer, and check if it is identical with previous
+	fmt.Printf("Reset Peer 2\n")
+	sl.ResetPeer("2")
+	peer = sl.GetPeer("2")
+	statemachine := peer.TakeStateMachineSnapshot()
+	log := peer.GetRestLog()
+	snapshot := peer.GetRecentSnapshot()
+	fmt.Printf("Restart Peer 2\n")
+	sl.StartPeer("2")
+	time.Sleep(2 * time.Second)
+	equalSnapshot, err := raft.SnapshotEqual(prevSnapshot, snapshot)
+	if err != nil {
+		return err
+	}
+	equalStatemachine, err := sm.TSMIsSnapshotEqual(prevStatemachine, statemachine)
+	if err != nil {
+		return err
+	}
+	equalLog, err := sl.AgreeOnTwoLogEntries(prevLog, log)
+	if err != nil {
+		return err
+	}
+
+	if equalLog && equalSnapshot && equalStatemachine {
+		return nil
+	}
+	fmt.Printf("Prev snapshot: %v stateamchine: %v log: %v\n", prevSnapshot, sm.TSMToStringHuman(prevStatemachine), prevLog)
+	fmt.Printf("Now snapshot: %v stateamchine: %v log: %v\n", snapshot, sm.TSMToStringHuman(statemachine), log)
+	return errors.Errorf("Peer is not identical, Snapshot Equal: %v, Statemachine Equal: %v, Log Equal: %v\n",
+		equalSnapshot, equalStatemachine, equalSnapshot)
 }

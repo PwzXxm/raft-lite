@@ -33,5 +33,6 @@ func StartClientFromFile(filepath string) error {
 		return err
 	}
 	c.startReadingCmd()
+	c.net.Shutdown()
 	return nil
 }

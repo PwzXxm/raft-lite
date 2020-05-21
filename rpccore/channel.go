@@ -91,8 +91,17 @@ func NewChanNetwork(timeout time.Duration) *ChanNetwork {
 	return n
 }
 
-// NewNode creates a new node in the network and starts
-// to
+// Shutdown shutdown the network by closing all channels
+func (n *ChanNetwork) Shutdown() {
+	n.lock.Lock()
+	defer n.lock.Unlock()
+	for _, channel := range n.nodeChannelMap {
+		close(channel)
+	}
+	n.nodeChannelMap = nil
+}
+
+// NewNode creates a new node in the network and starts to reads from the channel
 func (n *ChanNetwork) NewNode(nodeID NodeID) (*ChanNode, error) {
 	n.lock.Lock()
 	defer n.lock.Unlock()
