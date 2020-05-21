@@ -542,8 +542,8 @@ func caseSaveToSnapshot() error {
 			isolater = p
 		}
 	}
-	fmt.Printf("ShutDown Peer %v\n", isolater)
-	sl.ShutDownPeer(isolater)
+	fmt.Printf("Shutdown and Reset Peer %v\n", isolater)
+	sl.ResetPeer(isolater)
 
 	fmt.Print("Start sending request.\n")
 	for i := 0; i < 20; i++ {
@@ -604,10 +604,7 @@ func caseCheckEventualConsistency() (err error) {
 		}
 	}
 
-	fmt.Printf("ShutDown Peer %v\n", isolater)
-	sl.ShutDownPeer(isolater)
-
-	fmt.Printf("Reset Peer %v\n", isolater)
+	fmt.Printf("Shutdown and Reset Peer %v\n", isolater)
 	sl.ResetPeer(isolater)
 
 	fmt.Print("Start sending request.\n")

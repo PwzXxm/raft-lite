@@ -192,9 +192,10 @@ func newLocalOptional(n int, snapshotThreshold int, smMaker stateMachineMaker) (
 }
 
 func (l *local) StopAll() {
-	for _, node := range l.raftPeers {
-		node.ShutDown()
+	for _, peer := range l.raftPeers {
+		peer.ShutDown()
 	}
+	l.network.Shutdown()
 }
 
 func (l *local) RequestRaw(cmd interface{}) chan bool {

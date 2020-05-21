@@ -99,5 +99,6 @@ func StartPeerFromFile(configFilepath string) error {
 	fmt.Println("Shutting down peer...")
 	p.ShutDown()
 	time.Sleep(2 * time.Second)
+	n.Shutdown()
 	return ps.Stop()
 }
