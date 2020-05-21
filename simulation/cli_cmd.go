@@ -39,7 +39,7 @@ func init() {
 }
 
 // StartReadingCMD reads cmd from STDIN until EOF
-func (rf *local) StartReadingCMD() {
+func (rf *Local) StartReadingCMD() {
 	invalidCommandError := errors.New("Invalid command")
 	var err error
 
@@ -127,7 +127,7 @@ func combineErrorUsage(e error, cmd string) error {
 	return errors.New(e.Error() + "\nUsage: " + cmd + " " + usageMp[cmd])
 }
 
-func (rf *local) validateNodeIds(nodes []string, l, r int) ([]rpccore.NodeID, error) {
+func (rf *Local) validateNodeIds(nodes []string, l, r int) ([]rpccore.NodeID, error) {
 	rst := make([]rpccore.NodeID, 0)
 	for i := l; i < r && i < len(nodes); i++ {
 		nodeID := rpccore.NodeID(nodes[i])
@@ -140,7 +140,7 @@ func (rf *local) validateNodeIds(nodes []string, l, r int) ([]rpccore.NodeID, er
 	return rst, nil
 }
 
-func (rf *local) getSeconds(sec string) (int, error) {
+func (rf *Local) getSeconds(sec string) (int, error) {
 	x, err := strconv.Atoi(sec)
 	if err != nil {
 		return 0, err
@@ -148,7 +148,7 @@ func (rf *local) getSeconds(sec string) (int, error) {
 	return x, nil
 }
 
-func (rf *local) printIDs() {
+func (rf *Local) printIDs() {
 	fmt.Print("[")
 	rst := rf.getAllNodeIDs()
 	for i, id := range rst {
@@ -161,7 +161,7 @@ func (rf *local) printIDs() {
 	fmt.Println("]")
 }
 
-func (rf *local) printNodeInfo(node rpccore.NodeID) {
+func (rf *Local) printNodeInfo(node rpccore.NodeID) {
 	p := rf.raftPeers[node]
 	fmt.Printf("Node info of [%v]\n", node)
 	for k, v := range p.GetInfo() {

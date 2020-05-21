@@ -397,10 +397,6 @@ func (p *Peer) toLogIndex(trueIndex int) int {
 		return trueIndex
 	}
 	logidx := trueIndex - p.snapshot.LastIncludedIndex - 1
-	if logidx < 0 {
-		p.logger.Debug("Access to invalid log index (inside snapshot)")
-		return logidx
-	}
 	return logidx
 }
 

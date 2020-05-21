@@ -110,6 +110,14 @@ func (p *Peer) callRPC(target rpccore.NodeID, method string, req, res interface{
 }
 
 func (p *Peer) handleRPCCallAndLogError(source rpccore.NodeID, method string, data []byte) ([]byte, error) {
+	p.mutex.Lock()
+	if p.shutdown {
+		p.mutex.Unlock()
+		// reduce the number of logs
+		time.Sleep(1 * time.Second)
+		return nil, errors.New("peer is not running")
+	}
+	p.mutex.Unlock()
 	res, err := p.handleRPCCall(source, method, data)
 	if err != nil {
 		p.logger.Debugf("Handle RPC call failed. \n source: %v, method: %v, error: %v",
@@ -119,14 +127,6 @@ func (p *Peer) handleRPCCallAndLogError(source rpccore.NodeID, method string, da
 }
 
 func (p *Peer) handleRPCCall(source rpccore.NodeID, method string, data []byte) ([]byte, error) {
-	p.mutex.Lock()
-	if p.shutdown {
-		p.mutex.Unlock()
-		// reduce the number of logs
-		time.Sleep(1 * time.Second)
-		return nil, errors.New("Peer is not running.")
-	}
-	p.mutex.Unlock()
 	switch method {
 	case rpcMethodRequestVote:
 		var req requestVoteReq
