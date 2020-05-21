@@ -89,10 +89,10 @@ func (l *local) StartAll() {
 	}
 }
 
-// TODO: Current limitation:
-// 		1. latency is uniform distribution
-// 		2. don't support one way connection lost (packet lost is one way)
-// 		2. all nodes share the same latency and packet lost rate
+// Current limitation:
+// 	1. latency is uniform distribution
+// 	2. don't support one way connection lost (packet lost is one way)
+// 	2. all nodes share the same latency and packet lost rate
 func (l *local) delayGenerator(source, target rpccore.NodeID) time.Duration {
 	l.netLock.RLock()
 	defer l.netLock.RUnlock()

@@ -292,9 +292,6 @@ func ExecuteActionRequest(core *ClientCore, act sm.TSMAction) (bool, string) {
 		}
 		resetBackOffDuration(core)
 
-		// TODO: avg success time?
-		time.Sleep(100 * time.Millisecond)
-
 		for i := 0; i < 4; i++ {
 			info, err := checkActionRequest(core, queryReq)
 			if err != nil {

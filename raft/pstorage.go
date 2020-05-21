@@ -6,7 +6,6 @@ import (
 )
 
 type PersistentData struct {
-	// TODO: check this
 	CurrentTerm int
 	CommitIndex int
 	VoteCount   int
