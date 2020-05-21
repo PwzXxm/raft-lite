@@ -1,6 +1,7 @@
 package raft
 
 import (
+	"fmt"
 	"github.com/PwzXxm/raft-lite/rpccore"
 )
 
@@ -50,6 +51,9 @@ func (p *Peer) consitencyCheck(req appendEntriesReq) bool {
 
 	if p.logLen() <= req.PrevLogIndex {
 		return false
+	}
+	if p.toLogIndex(req.PrevLogIndex) < -1 {
+		fmt.Errorf("AAAAAA")
 	}
 	myPrevLogTerm := p.getLogTermByIndex(req.PrevLogIndex)
 	if myPrevLogTerm != req.PrevLogTerm {
