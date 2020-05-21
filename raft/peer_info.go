@@ -19,7 +19,7 @@ import (
 	"strings"
 )
 
-// GetInfo returns an info map of string key and string value
+// GetInfo returns an info map with string key and string value
 func (p *Peer) GetInfo() map[string]string {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()

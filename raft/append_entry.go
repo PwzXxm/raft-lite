@@ -19,7 +19,7 @@ import (
 // which includes a term and bool value whether success of the current peer
 func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
 	// consistency check
-	consistent := p.consitencyCheck(req)
+	consistent := p.consistencyCheck(req)
 	if !consistent {
 		return &appendEntriesRes{Term: p.currentTerm, Success: false}
 	}
@@ -48,8 +48,8 @@ func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
 }
 
 // consistencyCheck returns a bool value for consistency
-// check consitency, update state and term if necessary
-func (p *Peer) consitencyCheck(req appendEntriesReq) bool {
+// check consistency, update state and term if necessary
+func (p *Peer) consistencyCheck(req appendEntriesReq) bool {
 	if req.Term < p.currentTerm {
 		return false
 	}
@@ -136,10 +136,12 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 			leaderCommit := p.commitIndex
 			entries := p.log[p.toLogIndex(nextIndex):]
 			p.mutex.Unlock()
+
 			// if no more entries need to be updated, return
 			if len(entries) == 0 && !isFirstTime {
 				return
 			}
+
 			isFirstTime = false
 			req := appendEntriesReq{Term: currentTerm, LeaderID: leaderID, PrevLogIndex: nextIndex - 1,
 				PrevLogTerm: prevLogTerm, LeaderCommit: leaderCommit, Entries: entries}
@@ -160,7 +162,6 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 					} else {
 						p.nextIndex[target]--
 					}
-					p.mutex.Unlock()
 				} else {
 					// if success, update nextIndex for the node
 					commitIndex := p.commitIndex
@@ -172,8 +173,8 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 							c <- target
 						}
 					}
-					p.mutex.Unlock()
 				}
+				p.mutex.Unlock()
 			}
 		}
 	}
@@ -208,7 +209,6 @@ func (p *Peer) onReceiveClientRequest(cmd interface{}) bool {
 			p.mutex.Lock()
 			// update commitIndex, use max in case commitIndex is already updated by other client request
 			p.updateCommitIndex(newLogIndex)
-			// update CommitIndex
 			p.saveToPersistentStorageAndLogError()
 			// delete channel for the committed index
 			delete(p.logIndexMajorityCheckChannel, newLogIndex)

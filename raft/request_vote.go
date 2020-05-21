@@ -48,8 +48,10 @@ func (p *Peer) logPriorCheck(lastLogIndex int, lastLogTerm int) bool {
 		(myLastLogTerm == lastLogTerm && myLastLogIndex > lastLogIndex)
 }
 
-// Called by go routine, plz check lock status first
+// handleRequestVoteRespond handles the response, candidate only
+// called by go routine, plz check lock status first
 func (p *Peer) handleRequestVoteRespond(res requestVoteRes) {
+	// outdated response case
 	if res.Term < p.currentTerm {
 		return
 	}
@@ -63,6 +65,7 @@ func (p *Peer) handleRequestVoteRespond(res requestVoteRes) {
 			p.changeState(Leader)
 		}
 	} else {
+		// response contains term > currentTerm, convert to Follower
 		if res.Term > p.currentTerm {
 			p.updateTerm(res.Term)
 			p.changeState(Follower)

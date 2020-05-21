@@ -25,10 +25,12 @@ type FileBased struct {
 	filepath string
 }
 
+// initial object
 func NewFileBasedPersistentStorage(filepath string) *FileBased {
 	return &FileBased{filepath: filepath}
 }
 
+// save persistent storage to file
 func (f *FileBased) Save(data interface{}) error {
 	f.lock.Lock()
 	defer f.lock.Unlock()
@@ -41,6 +43,7 @@ func (f *FileBased) Save(data interface{}) error {
 	return atomic.WriteFile(f.filepath, &buf)
 }
 
+// load persistent storage from file
 func (f *FileBased) Load(data interface{}) (bool, error) {
 	f.lock.Lock()
 	defer f.lock.Unlock()

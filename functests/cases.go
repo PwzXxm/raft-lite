@@ -21,6 +21,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// check no leader is elected when peers evenly split into two partitions
 func caseEvenPartitionLeaderElection() (err error) {
 	sl := simulation.RunLocally(6)
 	defer sl.StopAll()
@@ -54,6 +55,7 @@ func caseEvenPartitionLeaderElection() (err error) {
 	}
 	sl.SetNetworkPartition(pmap)
 	time.Sleep(20 * time.Second)
+
 	leader2, err := sl.AgreeOnLeader()
 	if err != nil {
 		return
@@ -62,10 +64,12 @@ func caseEvenPartitionLeaderElection() (err error) {
 	if err != nil {
 		return
 	}
+
 	fmt.Printf("Recovery from partition, leader:%v, term:%v\n", *leader2, term2)
 	return
 }
 
+// check leader is elected if partition contains more than half peers
 func caseSkewedPartitionLeaderElection() (err error) {
 	sl := simulation.RunLocally(5)
 	defer sl.StopAll()
@@ -106,6 +110,7 @@ func caseSkewedPartitionLeaderElection() (err error) {
 	}
 	sl.SetNetworkPartition(pmap)
 	time.Sleep(5 * time.Second)
+
 	leader2, err := sl.AgreeOnLeader()
 	if err != nil {
 		return
@@ -114,10 +119,12 @@ func caseSkewedPartitionLeaderElection() (err error) {
 	if err != nil {
 		return
 	}
+
 	fmt.Printf("Recovery from partition, leader:%v, term:%v\n", *leader2, term2)
 	return sl.IdenticalLogEntries()
 }
 
+// check leader can be recovered if the network is messed up
 func caseRecoverLeaderElection() (err error) {
 	sl := simulation.RunLocally(5)
 	defer sl.StopAll()
@@ -143,6 +150,7 @@ func caseRecoverLeaderElection() (err error) {
 	fmt.Println("Network back to normal...")
 	sl.SetNetworkReliability(time.Duration(0*time.Second), time.Duration(0*time.Second), 0.0)
 	time.Sleep(10 * time.Second)
+
 	leader2, err := sl.AgreeOnLeader()
 	if err != nil {
 		return
@@ -153,9 +161,10 @@ func caseRecoverLeaderElection() (err error) {
 	}
 	fmt.Printf("Second election finished, leader:%v, term:%v\n", *leader2, term2)
 
-	return nil
+	return
 }
 
+// check leader election can be processed and maintained from initial
 func caseInitLeaderElection() (err error) {
 	sl := simulation.RunLocally(5)
 	defer sl.StopAll()
@@ -194,9 +203,10 @@ func caseInitLeaderElection() (err error) {
 			*leader1, *leader2, term1, term2)
 	}
 
-	return nil
+	return
 }
 
+// check all log entries are agreed with each other
 func caseAppendLogEntry() (err error) {
 	sl := simulation.RunLocally(5)
 	defer sl.StopAll()
@@ -216,10 +226,12 @@ func caseAppendLogEntry() (err error) {
 	if err != nil {
 		return
 	}
+
 	fmt.Print("Agree on log entry test passed\n")
-	return nil
+	return
 }
 
+// check leader goes offline and new leader is elected afterwards
 func caseLeaderOffline() (err error) {
 	sl := simulation.RunLocally(5)
 	defer sl.StopAll()
@@ -260,15 +272,17 @@ func caseLeaderOffline() (err error) {
 	if err != nil {
 		return
 	}
+
 	err = sl.IdenticalLogEntries()
 
 	if term2 == term1 {
 		return errors.Errorf("Term need to be different. t1: %v, t2: %v", term1, term2)
 	}
 
-	return nil
+	return
 }
 
+// check the system works in the high packet loss rate network
 func caseHighPacketLossRate() (err error) {
 	sl := simulation.RunLocally(5)
 	defer sl.StopAll()
@@ -304,7 +318,7 @@ func caseHighPacketLossRate() (err error) {
 	}
 	fmt.Printf("Second election finished, leader: %v, term: %v\n", *leader2, term2)
 
-	return nil
+	return
 }
 
 func caseAgreeOnLogEntryWithPartitionAndLeaderReselection() (err error) {
@@ -359,7 +373,7 @@ func caseAgreeOnLogEntryWithPartitionAndLeaderReselection() (err error) {
 	sl.SetNetworkPartition(pmap)
 	time.Sleep(3 * time.Second)
 
-	//leader should be reselected, now append another 5 entries
+	// leader should be reselected, now append another 5 entries
 	for i := 10; i < 15; i++ {
 		sl.RequestSync(i)
 		time.Sleep(500 * time.Millisecond)
@@ -383,11 +397,12 @@ func caseAgreeOnLogEntryWithPartitionAndLeaderReselection() (err error) {
 	if err != nil {
 		return
 	}
-	fmt.Println("Third logs check finished, agree on log entries")
-	return nil
 
+	fmt.Println("Third logs check finished, agree on log entries")
+	return
 }
 
+// check log entries are agreed if the leader goes offline
 func caseLeaderInOtherPartition() (err error) {
 	sl := simulation.RunLocally(5)
 	defer sl.StopAll()
@@ -425,9 +440,10 @@ func caseLeaderInOtherPartition() (err error) {
 	}
 
 	fmt.Println("Finished")
-	return nil
+	return
 }
 
+// check log entries are agreed if a peer resets and restarts
 func caseRestartPeer() (err error) {
 	sl := simulation.RunLocally(5)
 	defer sl.StopAll()
@@ -455,6 +471,7 @@ func caseRestartPeer() (err error) {
 	if err != nil {
 		return
 	}
+
 	err = sl.ResetPeer("2")
 	if err != nil {
 		return
@@ -468,13 +485,17 @@ func caseRestartPeer() (err error) {
 		time.Sleep(150 * time.Millisecond)
 	}
 	time.Sleep(10 * time.Second)
+
 	err = sl.IdenticalLogEntries()
 	return
 }
 
+// check all peers become candidate, and re-elects if timeouts
 func caseCandidateTimeout() error {
 	sl := simulation.SetupLocally(5)
 	defer sl.StopAll()
+
+	// no network, 100% packet loss rate
 	sl.SetNetworkReliability(10*time.Millisecond, 40*time.Millisecond, 1)
 	sl.StartAll()
 
@@ -486,10 +507,12 @@ func caseCandidateTimeout() error {
 	return err
 }
 
+// check snapshots are agreed and saveToSnapShot() works as expected
 func caseSaveToSnapshot() error {
 	sl := simulation.RunLocallyOptional(5, 5, func() sm.StateMachine { return sm.NewTransactionStateMachine() })
 	defer sl.StopAll()
 	actioinBuilder := sm.NewTSMActionBuilder("client")
+
 	// leader election
 	time.Sleep(2 * time.Second)
 	leader, err := sl.AgreeOnLeader()
@@ -504,6 +527,7 @@ func caseSaveToSnapshot() error {
 		sl.RequestSync(actioinBuilder.TSMActionIncrValue("key_a", 10))
 		time.Sleep(150 * time.Millisecond)
 	}
+
 	time.Sleep(2 * time.Second)
 	li, lt, err := sl.AgreeOnSnapshot()
 	fmt.Printf("LastIdx: %v LastTerm: %v\n", li, lt)
@@ -520,11 +544,13 @@ func caseSaveToSnapshot() error {
 	}
 	fmt.Printf("ShutDown Peer %v\n", isolater)
 	sl.ShutDownPeer(isolater)
+
 	fmt.Print("Start sending request.\n")
 	for i := 0; i < 20; i++ {
 		sl.RequestRaw(actioinBuilder.TSMActionIncrValue("key_a", 10))
 		time.Sleep(150 * time.Millisecond)
 	}
+
 	fmt.Printf("Restart Peer %v\n", isolater)
 	sl.StartPeer(isolater)
 	time.Sleep(4 * time.Second)
@@ -534,6 +560,7 @@ func caseSaveToSnapshot() error {
 	return err
 }
 
+// check the system is evetual consistency
 func caseCheckEventualConsistency() (err error) {
 	sl := simulation.RunLocallyOptional(5, 5, func() sm.StateMachine {
 		return sm.NewTransactionStateMachine()
@@ -555,6 +582,7 @@ func caseCheckEventualConsistency() (err error) {
 		sl.RequestSync(actioinBuilder.TSMActionIncrValue("key_a", 10))
 		time.Sleep(150 * time.Millisecond)
 	}
+
 	time.Sleep(2 * time.Second)
 	li, lt, err := sl.AgreeOnSnapshot()
 	fmt.Printf("LastIndex: %v LastTerm: %v\n", li, lt)
@@ -607,6 +635,7 @@ func caseCheckEventualConsistency() (err error) {
 	return
 }
 
+// check odd and even number of nodes
 func caseTestOddEvenNumberOfNode() error {
 	sizes := []int{2, 3}
 	for _, size := range sizes {
@@ -646,6 +675,7 @@ func caseTestOddEvenNumberOfNode() error {
 	return nil
 }
 
+// check the transaction action query
 func caseTransActionQuery() error {
 	sl := simulation.RunLocallyOptional(5, 5, func() sm.StateMachine { return sm.NewTransactionStateMachine() })
 	accA := "accA"

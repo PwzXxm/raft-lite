@@ -38,7 +38,7 @@ type appendEntriesReq struct {
 }
 
 type appendEntriesRes struct {
-	Term    int  // current term, for leader updating
+	Term    int  // latest term, for leader updating
 	Success bool // true if follower contained entry matching prevLogIndex and prevLogTerm
 }
 
@@ -50,22 +50,24 @@ type requestVoteReq struct {
 }
 
 type requestVoteRes struct {
-	Term        int  // current term, for candidate updating
+	Term        int  // latest term, for candidate updating
 	VoteGranted bool // true means candidate received vote
 }
 
 type installSnapshotReq struct {
-	Term              int
-	LeaderID          rpccore.NodeID
-	LastIncludedIndex int
-	LastIncludedTerm  int
-	Snapshot          *Snapshot
+	Term              int            // latest term
+	LeaderID          rpccore.NodeID // leader ID
+	LastIncludedIndex int            // index of latest snapshot inluded
+	LastIncludedTerm  int            // term of latest snapshot included
+	Snapshot          *Snapshot      // snapshot
 }
 
 type installSnapshotRes struct {
-	Term int
+	Term int // latest term
 }
 
+// installSnapshot takes target node ID and installSnapshotReq struct as arguments
+// and returns an installSnapshotRes struct pointer, nil if not success
 func (p *Peer) installSnapshot(target rpccore.NodeID, arg installSnapshotReq) *installSnapshotRes {
 	var res installSnapshotRes
 	if p.callRPCAndLogError(target, rpcMethodInstallSnapshot, arg, &res) == nil {
@@ -75,6 +77,8 @@ func (p *Peer) installSnapshot(target rpccore.NodeID, arg installSnapshotReq) *i
 	}
 }
 
+// requestVote takes target node ID and requestVoteReq struct as arguments
+// and returns a requestVoteRes struct pointer, nil if not success
 func (p *Peer) requestVote(target rpccore.NodeID, arg requestVoteReq) *requestVoteRes {
 	var res requestVoteRes
 	if p.callRPCAndLogError(target, rpcMethodRequestVote, arg, &res) == nil {
@@ -84,6 +88,8 @@ func (p *Peer) requestVote(target rpccore.NodeID, arg requestVoteReq) *requestVo
 	}
 }
 
+// appendEntries takes target node ID and appendEntriesReq struct as arguments
+// and returns an appendEntriesRes struct pointer, nil if not success
 func (p *Peer) appendEntries(target rpccore.NodeID, arg appendEntriesReq) *appendEntriesRes {
 	var res appendEntriesRes
 	if p.callRPCAndLogError(target, rpcMethodAppendEntries, arg, &res) == nil {
@@ -93,6 +99,7 @@ func (p *Peer) appendEntries(target rpccore.NodeID, arg appendEntriesReq) *appen
 	}
 }
 
+// callRPCAndLogError takes arguments and traces error value if occurs
 func (p *Peer) callRPCAndLogError(target rpccore.NodeID, method string, req, res interface{}) error {
 	err := p.callRPC(target, method, req, res)
 	if err != nil {
@@ -102,17 +109,21 @@ func (p *Peer) callRPCAndLogError(target rpccore.NodeID, method string, req, res
 	return err
 }
 
+// callRPC takes arguments and returns error value if occurs
 func (p *Peer) callRPC(target rpccore.NodeID, method string, req, res interface{}) error {
 	var buf bytes.Buffer
+	// encode request data
 	err := gob.NewEncoder(&buf).Encode(req)
 	if err != nil {
 		return errors.WithStack(err)
 	}
+	// send raw request
 	resData, err := p.node.SendRawRequest(target, method, buf.Bytes())
 	if err != nil {
 		// already wrapped
 		return err
 	}
+	// decode response data
 	err = gob.NewDecoder(bytes.NewReader(resData)).Decode(res)
 	if err != nil {
 		return errors.WithStack(err)
@@ -120,6 +131,7 @@ func (p *Peer) callRPC(target rpccore.NodeID, method string, req, res interface{
 	return nil
 }
 
+// handleRPCCallAndLogError takes arguments and returns response data and error value if occurs
 func (p *Peer) handleRPCCallAndLogError(source rpccore.NodeID, method string, data []byte) ([]byte, error) {
 	res, err := p.handleRPCCall(source, method, data)
 	if err != nil {
@@ -129,6 +141,7 @@ func (p *Peer) handleRPCCallAndLogError(source rpccore.NodeID, method string, da
 	return res, err
 }
 
+// handleRPCCall takes arguments and returns response data and error value if occurs
 func (p *Peer) handleRPCCall(source rpccore.NodeID, method string, data []byte) ([]byte, error) {
 	p.mutex.Lock()
 	if p.shutdown {
@@ -163,7 +176,6 @@ func (p *Peer) handleRPCCall(source rpccore.NodeID, method string, data []byte) 
 		var buf bytes.Buffer
 		err = gob.NewEncoder(&buf).Encode(res)
 		return buf.Bytes(), errors.WithStack(err)
-
 	// NOTE: Client request only works with transaction state machine.
 	case client.RPCMethodLeaderRequest:
 		p.mutex.Lock()

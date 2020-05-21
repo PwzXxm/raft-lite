@@ -19,16 +19,16 @@ import (
 // PersistentData takes relevant attributes from Peer
 // in order to maintain the data for later recovery
 type PersistentData struct {
-	CurrentTerm int
-	CommitIndex int
-	VoteCount   int
-	VotedFor    *rpccore.NodeID
-	Log         []LogEntry
-	Snapshot    *Snapshot
+	CurrentTerm int             // latest term (increases monotonically)
+	CommitIndex int             // index of highest log entry known to be committed (increases monotonically)
+	VoteCount   int             // count for other peers vote me in this term
+	VotedFor    *rpccore.NodeID // candidateID that peer votes in this term, nil if none
+	Log         []LogEntry      // log entries
+	Snapshot    *Snapshot       // snapshot
 
 	// for validation
-	NodeID    rpccore.NodeID
-	NumOfNode int
+	NodeID    rpccore.NodeID // self node ID
+	NumOfNode int            // total number of nodes
 }
 
 // loadFromPersistentStorage loads any existing data in previous
@@ -38,6 +38,7 @@ func (p *Peer) loadFromPersistentStorage() error {
 	if err != nil {
 		return err
 	}
+
 	if hasData {
 		p.logger.Info("Start loading persistent data.")
 		// verify

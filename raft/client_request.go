@@ -67,9 +67,7 @@ func (p *Peer) handleClientActionRequest(req client.ActionReq) client.ActionRes 
 		return client.ActionRes{Started: false}
 	}
 
-	go func() {
-		p.onReceiveClientRequest(req.Cmd)
-	}()
+	go p.onReceiveClientRequest(req.Cmd)
 
 	return client.ActionRes{Started: true}
 }

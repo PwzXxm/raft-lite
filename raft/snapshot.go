@@ -15,9 +15,9 @@ import (
 	"github.com/PwzXxm/raft-lite/sm"
 )
 
+// makeSnapshot returns the latest snapshot based on lastIncludedIndex
 func (p *Peer) makeSnapshot(lastIncludedIndex int) (*Snapshot, error) {
 	stateMachineSnapshot, err := p.stateMachine.TakeSnapshot()
-	// fmt.Printf("StateMachine %v, Make SM snapshot: %v, log: %v\n", p.stateMachine, stateMachineSnapshot, p.log)
 	if err != nil {
 		return nil, err
 	}
@@ -29,6 +29,7 @@ func (p *Peer) makeSnapshot(lastIncludedIndex int) (*Snapshot, error) {
 	}, nil
 }
 
+// saveToSnapshot saves the laest snapshot into peer
 func (p *Peer) saveToSnapshot(lastIncludedIndex int) error {
 	newSnapshot, err := p.makeSnapshot(lastIncludedIndex)
 	if err != nil {
@@ -36,10 +37,11 @@ func (p *Peer) saveToSnapshot(lastIncludedIndex int) error {
 	}
 	p.log = p.log[p.toLogIndex(lastIncludedIndex+1):]
 	p.snapshot = newSnapshot
-	// p.logger.Infof("Success save to snapshot: current log %v, current snapshot %v", p.log, p.snapshot)
 	return nil
 }
 
+// handleInstallSnapshot takes an installSnapshotReq struct as an argument,
+// and returns an installSnapshotRes struct with peer's current term
 func (p *Peer) handleInstallSnapshot(req installSnapshotReq) installSnapshotRes {
 	// return current term anyway
 	res := installSnapshotRes{Term: p.currentTerm}
@@ -59,12 +61,13 @@ func (p *Peer) handleInstallSnapshot(req installSnapshotReq) installSnapshotRes 
 	p.heardFromLeader = true
 	p.stateMachine.ResetWithSnapshot(p.snapshot.StateMachineSnapshot)
 
-	// update CommitIndex, Snapshot
+	// update CommitIndex, Log, Snapshot
 	p.saveToPersistentStorageAndLogError()
 
 	return res
 }
 
+// handleInstallSnapshotRes handles the response
 func (p *Peer) handleInstallSnapshotRes(res *installSnapshotRes) {
 	// update leader's term if response includes a higher term
 	if res.Term > p.currentTerm {

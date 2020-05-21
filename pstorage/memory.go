@@ -22,10 +22,12 @@ type MemoryBased struct {
 	data bytes.Buffer
 }
 
+// initial object
 func NewMemoryBasedPersistentStorage() *MemoryBased {
 	return &MemoryBased{}
 }
 
+// save persistent storage to memory
 func (f *MemoryBased) Save(data interface{}) error {
 	f.lock.Lock()
 	defer f.lock.Unlock()
@@ -33,6 +35,7 @@ func (f *MemoryBased) Save(data interface{}) error {
 	return enc.Encode(data)
 }
 
+// load persistent storage from memory
 func (f *MemoryBased) Load(data interface{}) (bool, error) {
 	f.lock.Lock()
 	defer f.lock.Unlock()

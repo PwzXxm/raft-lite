@@ -354,7 +354,7 @@ func (p *Peer) updateCommitIndex(idx int) {
 		p.logger.Infof("CommitIndex is incremented from %v to %v.", p.commitIndex, idx)
 		p.commitIndex = idx
 
-		// update CommitIndex
+		// update CommitIndex, Log, Snapshot
 		p.saveToPersistentStorageAndLogError()
 	}
 }

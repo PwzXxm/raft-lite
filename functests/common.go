@@ -23,6 +23,7 @@ type testCase struct {
 	action func() error
 }
 
+// test cases are listed in order, starting from 1
 var testCases = []testCase{
 	{
 		name:   "initial leader election",
@@ -86,16 +87,19 @@ var testCases = []testCase{
 	},
 }
 
+// list test cases
 func List() {
 	for i, c := range testCases {
 		fmt.Printf("%2d: %v\n", i+1, c.name)
 	}
 }
 
+// count test cases
 func Count() {
 	fmt.Printf("%v\n", len(testCases))
 }
 
+// run single test case
 func Run(n int) error {
 	if n <= 0 || n > len(testCases) {
 		return errors.New("Please provide a valid test case id.")
