@@ -719,6 +719,7 @@ func caseTransActionQuery() error {
 	return nil
 }
 
+// check the restarted peer is identical to the previous
 func caseIdenticalRestartedPeer() error {
 	sl := simulation.RunLocallyOptional(5, 5, func() sm.StateMachine { return sm.NewTransactionStateMachine() })
 	defer sl.StopAll()
@@ -748,19 +749,23 @@ func caseIdenticalRestartedPeer() error {
 	prevSnapshot := peer.GetRecentSnapshot()
 	prevStatemachine := peer.TakeStateMachineSnapshot()
 	prevLog := peer.GetRestLog()
+
 	sl.ShutDownPeer("2")
 	time.Sleep(2 * time.Second)
 
 	// restart peer, and check if it is identical with previous
 	fmt.Printf("Reset Peer 2\n")
 	sl.ResetPeer("2")
+
 	peer = sl.GetPeer("2")
 	statemachine := peer.TakeStateMachineSnapshot()
 	log := peer.GetRestLog()
 	snapshot := peer.GetRecentSnapshot()
+
 	fmt.Printf("Restart Peer 2\n")
 	sl.StartPeer("2")
 	time.Sleep(2 * time.Second)
+
 	equalSnapshot, err := raft.SnapshotEqual(prevSnapshot, snapshot)
 	if err != nil {
 		return err
