@@ -15,7 +15,6 @@ func (p *Peer) makeSnapshot(lastIncludedIndex int) (*Snapshot, error) {
 		LastIncludedIndex:    lastIncludedIndex,
 		LastIncludedTerm:     p.getLogTermByIndex(lastIncludedIndex),
 		StateMachineSnapshot: stateMachineSnapshot,
-		// TODO: write membership config into ss
 	}, nil
 }
 
@@ -52,7 +51,6 @@ func (p *Peer) handleInstallSnapshot(req installSnapshotReq) installSnapshotRes 
 	// update CommitIndex, Snapshot
 	p.saveToPersistentStorageAndLogError()
 
-	// TODO: write membership config from ss
 	return res
 }
 

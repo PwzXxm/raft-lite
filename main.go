@@ -23,8 +23,6 @@ func main() {
 					&cli.Int64Flag{Name: "n", Usage: "number of peers", Required: true},
 				},
 				Action: func(c *cli.Context) error {
-					// TODO: not sure why the [Required: true] above
-					// isn't working.
 					if c.Int("n") == 0 {
 						return errors.New("please provide -n")
 					}

@@ -89,10 +89,10 @@ func (l *local) StartAll() {
 	}
 }
 
-// TODO: Current limitation:
-// 		1. latency is uniform distribution
-// 		2. don't support one way connection lost (packet lost is one way)
-// 		2. all nodes share the same latency and packet lost rate
+// Current limitation:
+// 	1. latency is uniform distribution
+// 	2. don't support one way connection lost (packet lost is one way)
+// 	2. all nodes share the same latency and packet lost rate
 func (l *local) delayGenerator(source, target rpccore.NodeID) time.Duration {
 	l.netLock.RLock()
 	defer l.netLock.RUnlock()
@@ -124,6 +124,7 @@ func newLocalOptional(n int, snapshotThreshold int, smMaker stateMachineMaker) (
 	l.raftPeers = make(map[rpccore.NodeID]*raft.Peer, n)
 	l.logger = logrus.New()
 	l.logger.Out = os.Stdout
+	l.logger.SetLevel(logrus.DebugLevel)
 	l.logger.SetFormatter(&logrus.TextFormatter{
 		FullTimestamp:   true,
 		TimestampFormat: "15:04:05.999999999Z07:00",

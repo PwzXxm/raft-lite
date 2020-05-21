@@ -21,7 +21,7 @@ func (p *Peer) HandleClientRequest(cmd interface{}) bool {
 	}
 	p.mutex.Unlock()
 
-	p.logger.Infof("Received new request to append %v", cmd)
+	p.logger.Debugf("Received new request to append %v", cmd)
 
 	// use timeout to check
 	c := make(chan bool)

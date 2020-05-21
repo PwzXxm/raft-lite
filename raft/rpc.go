@@ -85,10 +85,8 @@ func (p *Peer) appendEntries(target rpccore.NodeID, arg appendEntriesReq) *appen
 func (p *Peer) callRPCAndLogError(target rpccore.NodeID, method string, req, res interface{}) error {
 	err := p.callRPC(target, method, req, res)
 	if err != nil {
-		// p.logger.Warnf("RPC call failed. \n target: %v, method: %v, err: %+v",
-		// 	target, method, err)
-		p.logger.Warnf("RPC call failed. \n target: %v, method: %v",
-			target, method)
+		p.logger.Tracef("RPC call failed. \n target: %v, method: %v, err: %v",
+			target, method, err)
 	}
 	return err
 }
@@ -114,8 +112,7 @@ func (p *Peer) callRPC(target rpccore.NodeID, method string, req, res interface{
 func (p *Peer) handleRPCCallAndLogError(source rpccore.NodeID, method string, data []byte) ([]byte, error) {
 	res, err := p.handleRPCCall(source, method, data)
 	if err != nil {
-		// TDOD: change the level of this one to debug?
-		p.logger.Warningf("Handle RPC call failed. \n source: %v, method: %v, error: %v",
+		p.logger.Debugf("Handle RPC call failed. \n source: %v, method: %v, error: %v",
 			source, method, err)
 	}
 	return res, err

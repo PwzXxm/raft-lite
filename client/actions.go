@@ -35,7 +35,7 @@ type ClientCore struct {
 
 const (
 	maxBackOffDuration  = 1600 // ms
-	initBackOffDuration = 100  // ms
+	initBackOffDuration = 20   // ms
 )
 
 const (
@@ -82,7 +82,7 @@ func NewClientFromConfig(config clientConfig) (*Client, error) {
 
 	logger := logrus.New()
 	logger.Out = os.Stdout
-	logger.SetLevel(logrus.DebugLevel)
+	logger.SetLevel(logrus.InfoLevel)
 
 	c.core = NewClientCore(config.ClientID, nl, cnode, logger)
 
@@ -291,9 +291,6 @@ func ExecuteActionRequest(core *ClientCore, act sm.TSMAction) (bool, string) {
 			continue
 		}
 		resetBackOffDuration(core)
-
-		// TODO: avg success time?
-		time.Sleep(100 * time.Millisecond)
 
 		for i := 0; i < 4; i++ {
 			info, err := checkActionRequest(core, queryReq)
