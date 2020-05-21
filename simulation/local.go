@@ -1,3 +1,15 @@
+/*
+ * Project: raft-lite
+ * ---------------------
+ * Authors:
+ *   Minjian Chen 813534
+ *   Shijie Liu   813277
+ *   Weizhi Xu    752454
+ *   Wenqing Xue  813044
+ *   Zijun Chen   813190
+ */
+
+// Package simulation using network under channels to simulate the raft algorithm
 package simulation
 
 import (
@@ -53,10 +65,13 @@ func init() {
 	log.Out = os.Stdout
 }
 
+// RunLocally init and starts a simulation that uses the empty state machines
 func RunLocally(n int) *local {
 	return RunLocallyOptional(n, defaultSnapshotThreshold, func() sm.StateMachine { return sm.NewEmptyStateMachine() })
 }
 
+// RunLocallyOptional init and starts a simulation and setting the threshold for snapshot
+// and function that returns a
 func RunLocallyOptional(n int, snapshotThreshold int, smMaker stateMachineMaker) *local {
 	log.Info("Starting simulation locally ...")
 
@@ -72,6 +87,7 @@ func RunLocallyOptional(n int, snapshotThreshold int, smMaker stateMachineMaker)
 	return l
 }
 
+// SetupLocally
 func SetupLocally(n int) *local {
 	log.Info("Setting up simulation locally ...")
 

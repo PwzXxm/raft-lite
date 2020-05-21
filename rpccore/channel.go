@@ -1,3 +1,14 @@
+/*
+ * Project: raft-lite
+ * ---------------------
+ * Authors:
+ *   Minjian Chen 813534
+ *   Shijie Liu   813277
+ *   Weizhi Xu    752454
+ *   Wenqing Xue  813044
+ *   Zijun Chen   813190
+ */
+
 package rpccore
 
 import (
@@ -9,6 +20,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// A ChanNode representing a node using channel
 type ChanNode struct {
 	id       NodeID
 	network  *ChanNetwork
@@ -16,43 +28,51 @@ type ChanNode struct {
 	lock     sync.RWMutex
 }
 
+// NodeID gets the node's ID
 func (node *ChanNode) NodeID() NodeID {
 	return node.id
 }
 
+// SendRawRequest invokes an RPC method on the target node
 func (node *ChanNode) SendRawRequest(target NodeID, method string, data []byte) ([]byte, error) {
 	node.network.lock.RLock()
 	reqChan, ok := node.network.nodeChannelMap[target]
 	deadline := time.Now().Add(node.network.timeout)
 	node.network.lock.RUnlock()
 	if ok {
+		// start sending request
 		resChan := make(chan *chanResMsg)
 		req := chanReqMsg{source: node.id, method: method, data: data,
 			resChan: resChan, deadline: deadline}
 		reqChan <- &req
 		remainingTime := deadline.Sub(time.Now())
 		if remainingTime <= 0 {
-			return nil, errors.New("Request timeout.")
+			return nil, errors.New("Request timeout")
 		}
+
+		// wait for response
 		select {
 		case res := <-resChan:
 			return res.data, res.err
 		case <-time.After(remainingTime):
-			return nil, errors.New("Request timeout.")
+			return nil, errors.New("Request timeout")
 		}
 	} else {
-		err := errors.New(fmt.Sprintf(
-			"Unable to find target node: %v.", target))
+		err := errors.New(fmt.Sprintf("Unable to find target node: %v", target))
 		return nil, err
 	}
 }
 
+// RegisterRawRequestCallback let nodes to register methods
+// that will be called when receiving a RPC
 func (node *ChanNode) RegisterRawRequestCallback(callback Callback) {
 	node.lock.Lock()
 	node.callback = callback
 	node.lock.Unlock()
 }
 
+// ChanNetwork representing the network information
+// including available nodes, timeout and delays
 type ChanNetwork struct {
 	lock           sync.RWMutex
 	nodeChannelMap map[NodeID](chan *chanReqMsg)
@@ -60,6 +80,7 @@ type ChanNetwork struct {
 	delayGenerator DelayGenerator
 }
 
+// NewChanNetwork creates a newwork using channels
 func NewChanNetwork(timeout time.Duration) *ChanNetwork {
 	n := new(ChanNetwork)
 	n.nodeChannelMap = make(map[NodeID](chan *chanReqMsg))
@@ -70,6 +91,8 @@ func NewChanNetwork(timeout time.Duration) *ChanNetwork {
 	return n
 }
 
+// NewNode creates a new node in the network and starts
+// to
 func (n *ChanNetwork) NewNode(nodeID NodeID) (*ChanNode, error) {
 	n.lock.Lock()
 	defer n.lock.Unlock()
@@ -82,7 +105,7 @@ func (n *ChanNetwork) NewNode(nodeID NodeID) (*ChanNode, error) {
 	node.network = n
 	node.id = nodeID
 	node.callback = func(source NodeID, method string, data []byte) ([]byte, error) {
-		return nil, errors.New("No callback function provided.")
+		return nil, errors.New("No callback function provided")
 	}
 	// don't need buffer here since the send is blocking anyway.
 	nodeChannel := make(chan *chanReqMsg)
@@ -107,7 +130,7 @@ func (n *ChanNetwork) NewNode(nodeID NodeID) (*ChanNode, error) {
 				remainingTime := req.deadline.Sub(time.Now())
 				if remainingTime <= 0 {
 					req.resChan <- &chanResMsg{data: nil,
-						err: errors.New("Request timeout.")}
+						err: errors.New("Request timeout")}
 				} else {
 					// invoke callback
 					data, err := callback(req.source, req.method, req.data)
@@ -127,8 +150,10 @@ func (n *ChanNetwork) NewNode(nodeID NodeID) (*ChanNode, error) {
 	return node, nil
 }
 
+// DelayGenerator generates delays between source and target node
 type DelayGenerator func(source NodeID, target NodeID) time.Duration
 
+// SetDelayGenerator updates the state of the generator
 func (n *ChanNetwork) SetDelayGenerator(delayGenerator DelayGenerator) {
 	n.lock.Lock()
 	n.delayGenerator = delayGenerator

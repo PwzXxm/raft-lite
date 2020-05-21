@@ -1,3 +1,14 @@
+/*
+ * Project: raft-lite
+ * ---------------------
+ * Authors:
+ *   Minjian Chen 813534
+ *   Shijie Liu   813277
+ *   Weizhi Xu    752454
+ *   Wenqing Xue  813044
+ *   Zijun Chen   813190
+ */
+
 package rpccore
 
 import (
@@ -93,8 +104,8 @@ func TestNewLocalNode(t *testing.T) {
 	}
 
 	// check node with same ID already exists
-	localNode_, err_ := tcpNetwork.NewLocalNode("nodeB", "127.0.0.1:1110", ":1110")
-	if localNode_ != nil && err_ == nil {
+	localNodeDup, err2 := tcpNetwork.NewLocalNode("nodeB", "127.0.0.1:1110", ":1110")
+	if localNodeDup != nil && err2 == nil {
 		t.Errorf("LocalNode should return error value.")
 	}
 }
@@ -139,9 +150,9 @@ func testNode(t *testing.T, nodeA Node, nodeB Node) {
 	callback := func(source NodeID, method string, data []byte) ([]byte, error) {
 		if string(data) == "Test: A -> B" {
 			return []byte(string(source)), nil
-		} else {
-			return []byte(string(source)), errors.New("Incorrent data")
 		}
+
+		return []byte(string(source)), errors.New("Incorrent data")
 	}
 	nodeB.RegisterRawRequestCallback(callback)
 

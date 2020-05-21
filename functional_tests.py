@@ -1,3 +1,12 @@
+# Project: raft-lite
+# ---------------------
+# Authors:
+#   Minjian Chen 813534
+#   Shijie Liu   813277
+#   Weizhi Xu    752454
+#   Wenqing Xue  813044
+#   Zijun Chen   813190
+
 import sys
 import argparse
 from typing import *
@@ -18,6 +27,7 @@ class bcolors:
 
 
 def main():
+    # parse arguments
     parser = argparse.ArgumentParser(
         description='Helper tool for running functional tests')
     parser.add_argument('--times', type=int, default=5,
@@ -33,6 +43,8 @@ def main():
     if not run_tests(args.times, args.parallel, args.timeout, args.single_testcase):
         sys.exit(1)
 
+# build the go binary executable
+
 
 def build_executable() -> None:
     res = subprocess.run(["go", "build", "."],
@@ -42,6 +54,8 @@ def build_executable() -> None:
         raise RuntimeError("Build Fail"+res.stdout)
 
 # Return values are (passed, timeout, output)
+
+# run raft-lite programme supplying with given running arguments
 
 
 def execute_raft_lite(args: List[str], timeout: int) -> Tuple[bool, bool, str]:
@@ -55,6 +69,7 @@ def execute_raft_lite(args: List[str], timeout: int) -> Tuple[bool, bool, str]:
     return (success, False, str(res.stdout))
 
 
+# run a single test case and returns the results
 def run_single_test(task: Tuple[int, int, int]) -> Tuple[bool, bool, str]:
     time.sleep(0.1)
     (passed, timeout, tests_list) = execute_raft_lite(
@@ -70,6 +85,7 @@ def run_single_test(task: Tuple[int, int, int]) -> Tuple[bool, bool, str]:
     return (passed, timeout, tests_list)
 
 
+# run a batch of tests that runs mutiple times and runs in parallel, or it might runs single testcases
 def run_tests(times: int, parallel: int, timeout: int, single_testcase: int) -> bool:
     build_executable()
     (ok, _, out) = execute_raft_lite(["functionaltest", "count"], timeout)
