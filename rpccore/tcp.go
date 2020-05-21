@@ -11,9 +11,6 @@ import (
 	"github.com/valyala/gorpc"
 )
 
-// TODO: github.com/valyala/gorpc looks pretty good, but the last commit of it
-// is four years ago
-
 func init() {
 	gob.Register(tcpReqMsg{})
 	gob.Register(tcpResMsg{})

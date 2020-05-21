@@ -13,7 +13,6 @@ func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
 
 	// consistency check ensure that req.Term >= p.currentTerm
 	if len(req.Entries) != 0 {
-		// TODO: check this.
 		prevLogIndex := req.PrevLogIndex
 		newLogIndex := 0
 		// find the index that the peer is consistent with the new entries
@@ -47,7 +46,6 @@ func (p *Peer) consitencyCheck(req appendEntriesReq) bool {
 	// update CurrentTerm, VotedFor
 	p.saveToPersistentStorageAndLogError()
 
-	// TODO: check this, will the whole request will be kept?
 	p.leaderID = &req.LeaderID
 
 	if p.logLen() <= req.PrevLogIndex {
@@ -86,7 +84,6 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 	isFirstTime := true
 	// call append entry RPC
 	for {
-		// TODO: add other conditions that should stop sending request
 		p.mutex.Lock()
 		if p.state != Leader || p.shutdown {
 			p.mutex.Unlock()

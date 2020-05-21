@@ -28,7 +28,6 @@ type Snapshot struct {
 	LastIncludedIndex    int
 	LastIncludedTerm     int
 	StateMachineSnapshot []byte
-	// TODO: add membership config
 }
 
 type Peer struct {
@@ -40,8 +39,6 @@ type Peer struct {
 	log         []LogEntry
 
 	commitIndex int
-	// TODO: unused
-	// lastApplied int
 
 	rpcPeersIds []rpccore.NodeID
 	node        rpccore.Node
@@ -123,8 +120,6 @@ func NewPeer(node rpccore.Node, peers []rpccore.NodeID, logger *logrus.Entry,
 
 func (p *Peer) timeoutLoop() {
 	for {
-		// TODO: make [PeerState] atomic? we need to find out the cost of using
-		// mutex https://golang.org/doc/diagnostics.html
 		p.mutex.Lock()
 		currentState := p.state
 		p.mutex.Unlock()
@@ -217,7 +212,6 @@ func (p *Peer) changeState(state PeerState) {
 		for _, peers := range p.rpcPeersIds {
 			p.nextIndex[peers] = p.logLen()
 
-			// TODO: grind in the furture
 			p.matchIndex[peers] = 0
 			p.lastHeardFromFollower[peers] = time.Now()
 		}
