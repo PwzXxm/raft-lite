@@ -275,10 +275,10 @@ func (p *Peer) ShutDown() {
 }
 
 // startElection begins the leader election
-// 1. increment current term
-// 2. vote for self
-// 3. send request vote RPCs to all other servers
-// 4. reset election timeout (trigger in changeState)
+//  1. increment current term
+//  2. vote for self
+//  3. send request vote RPCs to all other servers
+//  4. reset election timeout (trigger in changeState)
 func (p *Peer) startElection() {
 	p.logger.Info("Start election.")
 	p.voteCount = 1
@@ -295,8 +295,8 @@ func (p *Peer) startElection() {
 		go func(peerID rpccore.NodeID, term int) {
 			for {
 				// return if this election is invalid
-				// 1. peer is not candidate anymore
-				// 2. next round of election starts
+				//  1. peer is not candidate anymore
+				//  2. next round of election starts
 				p.mutex.Lock()
 				if p.state != Candidate || p.currentTerm != term {
 					p.mutex.Unlock()

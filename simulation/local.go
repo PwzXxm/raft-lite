@@ -200,8 +200,8 @@ func (l *local) StopAll() {
 func (l *local) RequestRaw(cmd interface{}) chan bool {
 
 	// use timeout here rather inside to handle
-	// 1. leadership change after for loop, waiting for new leader got elected
-	// 2. request timeout, auto retry
+	//  1. leadership change after for loop, waiting for new leader got elected
+	//  2. request timeout, auto retry
 	c := make(chan bool)
 
 	go func() {

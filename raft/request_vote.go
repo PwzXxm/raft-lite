@@ -2,14 +2,14 @@ package raft
 
 func (p *Peer) handleRequestVote(req requestVoteReq) requestVoteRes {
 	// check candidate's qualification:
-	// 1. Deny if its term is samller than mine
-	// 2. or my log is more up to date
+	//  1. Deny if its term is samller than mine
+	//  2. or my log is more up to date
 	if req.Term < p.currentTerm || p.logPriorCheck(req.LastLogIndex, req.LastLogTerm) {
 		return requestVoteRes{Term: p.currentTerm, VoteGranted: false}
 	}
 	p.updateTerm(req.Term)
 	// check receiver's qualification:
-	// 1. Have not voted before, or voted to you before
+	//  1. Have not voted before, or voted to you before
 	if !(p.votedFor == nil || p.votedFor == &req.CandidateID) {
 		return requestVoteRes{Term: p.currentTerm, VoteGranted: false}
 	}
@@ -50,7 +50,8 @@ func (p *Peer) handleRequestVoteRespond(res requestVoteRes) {
 			p.changeState(Follower)
 		}
 	}
-	// 1. update VoteCount if vote is granted
-	// 2. update CurrentTerm, VotedFor if steps down
+	// save to persistent storage
+	//  1. update VoteCount if vote is granted
+	//  2. update CurrentTerm, VotedFor if steps down
 	p.saveToPersistentStorageAndLogError()
 }
