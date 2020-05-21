@@ -35,7 +35,7 @@ type ClientCore struct {
 
 const (
 	maxBackOffDuration  = 1600 // ms
-	initBackOffDuration = 100  // ms
+	initBackOffDuration = 20   // ms
 )
 
 const (

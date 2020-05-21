@@ -44,10 +44,7 @@ func (p *Peer) loadFromPersistentStorage() error {
 		for i := 0; i <= p.commitIndex; i++ {
 			action := p.log[p.toLogIndex(i)].Cmd
 			if action != nil {
-				err := p.stateMachine.ApplyAction(action)
-				if err != nil {
-					p.logger.Error(err)
-				}
+				_ = p.stateMachine.ApplyAction(action)
 			}
 		}
 	}
