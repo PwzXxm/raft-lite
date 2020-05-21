@@ -328,11 +328,7 @@ func (p *Peer) updateCommitIndex(idx int) {
 		for i := p.commitIndex + 1; i <= idx; i++ {
 			action := p.log[p.toLogIndex(i)].Cmd
 			if action != nil {
-				err := p.stateMachine.ApplyAction(action)
-				if err != nil {
-					p.logger.Errorf("Error happened during applying actions to "+
-						"state machine, logIdx: %v, err: %v", i, err)
-				}
+				_ = p.stateMachine.ApplyAction(action)
 			}
 			if p.toLogIndex(i)+1 >= p.snapshotThreshold {
 				err := p.saveToSnapshot(i)
@@ -408,7 +404,7 @@ func (p *Peer) toLogIndex(trueIndex int) int {
 	}
 	logidx := trueIndex - p.snapshot.LastIncludedIndex - 1
 	if logidx < 0 {
-		p.logger.Info("Access to invalid log index (inside snapshot)")
+		p.logger.Debug("Access to invalid log index (inside snapshot)")
 		return logidx
 	}
 	return logidx

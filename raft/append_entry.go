@@ -111,7 +111,9 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 			// do append entries
 			currentTerm := p.currentTerm
 			if nextIndex <= 0 {
-				p.logger.Warn("nextIndex out of range")
+				p.logger.Error("nextIndex out of range")
+				p.mutex.Unlock()
+				return
 			}
 			prevLogTerm := p.getLogTermByIndex(nextIndex - 1)
 			leaderCommit := p.commitIndex
