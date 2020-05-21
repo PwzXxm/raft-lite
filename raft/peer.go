@@ -43,6 +43,7 @@ type Peer struct {
 	rpcPeersIds []rpccore.NodeID
 	node        rpccore.Node
 	shutdown    bool
+	startBefore bool
 	logger      *logrus.Entry
 
 	// snapshot
@@ -92,6 +93,7 @@ func NewPeer(node rpccore.Node, peers []rpccore.NodeID, logger *logrus.Entry,
 	node.RegisterRawRequestCallback(p.handleRPCCallAndLogError)
 
 	p.shutdown = true
+	p.startBefore = false
 	p.logger = logger
 	p.stateMachine = sm
 	p.snapshot = nil
@@ -241,13 +243,18 @@ func (p *Peer) isValidLeader() bool {
 }
 
 // Start fire up this peer
-// TODO: handle starting after shutdown
 func (p *Peer) Start() {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 	if p.shutdown {
+		if p.startBefore {
+			p.logger.Warn("Started before. You should new a new peer and load from pstorage.")
+			return
+		}
+
 		p.logger.Info("Starting peer.")
 		p.shutdown = false
+		p.startBefore = true
 		go p.timeoutLoop()
 	} else {
 		p.logger.Warning("This peer is already running.")
