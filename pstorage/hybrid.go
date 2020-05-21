@@ -27,6 +27,8 @@ type Hybrid struct {
 func NewHybridPersistentStorage(filepath string, interval time.Duration, logger *logrus.Entry) *Hybrid {
 	h := new(Hybrid)
 	h.stop = make(chan struct{})
+	h.filepath = filepath
+	h.logger = logger
 	go func() {
 		ticker := time.NewTicker(interval)
 		for {
@@ -44,8 +46,6 @@ func NewHybridPersistentStorage(filepath string, interval time.Duration, logger 
 			}
 		}
 	}()
-	h.filepath = filepath
-	h.logger = logger
 	return h
 }
 
