@@ -15,6 +15,7 @@ func init() {
 
 func TestNewNode(t *testing.T) {
 	network := NewChanNetwork(time.Second)
+	defer network.Shutdown()
 
 	_, err := network.NewNode(NodeID("node"))
 	if err != nil {
@@ -29,6 +30,7 @@ func TestNewNode(t *testing.T) {
 
 func TestTimeoutAndDelayGenerator(t *testing.T) {
 	network := NewChanNetwork(time.Second)
+	defer network.Shutdown()
 
 	nodeA, _ := network.NewNode("nodeA")
 	nodeB, _ := network.NewNode("nodeB")
@@ -61,6 +63,7 @@ func TestTimeoutAndDelayGenerator(t *testing.T) {
 
 func TestNewTCPNetwork(t *testing.T) {
 	tcpNetwork := NewTCPNetwork(time.Second)
+	defer tcpNetwork.Shutdown()
 
 	if tcpNetwork.timeout != time.Second {
 		t.Errorf("TCPNetwork timeout should have the same value.")
@@ -69,6 +72,7 @@ func TestNewTCPNetwork(t *testing.T) {
 
 func TestNewRemoteNode(t *testing.T) {
 	tcpNetwork := NewTCPNetwork(time.Second)
+	defer tcpNetwork.Shutdown()
 
 	remoteNode := tcpNetwork.NewRemoteNode("node", "addr")
 	if remoteNode != nil {
@@ -83,6 +87,7 @@ func TestNewRemoteNode(t *testing.T) {
 
 func TestNewLocalNode(t *testing.T) {
 	tcpNetwork := NewTCPNetwork(time.Second)
+	defer tcpNetwork.Shutdown()
 
 	localNode, err := tcpNetwork.NewLocalNode("nodeB", "127.0.0.1:1110", ":1110")
 	if err != nil {
@@ -107,6 +112,7 @@ func checkNoError(t *testing.T, err error) {
 
 func TestChanNode(t *testing.T) {
 	network := NewChanNetwork(time.Second)
+	defer network.Shutdown()
 	nodeA, err := network.NewNode("nodeA")
 	checkNoError(t, err)
 	nodeB, err := network.NewNode("nodeB")
@@ -117,12 +123,14 @@ func TestChanNode(t *testing.T) {
 
 func TestTCPNode(t *testing.T) {
 	networkA := NewTCPNetwork(time.Second)
+	defer networkA.Shutdown()
 	nodeA, err := networkA.NewLocalNode("nodeA", "127.0.0.1:1111", ":1111")
 	checkNoError(t, err)
 	err = networkA.NewRemoteNode("nodeB", "127.0.0.1:1112")
 	checkNoError(t, err)
 
 	networkB := NewTCPNetwork(time.Second)
+	defer networkB.Shutdown()
 	nodeB, err := networkB.NewLocalNode("nodeB", "127.0.0.1:1112", ":1112")
 	checkNoError(t, err)
 
@@ -161,6 +169,7 @@ func testNode(t *testing.T, nodeA Node, nodeB Node) {
 
 func BenchmarkChanCommunication(b *testing.B) {
 	network := NewChanNetwork(time.Second)
+	defer network.Shutdown()
 	nodeA, _ := network.NewNode("nodeA")
 	nodeB, _ := network.NewNode("nodeB")
 	nodeC, _ := network.NewNode("nodeC")
@@ -170,16 +179,19 @@ func BenchmarkChanCommunication(b *testing.B) {
 
 func BenchmarkTCPCommunication(b *testing.B) {
 	networkA := NewTCPNetwork(time.Second)
+	defer networkA.Shutdown()
 	nodeA, _ := networkA.NewLocalNode("nodeA", "127.0.0.1:1113", ":1113")
 	_ = networkA.NewRemoteNode("nodeB", "127.0.0.1:1114")
 	_ = networkA.NewRemoteNode("nodeC", "127.0.0.1:1115")
 
 	networkB := NewTCPNetwork(time.Second)
+	defer networkB.Shutdown()
 	nodeB, _ := networkB.NewLocalNode("nodeB", "127.0.0.1:1114", ":1114")
 	_ = networkB.NewRemoteNode("nodeA", "127.0.0.1:1113")
 	_ = networkB.NewRemoteNode("nodeC", "127.0.0.1:1115")
 
 	networkC := NewTCPNetwork(time.Second)
+	defer networkC.Shutdown()
 	nodeC, _ := networkC.NewLocalNode("nodeC", "127.0.0.1:1115", ":1115")
 	_ = networkC.NewRemoteNode("nodeA", "127.0.0.1:1113")
 	_ = networkC.NewRemoteNode("nodeB", "127.0.0.1:1114")

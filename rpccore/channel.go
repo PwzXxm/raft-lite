@@ -70,6 +70,15 @@ func NewChanNetwork(timeout time.Duration) *ChanNetwork {
 	return n
 }
 
+func (n *ChanNetwork) Shutdown() {
+	n.lock.Lock()
+	defer n.lock.Unlock()
+	for _, channel := range n.nodeChannelMap {
+		close(channel)
+	}
+	n.nodeChannelMap = nil
+}
+
 func (n *ChanNetwork) NewNode(nodeID NodeID) (*ChanNode, error) {
 	n.lock.Lock()
 	defer n.lock.Unlock()
