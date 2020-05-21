@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-// GetInfo
+// GetInfo returns an info map of string key and string value
 func (p *Peer) GetInfo() map[string]string {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
@@ -27,6 +27,7 @@ func (p *Peer) GetInfo() map[string]string {
 	return mp
 }
 
+// getFieldStr returns a field string of given values
 func getFieldStr(v reflect.Value, lvl int) string {
 	lvl += 2
 
@@ -74,6 +75,7 @@ func getFieldStr(v reflect.Value, lvl int) string {
 	return ""
 }
 
+// getMapStr returns a map string of given values
 func getMapStr(field reflect.Value, lvl int) string {
 	var rst string = "{"
 	it := field.MapRange()
@@ -85,6 +87,7 @@ func getMapStr(field reflect.Value, lvl int) string {
 	return rst
 }
 
+// getSliceStr returns a slide string of given values
 func getSliceStr(field reflect.Value, lvl int) string {
 	var rst string = "["
 	for i := 0; i < field.Len(); i++ {

@@ -22,7 +22,7 @@ var testCases = []testCase{
 		action: caseRecoverLeaderElection,
 	},
 	{
-		name:   "Append log entries",
+		name:   "append log entries",
 		action: caseAppendLogEntry,
 	},
 	{
@@ -34,11 +34,11 @@ var testCases = []testCase{
 		action: caseHighPacketLossRate,
 	},
 	{
-		name:   "Even partition leader election",
+		name:   "even partition leader election",
 		action: caseEvenPartitionLeaderElection,
 	},
 	{
-		name:   "Skewed partition leader election",
+		name:   "skewed partition leader election",
 		action: caseSkewedPartitionLeaderElection,
 	},
 	{

@@ -57,7 +57,7 @@ func (p *Peer) handleInstallSnapshot(req installSnapshotReq) installSnapshotRes 
 }
 
 func (p *Peer) handleInstallSnapshotRes(res *installSnapshotRes) {
-	// update leader's term if res includs a higher term?
+	// update leader's term if response includes a higher term
 	if res.Term > p.currentTerm {
 		p.updateTerm(res.Term)
 		p.changeState(Follower)
@@ -66,6 +66,7 @@ func (p *Peer) handleInstallSnapshotRes(res *installSnapshotRes) {
 	}
 }
 
+// SnapshotEqual returns a bool value whether two snapshots are equal and error value if occurs
 func SnapshotEqual(s1 *Snapshot, s2 *Snapshot) (bool, error) {
 	smEqual, err := sm.TSMIsSnapshotEqual(s1.StateMachineSnapshot, s2.StateMachineSnapshot)
 	if err != nil {

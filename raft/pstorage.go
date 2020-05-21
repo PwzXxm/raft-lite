@@ -19,6 +19,7 @@ type PersistentData struct {
 	NumOfNode int
 }
 
+// loadFromPersistentStorage loads any existing data in previous
 func (p *Peer) loadFromPersistentStorage() error {
 	var data PersistentData
 	hasData, err := p.persistentStorage.Load(&data)
@@ -54,6 +55,7 @@ func (p *Peer) loadFromPersistentStorage() error {
 	return nil
 }
 
+// saveToPersistentStorage saves the data into persistent storage
 func (p *Peer) saveToPersistentStorage() error {
 	var data PersistentData
 	data.CurrentTerm = p.currentTerm
@@ -68,6 +70,7 @@ func (p *Peer) saveToPersistentStorage() error {
 	return p.persistentStorage.Save(data)
 }
 
+// saveToPersistentStorageAndLogError returns error value if occurs
 func (p *Peer) saveToPersistentStorageAndLogError() error {
 	err := p.saveToPersistentStorage()
 	if err != nil {

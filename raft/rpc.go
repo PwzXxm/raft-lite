@@ -18,29 +18,29 @@ const (
 )
 
 type appendEntriesReq struct {
-	Term         int
-	LeaderID     rpccore.NodeID
-	PrevLogIndex int
-	PrevLogTerm  int
-	LeaderCommit int
-	Entries      []LogEntry
+	Term         int            // leader's term
+	LeaderID     rpccore.NodeID // leader ID, for redirecting clients
+	PrevLogIndex int            // index of log entry immediately preceding new ones
+	PrevLogTerm  int            // term of prevLogIndex entry
+	LeaderCommit int            // leader’s commitIndex
+	Entries      []LogEntry     // log entries
 }
 
 type appendEntriesRes struct {
-	Term    int
-	Success bool
+	Term    int  // current term, for leader updating
+	Success bool // true if follower contained entry matching prevLogIndex and prevLogTerm
 }
 
 type requestVoteReq struct {
-	Term         int
-	CandidateID  rpccore.NodeID
-	LastLogIndex int
-	LastLogTerm  int
+	Term         int            // candidate's term
+	CandidateID  rpccore.NodeID // candidate ID
+	LastLogIndex int            // index of candidate’s last log entry
+	LastLogTerm  int            // term of candidate’s last log entry
 }
 
 type requestVoteRes struct {
-	Term        int
-	VoteGranted bool
+	Term        int  // current term, for candidate updating
+	VoteGranted bool // true means candidate received vote
 }
 
 type installSnapshotReq struct {
