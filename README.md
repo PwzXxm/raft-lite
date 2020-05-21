@@ -20,37 +20,37 @@ The focus of this project is to explore the detailed implementation of the Raft 
 - Functional test
 
 ### Folder Structure
-```js
+```bash
 /
-├── client/         // Client
-├── functests/      // Functional test cases
-├── pstorage/       // Persistent storage
-├── raft/           // Raft algorithm
-├── rpccore/        // RPC
-├── sample_config/  // Configuration files
-├── simulation/     // Simulation
-├── sm/             // State machine
-└── utils/          // Utils
+├── client/         # Client
+├── functests/      # Functional test cases
+├── pstorage/       # Persistent storage
+├── raft/           # Raft algorithm
+├── rpccore/        # RPC
+├── sample_config/  # Configuration files
+├── simulation/     # Simulation
+├── sm/             # State machine
+└── utils/          # Utils
 ```
 
 ## Usage
 ### Start
-```js
-// Sample: start peer with configuration 1
+```bash
+#  Sample: start peer with configuration 1
 go run . peer -c sample-config/sample-config1.json
-// Sample: start client with client configuration
+#  Sample: start client with client configuration
 go run . client -c sample_config/client_config.json
 ```
 
 ### Unit test
-```js
+```bash
 go test -v ./...
 ```
 
 ### Functional Test
-```js
-// Helper command
+```bash
+# Helper command
 python3 functional_tests.py --help
-// Sample: 4 tests in parallel, 120s timeout, 10 times for each test case
+#  Sample: 4 tests in parallel, 120s timeout, 10 times for each test case
 python3 functional_tests.py --parallel 4 --timeout 120 --times 10
 ```
