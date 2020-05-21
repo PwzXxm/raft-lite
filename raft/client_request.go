@@ -60,7 +60,7 @@ func (p *Peer) handleClientActionRequest(req client.ActionReq) client.ActionRes 
 }
 
 func (p *Peer) handleClientQueryRequest(req client.QueryReq) client.QueryRes {
-	if p.state != Leader {
+	if p.state != Leader || !p.isValidLeader() {
 		return client.QueryRes{Success: false, QueryErr: nil, Data: nil}
 	}
 
