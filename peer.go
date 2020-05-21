@@ -44,9 +44,6 @@ func StartPeerFromFile(configFilepath string) error {
 		_ = fl.Unlock()
 	}()
 
-	//set logger
-	logger := logrus.New()
-	logger.Out = os.Stdout
 	//new tcp network
 	n := rpccore.NewTCPNetwork(config.Timeout * time.Second)
 	node, err := n.NewLocalNode(config.NodeID, config.NodeAddrMap[config.NodeID], config.ListenAddr)
@@ -62,6 +59,11 @@ func StartPeerFromFile(configFilepath string) error {
 		}
 	}
 
+	//set logger
+	logger := logrus.New()
+	logger.Out = os.Stdout
+	loggerEntry := logger.WithFields(logrus.Fields{"nodeID": node.NodeID()})
+
 	// create directory for Pstorage if needed
 	pFilePath := filepath.Dir(config.PstorageFilePath)
 
@@ -71,7 +73,8 @@ func StartPeerFromFile(configFilepath string) error {
 			return err
 		}
 	}
-	ps := pstorage.NewFileBasedPersistentStorage(config.PstorageFilePath)
+	ps := pstorage.NewHybridPersistentStorage(config.PstorageFilePath,
+		2*time.Second, loggerEntry)
 	//new peer
 	peers := []rpccore.NodeID{}
 	for peer := range config.NodeAddrMap {
@@ -79,9 +82,9 @@ func StartPeerFromFile(configFilepath string) error {
 			peers = append(peers, peer)
 		}
 	}
-	p, err := raft.NewPeer(node, peers, logger.WithFields(logrus.Fields{
-		"nodeID": node.NodeID()}), sm.NewTransactionStateMachine(), ps,
-		config.TimingFactor, config.SnapshotThreshold)
+	p, err := raft.NewPeer(node, peers, loggerEntry,
+		sm.NewTransactionStateMachine(), ps, config.TimingFactor,
+		config.SnapshotThreshold)
 	if err != nil {
 		return err
 	}
@@ -96,5 +99,5 @@ func StartPeerFromFile(configFilepath string) error {
 	fmt.Println("Shutting down peer...")
 	p.ShutDown()
 	time.Sleep(2 * time.Second)
-	return nil
+	return ps.Stop()
 }

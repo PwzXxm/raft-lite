@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/pkg/errors"
 )
@@ -30,6 +31,20 @@ func TestFileBased(t *testing.T) {
 
 	m := NewFileBasedPersistentStorage(file.Name())
 	testPersistentStorage(t, m)
+}
+
+func TestHybridBased(t *testing.T) {
+	file, err := ioutil.TempFile("", "tests")
+	if err != nil {
+		log.Fatal(err)
+	}
+	// a little hacky
+	os.Remove(file.Name())
+	defer os.Remove(file.Name())
+
+	m := NewHybridPersistentStorage(file.Name(), time.Second, nil)
+	testPersistentStorage(t, m)
+	_ = m.Stop()
 }
 
 func checkNoError(t *testing.T, err error) {
