@@ -101,6 +101,7 @@ func caseSkewedPartitionLeaderElection() (err error) {
 	fmt.Printf("Request sent: %v\n", rst)
 	time.Sleep(5 * time.Second)
 
+	fmt.Println("haha0")
 	// recovery from partition
 	pmap = map[rpccore.NodeID]int{
 		"0": 0,
@@ -111,11 +112,13 @@ func caseSkewedPartitionLeaderElection() (err error) {
 	}
 	sl.SetNetworkPartition(pmap)
 	time.Sleep(5 * time.Second)
+	fmt.Println("haha1")
 
 	leader2, err := sl.AgreeOnLeader()
 	if err != nil {
 		return
 	}
+	fmt.Println("haha2")
 	term2, err := sl.AgreeOnTerm()
 	if err != nil {
 		return

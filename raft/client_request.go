@@ -51,7 +51,7 @@ func (p *Peer) HandleClientRequest(cmd interface{}) bool {
 // handleClientLeaderRequest returns a LeaderRes struct,
 // which includes a bool value whether leader exists and leader node ID
 func (p *Peer) handleClientLeaderRequest() client.LeaderRes {
-	if p.state != Leader {
+	if !p.isValidLeader() {
 		if p.leaderID == nil {
 			return client.LeaderRes{HasLeader: false, LeaderID: rpccore.NodeID("")}
 		}
@@ -63,7 +63,7 @@ func (p *Peer) handleClientLeaderRequest() client.LeaderRes {
 // handleClientActionRequest takes a ActionReq struct and returns a ActionRes struct
 // only leader can return Started with a true bool value
 func (p *Peer) handleClientActionRequest(req client.ActionReq) client.ActionRes {
-	if p.state != Leader {
+	if !p.isValidLeader() {
 		return client.ActionRes{Started: false}
 	}
 
@@ -75,7 +75,7 @@ func (p *Peer) handleClientActionRequest(req client.ActionReq) client.ActionRes 
 // handleClientQueryRequest takes a QueryReq struct and returns a QueryRes struct
 func (p *Peer) handleClientQueryRequest(req client.QueryReq) client.QueryRes {
 	// no valid leader case
-	if p.state != Leader || !p.isValidLeader() {
+	if !p.isValidLeader() {
 		return client.QueryRes{Success: false, QueryErr: nil, Data: nil}
 	}
 

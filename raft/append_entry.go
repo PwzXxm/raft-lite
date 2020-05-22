@@ -73,7 +73,7 @@ func (p *Peer) consistencyCheck(req appendEntriesReq) bool {
 	myPrevLogTerm := p.getLogTermByIndex(req.PrevLogIndex)
 	if myPrevLogTerm != req.PrevLogTerm {
 		if req.PrevLogIndex <= p.commitIndex {
-			p.logger.Errorf("invalid case! prevLogIndex:%v, logreq:%v, loglocal:%v",
+			p.logger.Fatalf("Overriding commited logs, prevLogIndex:%v, logreq:%v, loglocal:%v",
 				req.PrevLogIndex, req.Entries, p.log)
 		}
 		return false
@@ -160,29 +160,31 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 				continue
 			} else {
 				p.mutex.Lock()
-				p.updateLastHeard(target)
-				if !res.Success {
-					// update nextIndex for target node
-					if res.Term > currentTerm {
-						p.updateTerm(res.Term)
-						p.changeState(Follower)
-						// update CurrentTerm, VotedFor
-						p.saveToPersistentStorageAndLogError()
-					} else {
-						p.nextIndex[target]--
-					}
-				} else {
-					// if success, update nextIndex for the node
-					commitIndex := p.commitIndex
-					p.nextIndex[target] = nextIndex + len(entries)
-					// send signal to the channels for index greater than commit index
-					for i := utils.Max(commitIndex, p.matchIndex[target]) + 1; i < p.nextIndex[target]; i++ {
-						c, ok := p.logIndexMajorityCheckChannel[i]
-						if ok {
-							c <- target
+				if p.state == Leader {
+					p.updateLastHeard(target)
+					if !res.Success {
+						// update nextIndex for target node
+						if res.Term > currentTerm {
+							p.updateTerm(res.Term)
+							p.changeState(Follower)
+							// update CurrentTerm, VotedFor
+							p.saveToPersistentStorageAndLogError()
+						} else {
+							p.nextIndex[target]--
 						}
+					} else {
+						// if success, update nextIndex for the node
+						commitIndex := p.commitIndex
+						p.nextIndex[target] = nextIndex + len(entries)
+						// send signal to the channels for index greater than commit index
+						for i := utils.Max(commitIndex, p.matchIndex[target]) + 1; i < p.nextIndex[target]; i++ {
+							c, ok := p.logIndexMajorityCheckChannel[i]
+							if ok {
+								c <- target
+							}
+						}
+						p.matchIndex[target] = p.nextIndex[target] - 1
 					}
-					p.matchIndex[target] = p.nextIndex[target] - 1
 				}
 				p.mutex.Unlock()
 			}
@@ -215,7 +217,7 @@ func (p *Peer) onReceiveClientRequest(cmd interface{}) bool {
 	count := 0
 	for nodeID := range majorityCheckChannel {
 		count++
-		p.logger.Infof("peer %v confirm log with index %v", nodeID, newLogIndex)
+		p.logger.Debugf("peer %v confirm log with index %v", nodeID, newLogIndex)
 		if 2*count > totalPeers {
 			p.mutex.Lock()
 			// update commitIndex, use max in case commitIndex is already updated by other client request

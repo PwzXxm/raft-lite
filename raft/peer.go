@@ -12,6 +12,7 @@
 package raft
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -242,6 +243,9 @@ func (p *Peer) updateLastHeard(target rpccore.NodeID) {
 }
 
 func (p *Peer) isValidLeader() bool {
+	if p.state != Leader {
+		return false
+	}
 	now := time.Now()
 	count := 0
 	for _, lastHeard := range p.lastHeardFromFollower {
@@ -292,7 +296,6 @@ func (p *Peer) ShutDown() {
 	}
 }
 
-
 // updateTerm updates the term and resets the votedFor
 func (p *Peer) updateTerm(term int) {
 	if term > p.currentTerm {
@@ -336,8 +339,10 @@ func (p *Peer) GetTerm() int {
 
 // GetState returns the state of this peer
 func (p *Peer) GetState() PeerState {
+	fmt.Println("getting lock", p.node.NodeID())
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
+	fmt.Println("got lock", p.node.NodeID())
 	return p.state
 }
 
