@@ -87,7 +87,7 @@ func RunLocallyOptional(n int, snapshotThreshold int, smMaker stateMachineMaker)
 	return l
 }
 
-// SetupLocally set up the local simulaton env
+// SetupLocally sets up the local simulaton env
 func SetupLocally(n int) *local {
 	log.Info("Setting up simulation locally ...")
 
@@ -265,7 +265,7 @@ func (l *local) RequestActionSync(act sm.TSMAction) error {
 	return errors.New(msg)
 }
 
-// RequestQuerySync clinet makes sync query request
+// RequestQuerySync client makes sync query request
 func (l *local) RequestQuerySync(key string) (interface{}, error) {
 	return client.ExecuteQueryRequest(&l.clientCore, sm.NewTSMDataQuery(key))
 }
@@ -423,7 +423,7 @@ func (l *local) AgreeOnTwoLogEntries(logEntry1, logEntry2 []raft.LogEntry) (bool
 	return true, nil
 }
 
-// AgreeOnLogEntries checks whether all peers satisfy the "log matching" proporty.
+// AgreeOnLogEntries checks whether all peers satisfy the "Log Matching" proporty.
 func (l *local) AgreeOnLogEntries() error {
 	logEntriesMap := l.getAllNodeLogs()
 	for peer1, logEntry1 := range logEntriesMap {
@@ -470,7 +470,7 @@ func (l *local) AgreeOnSnapshot() (int, int, error) {
 	return ss.LastIncludedIndex, ss.LastIncludedTerm, nil
 }
 
-// AgreeOnStateMachine checks whether all peers have the same statemachine state
+// AgreeOnStateMachine checks whether all peers have the same state machine state
 func (l *local) AgreeOnStateMachine() ([]byte, error) {
 	var ss []byte
 	for _, peer := range l.raftPeers {
@@ -494,7 +494,7 @@ func (l *local) AgreeOnStateMachine() ([]byte, error) {
 	return ss, nil
 }
 
-// SetNetworkReliability sets Latency and Packet Loss Rate of the network
+// SetNetworkReliability sets latency and packet loss rate of the network
 func (l *local) SetNetworkReliability(oneWayLatencyMin, oneWayLatencyMax time.Duration, packetLossRate float64) {
 	l.netLock.Lock()
 	defer l.netLock.Unlock()
@@ -503,7 +503,7 @@ func (l *local) SetNetworkReliability(oneWayLatencyMin, oneWayLatencyMax time.Du
 	l.packetLossRate = packetLossRate
 }
 
-// SetNodeNetworkStatus sets the network connectoin state of a certain peer
+// SetNodeNetworkStatus sets the network connection state of a certain peer
 func (l *local) SetNodeNetworkStatus(nodeID rpccore.NodeID, online bool) {
 	l.netLock.Lock()
 	defer l.netLock.Unlock()

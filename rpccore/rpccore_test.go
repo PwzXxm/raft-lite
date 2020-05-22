@@ -139,7 +139,7 @@ func TestChanNode(t *testing.T) {
 	testNode(t, nodeA, nodeB)
 }
 
-// TestTCPNode tests the TCP node works
+// TestTCPNode tests the TCP node
 func TestTCPNode(t *testing.T) {
 	networkA := NewTCPNetwork(time.Second)
 	defer networkA.Shutdown()

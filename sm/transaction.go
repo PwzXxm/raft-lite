@@ -39,7 +39,7 @@ type TSMRequestInfo struct {
 	Err       *string
 }
 
-// NewTransactionStateMachine creates state machine
+// NewTransactionStateMachine creates a state machine
 func NewTransactionStateMachine() *TSM {
 	t := new(TSM)
 	t.Reset()
