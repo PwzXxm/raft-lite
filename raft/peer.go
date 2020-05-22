@@ -374,8 +374,7 @@ func (p *Peer) GetRecentSnapshot() *Snapshot {
 	if p.snapshot == nil {
 		return nil
 	} else {
-		var snapshot Snapshot
-		snapshot = *p.snapshot
+		snapshot := *p.snapshot
 		return &snapshot
 	}
 }
