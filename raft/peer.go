@@ -196,6 +196,8 @@ func (p *Peer) changeState(state PeerState) {
 		}
 		p.logIndexMajorityCheckChannel = nil
 		p.lastHeardFromFollower = nil
+		p.nextIndex = nil
+		p.matchIndex = nil
 	}
 
 	p.state = state
@@ -213,7 +215,6 @@ func (p *Peer) changeState(state PeerState) {
 		p.lastHeardFromFollower = make(map[rpccore.NodeID]time.Time, len(p.rpcPeersIds))
 		for _, peers := range p.rpcPeersIds {
 			p.nextIndex[peers] = p.logLen()
-
 			p.matchIndex[peers] = 0
 			p.lastHeardFromFollower[peers] = time.Now()
 		}

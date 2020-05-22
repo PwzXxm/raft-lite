@@ -2,6 +2,7 @@ package raft
 
 import (
 	"github.com/PwzXxm/raft-lite/rpccore"
+	"github.com/PwzXxm/raft-lite/utils"
 )
 
 func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
@@ -148,12 +149,13 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 					commitIndex := p.commitIndex
 					p.nextIndex[target] = nextIndex + len(entries)
 					// send signal to the channels for index greater than commit index
-					for i := commitIndex + 1; i < p.nextIndex[target]; i++ {
+					for i := utils.Max(commitIndex, p.matchIndex[target]) + 1; i < p.nextIndex[target]; i++ {
 						c, ok := p.logIndexMajorityCheckChannel[i]
 						if ok {
 							c <- target
 						}
 					}
+					p.matchIndex[target] = p.nextIndex[target] - 1
 					p.mutex.Unlock()
 				}
 			}
