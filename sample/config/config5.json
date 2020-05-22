@@ -1,5 +1,5 @@
 {
-    "Timeout": 10,
+    "TimeoutInMS": 500,
     "NodeAddrMap": {
         "alpha": "127.0.0.1:8001",
         "bravo": "127.0.0.1:8002",
@@ -7,9 +7,9 @@
         "delta": "127.0.0.1:8004",
         "echo": "127.0.0.1:8005"
     },
-    "NodeID": "charlie",
-    "ListenAddr": "127.0.0.1:8003",
-    "PstorageFilePath": "./pstorage_file/pstorage3.dat",
-    "TimingFactor": 5,
-    "SnapshotThreshold": 5
+    "NodeID": "echo",
+    "ListenAddr": "127.0.0.1:8005",
+    "PstorageFilePath": "./pstorage_file/pstorage5.dat",
+    "TimingFactor": 1,
+    "SnapshotThreshold": 50
 }
