@@ -87,7 +87,6 @@ func RunLocallyOptional(n int, snapshotThreshold int, smMaker stateMachineMaker)
 	return l
 }
 
-// SetupLocally
 func SetupLocally(n int) *local {
 	log.Info("Setting up simulation locally ...")
 

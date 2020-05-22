@@ -146,7 +146,8 @@ func (n *TCPNetwork) NewLocalClientOnlyNode(nodeID NodeID) (*TCPNode, error) {
 	return node, nil
 }
 
-// A TCPNode representing the
+// A TCPNode representing a node within the current TCP network
+// and the client associate with it if it is not in client only mode
 type TCPNode struct {
 	id             NodeID
 	network        *TCPNetwork

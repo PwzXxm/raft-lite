@@ -91,7 +91,7 @@ func NewChanNetwork(timeout time.Duration) *ChanNetwork {
 	return n
 }
 
-// Shutdown shutdown the network by closing all channels
+// Shutdown shuts down the network by closing all channels
 func (n *ChanNetwork) Shutdown() {
 	n.lock.Lock()
 	defer n.lock.Unlock()
