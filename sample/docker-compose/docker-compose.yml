@@ -1,0 +1,41 @@
+version: '3'
+services:
+  peer-alpha:
+    image: "raft-lite:latest"
+    restart: always
+    volumes:
+      - ./peer-alpha:/data
+    ports:
+      - "127.0.0.1:9001:10000"
+
+  peer-bravo:
+    image: "raft-lite:latest"
+    restart: always
+    volumes:
+      - ./peer-bravo:/data
+    ports:
+      - "127.0.0.1:9002:10000"
+
+  peer-charlie:
+    image: "raft-lite:latest"
+    restart: always
+    volumes:
+      - ./peer-charlie:/data
+    ports:
+      - "127.0.0.1:9003:10000"
+
+  peer-delta:
+    image: "raft-lite:latest"
+    restart: always
+    volumes:
+      - ./peer-delta:/data
+    ports:
+      - "127.0.0.1:9004:10000"
+
+  peer-echo:
+    image: "raft-lite:latest"
+    restart: always
+    volumes:
+      - ./peer-echo:/data
+    ports:
+      - "127.0.0.1:9005:10000"

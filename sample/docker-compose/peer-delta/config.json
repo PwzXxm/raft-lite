@@ -1,0 +1,15 @@
+{
+    "TimeoutInMS": 500,
+    "NodeAddrMap": {
+        "alpha": "peer-alpha:10000",
+        "bravo": "peer-bravo:10000",
+        "charlie": "peer-charlie:10000",
+        "delta": "peer-delta:10000",
+        "echo": "peer-echo:10000"
+    },
+    "NodeID": "delta",
+    "ListenAddr": "0.0.0.0:10000",
+    "PstorageFilePath": "/data/pstorage.dat",
+    "TimingFactor": 1,
+    "SnapshotThreshold": 50
+}
