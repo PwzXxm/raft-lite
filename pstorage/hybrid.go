@@ -35,6 +35,7 @@ type Hybrid struct {
 	stop     chan struct{}
 }
 
+// initialize hybrid persistent storage
 func NewHybridPersistentStorage(filepath string, interval time.Duration, logger *logrus.Entry) *Hybrid {
 	h := new(Hybrid)
 	h.stop = make(chan struct{})

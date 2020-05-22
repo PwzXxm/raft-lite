@@ -22,7 +22,7 @@ type MemoryBased struct {
 	data []byte
 }
 
-// initial object
+// initialize memory based persistent storage
 func NewMemoryBasedPersistentStorage() *MemoryBased {
 	return &MemoryBased{}
 }

@@ -23,6 +23,7 @@ type clientConfig struct {
 	ClientID    string
 }
 
+// StartClientFromFile starts Client from given file
 func StartClientFromFile(filepath string) error {
 	var config clientConfig
 	err := utils.ReadClientFromJSON(&config, filepath)
@@ -43,6 +44,7 @@ func StartClientFromFile(filepath string) error {
 	if err != nil {
 		return err
 	}
+
 	c.startReadingCmd()
 	c.net.Shutdown()
 	return nil

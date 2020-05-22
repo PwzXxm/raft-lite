@@ -340,7 +340,7 @@ func caseAgreeOnLogEntryWithPartitionAndLeaderReselection() (err error) {
 		time.Sleep(500 * time.Millisecond)
 	}
 
-	// make partition [0, 1, 2] and [3, 4]
+	// make partition [0, 1, 2] [3, 4]
 	pmap := map[rpccore.NodeID]int{
 		"0": 0,
 		"1": 0,

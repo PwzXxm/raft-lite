@@ -25,7 +25,7 @@ type FileBased struct {
 	filepath string
 }
 
-// initial object
+// initialize file based persistent storage
 func NewFileBasedPersistentStorage(filepath string) *FileBased {
 	return &FileBased{filepath: filepath}
 }

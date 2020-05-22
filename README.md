@@ -1,4 +1,4 @@
-# Raft-Lite
+# raft-lite
 
 [![build](https://github.com/PwzXxm/raft-lite/workflows/build/badge.svg)](https://github.com/PwzXxm/raft-lite/actions?query=workflow%3Abuild+event%3Apush+branch%3Amaster)
 
@@ -18,6 +18,7 @@ The focus of this project is to explore the detailed implementation of the Raft 
 - Log compaction
 - Unit test
 - Functional test
+- Integration test
 
 ### Folder Structure
 ```bash
@@ -36,10 +37,16 @@ The focus of this project is to explore the detailed implementation of the Raft 
 ## Usage
 ### Start
 ```bash
-#  Sample: start peer with configuration 1
+#  Start peer with configuration 1 JSON file
 go run . peer -c sample-config/sample-config1.json
-#  Sample: start client with client configuration
+#  Start client with client configuration JSON file
 go run . client -c sample_config/client_config.json
+```
+
+### Simulation
+```bash
+# Local simulation with 5 peers
+go run ./ simulation local -n 5
 ```
 
 ### Unit test
@@ -47,10 +54,19 @@ go run . client -c sample_config/client_config.json
 go test -v ./...
 ```
 
-### Functional Test
+### Functional test
 ```bash
-# Helper command
-python3 functional_tests.py --help
-#  Sample: 4 tests in parallel, 120s timeout, 10 times for each test case
+# List all functional test cases
+go run ./ functionaltest list
+# Run single functional test case 10
+go run ./ functionaltest run 10
+# Run all functional test cases
+python3 functional_tests.py
+#  Sample: 4 tests running in parallel, 120s timeout, 10 times for each test case
 python3 functional_tests.py --parallel 4 --timeout 120 --times 10
+```
+
+### Integration test
+```bash
+go run ./ integrationtest
 ```
