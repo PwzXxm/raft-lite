@@ -43,6 +43,7 @@ func (p *Peer) handleRequestVoteRespond(res requestVoteRes) {
 		if p.voteCount > totalPeers/2 && p.state == Candidate {
 			p.logger.Info("Change to leader.")
 			p.changeState(Leader)
+			go p.onReceiveClientRequest(nil)
 		}
 	} else {
 		if res.Term > p.currentTerm {
