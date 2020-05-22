@@ -3,7 +3,6 @@ package functests
 import (
 	"context"
 	"fmt"
-	"github.com/PwzXxm/raft-lite/raft"
 	"math/rand"
 	"sort"
 	"strconv"
@@ -161,21 +160,16 @@ func clientRandomlySendRequest(clientName string, sl *simulation.Local) {
 			if result == correctResult {
 				_, _ = green.Printf("%v's Query result for %v correct, receive result: %v\n", clientName, key, result)
 			} else if result == nil {
-				_, _ = red.Printf("%v's Query result for %v is nil.", clientName, key)
-				panic("")
+				simulation.Log.Panicf("%v's Query result for %v is nil.", clientName, key)
 			} else {
-				_, _ = red.Printf("Error: %v's Query result for %v is %v\n", clientName, key, result)
-				panic("")
+				simulation.Log.Panicf("Error: %v's Query result for %v is %v\n", clientName, key, result)
 			}
 		}
 	}
 }
 
 func complexTest(ctx context.Context, wg *sync.WaitGroup, rst map[string]int) error {
-	sl := simulation.RunLocallyOptional(5, 1000, func() sm.StateMachine { return sm.NewTransactionStateMachine() })
-	raft.Foo = func() {
-		fmt.Print(sl)
-	}
+	sl := simulation.RunLocallyOptional(5, 5, func() sm.StateMachine { return sm.NewTransactionStateMachine() })
 	defer sl.StopAll()
 
 	nodeIDs := []rpccore.NodeID{"0", "1", "2", "3", "4"}
@@ -211,6 +205,9 @@ func complexTest(ctx context.Context, wg *sync.WaitGroup, rst map[string]int) er
 
 	go clientRandomlySendRequest("clientA", sl)
 	go clientRandomlySendRequest("clientB", sl)
+	go clientRandomlySendRequest("clientC", sl)
+	go clientRandomlySendRequest("clientD", sl)
+	go clientRandomlySendRequest("clientE", sl)
 
 	nodeWorking := make(map[rpccore.NodeID]bool, 5)
 	for _, nodeID := range nodeIDs {
