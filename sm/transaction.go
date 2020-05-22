@@ -33,26 +33,26 @@ type TSM struct {
 	LatestRequestInfo map[string]TSMRequestInfo
 }
 
-// TSMRequestInfo TSM request stucture
+// TSM request info stucture
 type TSMRequestInfo struct {
 	RequestID uint32
 	Err       *string
 }
 
-// NewTransactionStateMachine new state machine
+// NewTransactionStateMachine creates state machine
 func NewTransactionStateMachine() *TSM {
 	t := new(TSM)
 	t.Reset()
 	return t
 }
 
-// Reset reset state machine
+// Reset resets state machine
 func (t *TSM) Reset() {
 	t.Data = make(map[string]int)
 	t.LatestRequestInfo = make(map[string]TSMRequestInfo)
 }
 
-// ApplyAction apply action to state machine
+// ApplyAction applies action to state machine
 func (t *TSM) ApplyAction(action interface{}) error {
 	tsmAction := action.(TSMAction)
 	// check duplicate
@@ -124,7 +124,7 @@ func (t *TSM) ApplyAction(action interface{}) error {
 	return err
 }
 
-// Query return the value of the given key.
+// Query returns the value of the given key.
 // key is string and return value is int
 func (t *TSM) Query(req interface{}) (interface{}, error) {
 	query := req.(TSMQuery)
@@ -147,7 +147,7 @@ func (t *TSM) Query(req interface{}) (interface{}, error) {
 	return nil, errors.New("invalid query")
 }
 
-// TakeSnapshot take current state machine to a snapshot
+// TakeSnapshot takes current state machine to a snapshot
 func (t *TSM) TakeSnapshot() ([]byte, error) {
 	buf := new(bytes.Buffer)
 	enc := gob.NewEncoder(buf)
@@ -159,7 +159,7 @@ func (t *TSM) TakeSnapshot() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// ResetWithSnapshot reset the state machine by the given snapshot
+// ResetWithSnapshot resets the state machine by the given snapshot
 func (t *TSM) ResetWithSnapshot(b []byte) error {
 	newTSM, err := decodeTSMFromBytes(b)
 	if err == nil {
@@ -177,7 +177,7 @@ func decodeTSMFromBytes(b []byte) (TSM, error) {
 	return newTSM, err
 }
 
-// TSMAction the state machine action structure
+// TSM action structure
 type TSMAction struct {
 	Action tsmActionType
 	Target string
@@ -196,18 +196,18 @@ const (
 	tsmActionMove
 )
 
-// GetRequestID get the request ID
+// GetRequestID gets the request ID
 func (a TSMAction) GetRequestID() uint32 {
 	return a.RequestID
 }
 
-// TSMActionBuilder the state machine action builder structure
+// TSM action builder structure
 type TSMActionBuilder struct {
 	clientID      string
 	lastRequestID uint32
 }
 
-// NewTSMActionBuilder reture a new state machine action builder
+// NewTSMActionBuilder returns a new state machine action builder
 func NewTSMActionBuilder(clientID string) *TSMActionBuilder {
 	return &TSMActionBuilder{clientID: clientID, lastRequestID: rand.Uint32()}
 }
@@ -217,7 +217,7 @@ func (b *TSMActionBuilder) newRequestID() uint32 {
 	return b.lastRequestID
 }
 
-// TSMActionSetValue the set value action
+// TSMActionSetValue returns the set value action
 func (b *TSMActionBuilder) TSMActionSetValue(key string, value int) TSMAction {
 	return TSMAction{
 		Action:    tsmActionSet,
@@ -228,7 +228,7 @@ func (b *TSMActionBuilder) TSMActionSetValue(key string, value int) TSMAction {
 	}
 }
 
-// TSMActionIncrValue the increment value action
+// TSMActionIncrValue returns the increment value action
 func (b *TSMActionBuilder) TSMActionIncrValue(key string, value int) TSMAction {
 	return TSMAction{
 		Action:    tsmActionIncr,
@@ -239,7 +239,7 @@ func (b *TSMActionBuilder) TSMActionIncrValue(key string, value int) TSMAction {
 	}
 }
 
-// TSMActionMoveValue the move value action
+// TSMActionMoveValue returns the move value action
 func (b *TSMActionBuilder) TSMActionMoveValue(source, target string, value int) TSMAction {
 	return TSMAction{
 		Action:    tsmActionMove,
@@ -251,7 +251,7 @@ func (b *TSMActionBuilder) TSMActionMoveValue(source, target string, value int) 
 	}
 }
 
-// TSMQuery state machine query structure
+// TSM query structure
 type TSMQuery struct {
 	Query tsmQueryType
 	Key   string
@@ -264,7 +264,7 @@ const (
 	tsmQueryLatestRequest
 )
 
-// NewTSMDataQuery make new state machine data query
+// NewTSMDataQuery creates a TSM data query
 func NewTSMDataQuery(key string) TSMQuery {
 	return TSMQuery{
 		Query: tsmQueryData,
@@ -272,7 +272,7 @@ func NewTSMDataQuery(key string) TSMQuery {
 	}
 }
 
-// NewTSMLatestRequestQuery make new latest request query
+// NewTSMLatestRequestQuery creates a latest request query
 func NewTSMLatestRequestQuery(clientID string) TSMQuery {
 	return TSMQuery{
 		Query: tsmQueryLatestRequest,
@@ -280,7 +280,7 @@ func NewTSMLatestRequestQuery(clientID string) TSMQuery {
 	}
 }
 
-// TSMIsSnapshotEqual check whether two state machine snapshot is equal
+// TSMIsSnapshotEqual checks whether two TSM snapshots are equal
 func TSMIsSnapshotEqual(b1 []byte, b2 []byte) (bool, error) {
 	tSM1, err := decodeTSMFromBytes(b1)
 	if err != nil {
@@ -293,7 +293,7 @@ func TSMIsSnapshotEqual(b1 []byte, b2 []byte) (bool, error) {
 	return reflect.DeepEqual(tSM1, tSM2), nil
 }
 
-// TSMToStringHuman convert the state machine snapshot to human readable string
+// TSMToStringHuman converts the TSM snapshot to human readable string
 func TSMToStringHuman(b []byte) string {
 	tSM, err := decodeTSMFromBytes(b)
 	if err != nil {

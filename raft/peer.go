@@ -32,20 +32,20 @@ const (
 	Leader
 )
 
-// LogEntry logEntry structure type
+// log entry structure
 type LogEntry struct {
 	Cmd  interface{}
 	Term int
 }
 
-// Snapshot snapshot structure
+// snapshot structure
 type Snapshot struct {
 	LastIncludedIndex    int
 	LastIncludedTerm     int
 	StateMachineSnapshot []byte
 }
 
-// Peer peer structure
+// peer structure
 type Peer struct {
 	state       PeerState       // peer state
 	mutex       sync.Mutex      // mutex, for accessing data across multiple goroutines
@@ -89,7 +89,7 @@ type Peer struct {
 	leaderID *rpccore.NodeID
 }
 
-// NewPeer Create new peer
+// NewPeer creates a new peer
 func NewPeer(node rpccore.Node, peers []rpccore.NodeID, logger *logrus.Entry,
 	sm sm.StateMachine, ps pstorage.PersistentStorage, timingFactor int, snapshotThreshold int) (*Peer, error) {
 	p := new(Peer)
@@ -137,6 +137,7 @@ func NewPeer(node rpccore.Node, peers []rpccore.NodeID, logger *logrus.Entry,
 	return p, nil
 }
 
+// timeoutLoop loops the timeout
 func (p *Peer) timeoutLoop() {
 	for {
 		p.mutex.Lock()
@@ -248,8 +249,8 @@ func (p *Peer) updateLastHeard(target rpccore.NodeID) {
 	}
 }
 
-// isValidLeader check if the peer is still a valid leader when received read request
-// from client by count how many followers it can communicate with.
+// isValidLeader checks if the peer is still a valid leader when received read request
+// from client by counting how many followers it can communicate with.
 func (p *Peer) isValidLeader() bool {
 	now := time.Now()
 	count := 1

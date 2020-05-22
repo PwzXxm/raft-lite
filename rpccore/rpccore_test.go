@@ -24,7 +24,7 @@ func init() {
 	fmt.Println("* rpc core unit test *")
 }
 
-// TestNewNode test the creation of new node works
+// TestNewNode tests the creation of new node works
 func TestNewNode(t *testing.T) {
 	network := NewChanNetwork(time.Second)
 	defer network.Shutdown()
@@ -40,7 +40,7 @@ func TestNewNode(t *testing.T) {
 	}
 }
 
-// TestTimeoutAndDelayGenerator test the timeout and delay generator works
+// TestTimeoutAndDelayGenerator tests the timeout and delay generator works
 func TestTimeoutAndDelayGenerator(t *testing.T) {
 	network := NewChanNetwork(time.Second)
 	defer network.Shutdown()
@@ -74,7 +74,7 @@ func TestTimeoutAndDelayGenerator(t *testing.T) {
 	}
 }
 
-// TestNewTCPNetwork test TCP network creation
+// TestNewTCPNetwork tests TCP network creation
 func TestNewTCPNetwork(t *testing.T) {
 	tcpNetwork := NewTCPNetwork(time.Second)
 	defer tcpNetwork.Shutdown()
@@ -84,7 +84,7 @@ func TestNewTCPNetwork(t *testing.T) {
 	}
 }
 
-// TestNewRemoteNode test the creation of new remote node
+// TestNewRemoteNode tests the creation of new remote node
 func TestNewRemoteNode(t *testing.T) {
 	tcpNetwork := NewTCPNetwork(time.Second)
 	defer tcpNetwork.Shutdown()
@@ -100,7 +100,7 @@ func TestNewRemoteNode(t *testing.T) {
 	}
 }
 
-// TestNewLoalNode test the creation of new local node
+// TestNewLoalNode tests the creation of new local node
 func TestNewLocalNode(t *testing.T) {
 	tcpNetwork := NewTCPNetwork(time.Second)
 	defer tcpNetwork.Shutdown()
@@ -126,10 +126,11 @@ func checkNoError(t *testing.T, err error) {
 	}
 }
 
-// TestChanNode test the chanNetwork
+// TestChanNode tests the chanNetwork
 func TestChanNode(t *testing.T) {
 	network := NewChanNetwork(time.Second)
 	defer network.Shutdown()
+
 	nodeA, err := network.NewNode("nodeA")
 	checkNoError(t, err)
 	nodeB, err := network.NewNode("nodeB")
@@ -138,10 +139,11 @@ func TestChanNode(t *testing.T) {
 	testNode(t, nodeA, nodeB)
 }
 
-// TestTCPNode test the TCP node works
+// TestTCPNode tests the TCP node works
 func TestTCPNode(t *testing.T) {
 	networkA := NewTCPNetwork(time.Second)
 	defer networkA.Shutdown()
+
 	nodeA, err := networkA.NewLocalNode("nodeA", "127.0.0.1:1111", ":1111")
 	checkNoError(t, err)
 	err = networkA.NewRemoteNode("nodeB", "127.0.0.1:1112")
@@ -149,12 +151,14 @@ func TestTCPNode(t *testing.T) {
 
 	networkB := NewTCPNetwork(time.Second)
 	defer networkB.Shutdown()
+
 	nodeB, err := networkB.NewLocalNode("nodeB", "127.0.0.1:1112", ":1112")
 	checkNoError(t, err)
 
 	testNode(t, nodeA, nodeB)
 }
 
+// testNode tests the communication between two nodes
 func testNode(t *testing.T, nodeA Node, nodeB Node) {
 	// test NodeID
 	if nodeA.NodeID() != "nodeA" || nodeB.NodeID() != "nodeB" {
@@ -185,10 +189,11 @@ func testNode(t *testing.T, nodeA Node, nodeB Node) {
 	}
 }
 
-// BenchmarkChanCommunication test the network speed of Channel network
+// BenchmarkChanCommunication tests the network speed of Channel network
 func BenchmarkChanCommunication(b *testing.B) {
 	network := NewChanNetwork(time.Second)
 	defer network.Shutdown()
+
 	nodeA, _ := network.NewNode("nodeA")
 	nodeB, _ := network.NewNode("nodeB")
 	nodeC, _ := network.NewNode("nodeC")
@@ -196,10 +201,11 @@ func BenchmarkChanCommunication(b *testing.B) {
 	benchmarkCommunication(b, nodeA, nodeB, nodeC)
 }
 
-// BenchmarkTCPCommunication test the network speed of TCP network
+// BenchmarkTCPCommunication tests the network speed of TCP network
 func BenchmarkTCPCommunication(b *testing.B) {
 	networkA := NewTCPNetwork(time.Second)
 	defer networkA.Shutdown()
+
 	nodeA, _ := networkA.NewLocalNode("nodeA", "127.0.0.1:1113", ":1113")
 	_ = networkA.NewRemoteNode("nodeB", "127.0.0.1:1114")
 	_ = networkA.NewRemoteNode("nodeC", "127.0.0.1:1115")
@@ -219,6 +225,7 @@ func BenchmarkTCPCommunication(b *testing.B) {
 	benchmarkCommunication(b, nodeA, nodeB, nodeC)
 }
 
+// benchmarkCommunication tests the performance of sending raw requests
 func benchmarkCommunication(b *testing.B, nodeA Node, nodeB Node, nodeC Node) {
 	callbackHandler := func(source NodeID, method string, data []byte) ([]byte, error) {
 		return []byte(string(source)), nil
