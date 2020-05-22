@@ -12,6 +12,7 @@
 package raft
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -208,6 +209,8 @@ func (p *Peer) changeState(state PeerState) {
 		}
 		p.logIndexMajorityCheckChannel = nil
 		p.lastHeardFromFollower = nil
+		p.nextIndex = nil
+		p.matchIndex = nil
 	}
 
 	p.state = state
@@ -225,7 +228,6 @@ func (p *Peer) changeState(state PeerState) {
 		p.lastHeardFromFollower = make(map[rpccore.NodeID]time.Time, len(p.rpcPeersIds))
 		for _, peers := range p.rpcPeersIds {
 			p.nextIndex[peers] = p.logLen()
-
 			p.matchIndex[peers] = 0
 			p.lastHeardFromFollower[peers] = time.Now()
 		}
@@ -241,6 +243,9 @@ func (p *Peer) updateLastHeard(target rpccore.NodeID) {
 }
 
 func (p *Peer) isValidLeader() bool {
+	if p.state != Leader {
+		return false
+	}
 	now := time.Now()
 	count := 0
 	for _, lastHeard := range p.lastHeardFromFollower {
@@ -291,47 +296,6 @@ func (p *Peer) ShutDown() {
 	}
 }
 
-// startElection begins the leader election
-//  1. increment current term
-//  2. vote for self
-//  3. send request vote RPCs to all other servers
-//  4. reset election timeout (trigger in changeState)
-func (p *Peer) startElection() {
-	p.logger.Info("Start election.")
-	p.voteCount = 1
-	voteID := p.node.NodeID()
-	p.updateTerm(p.currentTerm + 1)
-	p.votedFor = &voteID
-
-	// update CurrentTerm, VoteCount, VotedFor
-	p.saveToPersistentStorageAndLogError()
-
-	term := p.currentTerm
-	req := requestVoteReq{Term: p.currentTerm, CandidateID: p.node.NodeID(), LastLogIndex: p.logLen() - 1, LastLogTerm: p.getLogTermByIndex(p.logLen() - 1)}
-	for _, peerID := range p.rpcPeersIds {
-		go func(peerID rpccore.NodeID, term int) {
-			for {
-				// return if this election is invalid
-				//  1. peer is not candidate anymore
-				//  2. next round of election starts
-				p.mutex.Lock()
-				if p.state != Candidate || p.currentTerm != term {
-					p.mutex.Unlock()
-					return
-				}
-				p.mutex.Unlock()
-
-				res := p.requestVote(peerID, req)
-				if res != nil {
-					p.mutex.Lock()
-					p.handleRequestVoteRespond(*res)
-					p.mutex.Unlock()
-				}
-			}
-		}(peerID, term)
-	}
-}
-
 // updateTerm updates the term and resets the votedFor
 func (p *Peer) updateTerm(term int) {
 	if term > p.currentTerm {
@@ -375,8 +339,10 @@ func (p *Peer) GetTerm() int {
 
 // GetState returns the state of this peer
 func (p *Peer) GetState() PeerState {
+	fmt.Println("getting lock", p.node.NodeID())
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
+	fmt.Println("got lock", p.node.NodeID())
 	return p.state
 }
 
@@ -433,10 +399,6 @@ func (p *Peer) toLogIndex(trueIndex int) int {
 		return trueIndex
 	}
 	logidx := trueIndex - p.snapshot.LastIncludedIndex - 1
-	if logidx < 0 {
-		p.logger.Debug("Access to invalid log index (inside snapshot)")
-		return logidx
-	}
 	return logidx
 }
 

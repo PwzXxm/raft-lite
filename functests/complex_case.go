@@ -16,12 +16,17 @@ import (
 	"fmt"
 	"math/rand"
 	"sort"
+	"strconv"
 	"sync"
 	"time"
 
+	"github.com/PwzXxm/raft-lite/client"
 	"github.com/PwzXxm/raft-lite/rpccore"
 	"github.com/PwzXxm/raft-lite/simulation"
+	"github.com/PwzXxm/raft-lite/sm"
 	"github.com/PwzXxm/raft-lite/utils"
+	"github.com/fatih/color"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -29,30 +34,49 @@ const (
 	networkPartition    = "net partition"
 	nodeStatusChange    = "node net status change"
 	networkBackToNormal = "net back to normal"
-	clientRequest       = "client request"
+	nodeReset           = "node reset"
+	query               = "query"
+	set                 = "set"
+	move                = "move"
+	incr                = "incr"
 )
 
 const (
-	nrWeight    = 1
-	npWeight    = 1
-	nscWeight   = 1
-	nbWeight    = 1
-	crWeight    = 5
-	totalWeight = nrWeight + npWeight + nscWeight + nbWeight + crWeight
+	packetLossWeight   = 1
+	partitionWeight    = 1
+	statusChangeWeight = 1
+	backToNormalWeight = 3
+	nodeResetWeight    = 2
+
+	eventTotalWeight = packetLossWeight + partitionWeight + statusChangeWeight + backToNormalWeight + nodeResetWeight
+)
+
+const (
+	setWeight         = 1
+	incrWeight        = 2
+	moveWeight        = 2
+	queryWeight       = 3
+	actionTotalWeight = incrWeight + setWeight + moveWeight + queryWeight
 )
 
 const (
 	checkTotalCnt = "check total"
 )
 
-var weightList = [...]int{nrWeight, npWeight, nscWeight, nbWeight, crWeight}
-var eventList = [...]string{networkPacketLoss, networkPartition, nodeStatusChange, networkBackToNormal, clientRequest}
+var eventWeightList = [...]int{packetLossWeight, partitionWeight, statusChangeWeight, backToNormalWeight, nodeResetWeight}
+var eventList = [...]string{networkPacketLoss, networkPartition, nodeStatusChange, networkBackToNormal, nodeReset}
+var actionWeightList = [...]int{setWeight, incrWeight, moveWeight, queryWeight}
+var actionList = [...]string{set, incr, move, query}
+var yellow = color.New(color.FgYellow)
+var green = color.New(color.FgGreen)
+var red = color.New(color.FgRed)
+var blue = color.New(color.FgBlue)
 
 // get random event
 func getRandomEvent() string {
-	rd := utils.Random(0, totalWeight)
+	rd := utils.Random(0, eventTotalWeight)
 	sum := 0
-	for i, weight := range weightList {
+	for i, weight := range eventWeightList {
 		sum += weight
 		if sum >= rd {
 			return eventList[i]
@@ -61,15 +85,106 @@ func getRandomEvent() string {
 	return ""
 }
 
-// get random action
-func getRandomAction() interface{} {
-	return utils.Random(0, 100)
+func getRandomAction() string {
+	rd := utils.Random(0, actionTotalWeight)
+	sum := 0
+	for i, weight := range actionWeightList {
+		sum += weight
+		if sum >= rd {
+			return actionList[i]
+		}
+	}
+	return ""
+}
+
+func randMapKey(m map[string]int) string {
+	mapKeys := make([]string, 0, len(m))
+	for key := range m {
+		mapKeys = append(mapKeys, key)
+	}
+	return mapKeys[rand.Intn(len(mapKeys))]
+}
+
+func clientRandomlySendRequest(clientName string, sl *simulation.Local) {
+	prefix := clientName + "-"
+	node, err := sl.GetNetWork().NewNode(rpccore.NodeID(clientName))
+	if err != nil {
+		panic(err)
+	}
+	log := logrus.New()
+	log.SetLevel(logrus.WarnLevel)
+	clientCore := client.NewClientCore(clientName, sl.GetAllNodeIDs(), node, log)
+	actionBuilder := clientCore.ActBuilder
+	localStateMachine := make(map[string]int)
+	for i := 0; i < 10; i++ {
+		key := prefix + strconv.Itoa(utils.Random(0, 100))
+		value := utils.Random(0, 1000)
+		_, _ = yellow.Printf("%v request set action, key: %v, value: %v\n", clientName, key, value)
+		action := actionBuilder.TSMActionSetValue(key, value)
+		_, _ = clientCore.ExecuteActionRequest(action)
+		localStateMachine[key] = value
+	}
+	for {
+		// time.Sleep(time.Duration(utils.Random(0, 10000)))
+		time.Sleep(time.Duration(1000 * time.Millisecond))
+		switch getRandomAction() {
+		case set:
+			key := prefix + strconv.Itoa(utils.Random(0, 100))
+			value := utils.Random(0, 1000)
+			_, _ = yellow.Printf("%v request set action, key: %v, value: %v\n", clientName, key, value)
+			action := actionBuilder.TSMActionSetValue(key, value)
+			_, _ = clientCore.ExecuteActionRequest(action)
+			localStateMachine[key] = value
+		case incr:
+			if len(localStateMachine) == 0 {
+				continue
+			}
+			key := randMapKey(localStateMachine)
+			value := utils.Random(-500, 1000)
+			action := actionBuilder.TSMActionIncrValue(key, value)
+			_, _ = yellow.Printf("%v request Incr action, key: %v, value: %v\n", clientName, key, value)
+			_, _ = clientCore.ExecuteActionRequest(action)
+			if localStateMachine[key]+value >= 0 {
+				localStateMachine[key] += value
+			}
+		case move:
+			if len(localStateMachine) == 0 {
+				continue
+			}
+			key1 := randMapKey(localStateMachine)
+			key2 := randMapKey(localStateMachine)
+			value := utils.Random(-300, 300)
+			action := actionBuilder.TSMActionMoveValue(key1, key2, value)
+			_, _ = yellow.Printf("%v request move action, key1: %v, key2: %v, value: %v\n", clientName, key1, key2, value)
+			_, _ = clientCore.ExecuteActionRequest(action)
+			if localStateMachine[key1]-value >= 0 && localStateMachine[key2]+value >= 0 {
+				localStateMachine[key1] -= value
+				localStateMachine[key2] += value
+			}
+		case query:
+			if len(localStateMachine) == 0 {
+				continue
+			}
+			key := randMapKey(localStateMachine)
+			correctResult := localStateMachine[key]
+			_, _ = yellow.Printf("%v request query action, key: %v, result should be: %v\n", clientName, key, correctResult)
+			result, _ := clientCore.ExecuteQueryRequest(sm.NewTSMDataQuery(key))
+			if result == correctResult {
+				_, _ = green.Printf("%v's Query result for %v correct, receive result: %v\n", clientName, key, result)
+			} else if result == nil {
+				simulation.Log.Panicf("%v's Query result for %v is nil.", clientName, key)
+			} else {
+				simulation.Log.Panicf("Error: %v's Query result for %v is %v\n", clientName, key, result)
+			}
+		}
+	}
 }
 
 // complex test for checking algorithm implementation
 func complexTest(ctx context.Context, wg *sync.WaitGroup, rst map[string]int) error {
-	sl := simulation.RunLocally(5)
+	sl := simulation.RunLocallyOptional(5, 5, func() sm.StateMachine { return sm.NewTransactionStateMachine() })
 	defer sl.StopAll()
+
 	nodeIDs := []rpccore.NodeID{"0", "1", "2", "3", "4"}
 	// process inital election normally
 	time.Sleep(5 * time.Second)
@@ -82,9 +197,9 @@ func complexTest(ctx context.Context, wg *sync.WaitGroup, rst map[string]int) er
 
 		for i := 0; ; i++ {
 			time.Sleep(10 * time.Second)
-			err := sl.AgreeOnLogEntries()
-			if err == nil {
-				fmt.Printf("Check %v passed, agree on log entries\n", i)
+			equal, err := sl.AgreeOnLogEntriesIfSnapshotEqual()
+			if err == nil && equal {
+				_, _ = green.Printf("Check %v passed, agree on log entries\n", i)
 			} else {
 				c <- err
 				return
@@ -101,14 +216,25 @@ func complexTest(ctx context.Context, wg *sync.WaitGroup, rst map[string]int) er
 		}
 	}()
 
+	go clientRandomlySendRequest("clientA", sl)
+	go clientRandomlySendRequest("clientB", sl)
+	go clientRandomlySendRequest("clientC", sl)
+	go clientRandomlySendRequest("clientD", sl)
+	go clientRandomlySendRequest("clientE", sl)
+
+	nodeWorking := make(map[rpccore.NodeID]bool, 5)
+	for _, nodeID := range nodeIDs {
+		nodeWorking[nodeID] = true
+	}
+
 	for true {
 		switch getRandomEvent() {
 		case networkPacketLoss:
-			latencyMin := time.Duration(utils.Random(0, 1000))
-			latencyMax := time.Duration(utils.Random(2000, 3000))
+			latencyMin := time.Duration(utils.Random(10, 20)) * time.Millisecond
+			latencyMax := time.Duration(utils.Random(35, 45)) * time.Millisecond
 			packetLossRate := utils.RandomFloat(0, 0.4)
 			sl.SetNetworkReliability(latencyMin, latencyMax, packetLossRate)
-			fmt.Printf("Network one way latency Min: %v, Max: %v, packet loss rate: %.2f\n", latencyMin, latencyMax, packetLossRate)
+			_, _ = blue.Printf("Network one way latency Min: %v, Max: %v, packet loss rate: %.2f\n", latencyMin, latencyMax, packetLossRate)
 			time.Sleep(time.Duration(5 * time.Second))
 			rst[networkPacketLoss]++
 		case networkPartition:
@@ -122,37 +248,58 @@ func complexTest(ctx context.Context, wg *sync.WaitGroup, rst map[string]int) er
 				"4": rand.Intn(partitions),
 			}
 			sl.SetNetworkPartition(pmap)
-			fmt.Println("Network partition becomes: ", pmap)
+			_, _ = blue.Println("Network partition becomes: ", pmap)
 			time.Sleep(time.Duration(5 * time.Second))
 			rst[networkPartition]++
 		case nodeStatusChange:
 			// each node has 20% probablity to be offline
+			_, _ = blue.Println("Node working status change")
 			for _, nodeID := range nodeIDs {
 				if rand.Float64() < 0.2 {
 					sl.SetNodeNetworkStatus(nodeID, false)
-					fmt.Print(nodeID, " is not working...\n")
+					_, _ = blue.Println(nodeID, " is not working...")
 				} else {
 					sl.SetNodeNetworkStatus(nodeID, true)
-					fmt.Print(nodeID, " is working...\n")
+					_, _ = blue.Println(nodeID, " is working...")
 				}
 			}
 			time.Sleep(time.Duration(5 * time.Second))
 			rst[nodeStatusChange]++
 		case networkBackToNormal:
 			// all nodes are online, network has no latency and packet loss
+			_, _ = blue.Println("Network back to normal")
 			sl.SetNetworkReliability(10*time.Millisecond, 40*time.Millisecond, 0)
 			for _, nodeID := range nodeIDs {
 				sl.SetNodeNetworkStatus(nodeID, true)
 			}
-			time.Sleep(time.Duration(5 * time.Second))
+			pmap := map[rpccore.NodeID]int{"0": 0, "1": 0, "2": 0, "3": 0, "4": 0}
+			sl.SetNetworkPartition(pmap)
+			for node, working := range nodeWorking {
+				if !working {
+					sl.StartPeer(node)
+					nodeWorking[node] = true
+				}
+			}
+			time.Sleep(time.Duration(10 * time.Second))
 			rst[networkBackToNormal]++
-		case clientRequest:
-			sl.RequestSync(getRandomAction())
-			//randomly sleep 0 to 1 second
-			time.Sleep(time.Duration(utils.Random(0, 1000)))
-			rst[clientRequest]++
+		case nodeReset:
+			resetNode := nodeIDs[rand.Intn(len(nodeIDs))]
+			_, _ = blue.Printf("Node %v will be reset...\n", resetNode)
+			if nodeWorking[resetNode] {
+				sl.ResetPeer(resetNode)
+				nodeWorking[resetNode] = false
+			}
+			_, _ = blue.Printf("Current working nodes: ")
+			count := 0
+			for node, working := range nodeWorking {
+				if working {
+					_, _ = blue.Printf("%v, ", node)
+					count++
+				}
+			}
+			blue.Printf(" %v nodes altogether\n", count)
+			time.Sleep(time.Duration(5 * time.Second))
 		}
-
 		select {
 		case err := <-c:
 			return err

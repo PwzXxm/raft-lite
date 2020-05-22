@@ -93,6 +93,10 @@ func (t *TSM) ApplyAction(action interface{}) error {
 			errStr = fmt.Sprintf("invalid key for target: [%v]", tsmAction.Target)
 			break
 		}
+		if tsmAction.Source == tsmAction.Target {
+			errStr = fmt.Sprintf("source and target keys are the same for move action, which is not allowed")
+			break
+		}
 		if sv-tsmAction.Value < 0 {
 			errStr = fmt.Sprintf("the value [%v] in key [%v] will be negative after this request, which is not allowed",
 				sv, tsmAction.Source)

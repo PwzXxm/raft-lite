@@ -47,8 +47,9 @@ type ClientCore struct {
 }
 
 const (
-	maxBackOffDuration  = 1600 // ms
-	initBackOffDuration = 20   // ms
+	maxBackOffDuration       = 1600 // ms
+	initBackOffDuration      = 20   // ms
+	maxCheckCountBeforeRetry = 6
 )
 
 const (
@@ -154,7 +155,7 @@ func (c *Client) startReadingCmd() {
 					err = combineErrorUsage(invalidCommandError, cmd[0])
 					break
 				}
-				res, err := ExecuteQueryRequest(&c.core, sm.NewTSMDataQuery(cmd[1]))
+				res, err := c.core.ExecuteQueryRequest(sm.NewTSMDataQuery(cmd[1]))
 				if err != nil {
 					_, _ = red.Println(err)
 				} else {
@@ -229,7 +230,7 @@ func (c *Client) startReadingCmd() {
 
 // client executes the action request and prints result messages
 func (c *Client) executeActionRequestAndPrint(act sm.TSMAction) {
-	success, msg := ExecuteActionRequest(&c.core, act)
+	success, msg := c.core.ExecuteActionRequest(act)
 	var ca color.Attribute
 	if success {
 		ca = color.FgGreen
@@ -244,8 +245,7 @@ func combineErrorUsage(e error, cmd string) error {
 	return errors.New(e.Error() + "\nUsage: " + cmd + " " + usageMp[cmd])
 }
 
-// lookForLeader returns the leader ID if found
-func lookForLeader(core *ClientCore) rpccore.NodeID {
+func (core *ClientCore) lookForLeader() rpccore.NodeID {
 	// cached, the cache will be cleaned if there is any issue
 	// blocking, keep trying until find a leader
 	for core.leaderID == nil {
@@ -263,7 +263,7 @@ func lookForLeader(core *ClientCore) rpccore.NodeID {
 			}
 			err = errors.Errorf("Node %v doesn't know the leader.", pl)
 		}
-		logErrAndBackoff(core, "Unable to find leader. ", err)
+		core.logErrAndBackoff("Unable to find leader. ", err)
 	}
 	return *core.leaderID
 }
@@ -274,7 +274,7 @@ func resetBackOffDuration(core *ClientCore) {
 }
 
 // logErrAndBackoff takes ClientCore pointer, message string and error value
-func logErrAndBackoff(core *ClientCore, msg string, err error) {
+func (core *ClientCore) logErrAndBackoff(msg string, err error) {
 	core.leaderID = nil
 	core.logger.Debug(msg, err)
 
@@ -287,8 +287,8 @@ func logErrAndBackoff(core *ClientCore, msg string, err error) {
 
 // sendActionRequest takes ClientCore and ActionReq structs as arguments,
 // calls action request RPC, and returns error value if occurs
-func sendActionRequest(core *ClientCore, actReq ActionReq) error {
-	leader := lookForLeader(core)
+func (core *ClientCore) sendActionRequest(actReq ActionReq) error {
+	leader := core.lookForLeader()
 	var actionRes ActionRes
 	err := callRPC(core, leader, RPCMethodActionRequest, actReq, &actionRes)
 	if err == nil && !actionRes.Started {
@@ -299,8 +299,8 @@ func sendActionRequest(core *ClientCore, actReq ActionReq) error {
 
 // checkActionRequest takes ClientCore and QueryReq structs as arguments,
 // calls query request RPC and returns a TSMRequestInfo pointer if success
-func checkActionRequest(core *ClientCore, queryReq QueryReq) (*sm.TSMRequestInfo, error) {
-	leader := lookForLeader(core)
+func (core *ClientCore) checkActionRequest(queryReq QueryReq) (*sm.TSMRequestInfo, error) {
+	leader := core.lookForLeader()
 	var queryRes QueryRes
 	err := callRPC(core, leader, RPCMethodQueryRequest, queryReq, &queryRes)
 	if err == nil {
@@ -319,22 +319,22 @@ func checkActionRequest(core *ClientCore, queryReq QueryReq) (*sm.TSMRequestInfo
 
 // ExecuteActionRequest takes ClientCore and TSMAction structs as arguments,
 // and returns whether the action is succeed and error value if occurs
-func ExecuteActionRequest(core *ClientCore, act sm.TSMAction) (bool, string) {
+func (core *ClientCore) ExecuteActionRequest(act sm.TSMAction) (bool, string) {
 	actReq := ActionReq{Cmd: act}
 	queryReq := QueryReq{Cmd: sm.NewTSMLatestRequestQuery(core.clientID)}
 	reqID := act.GetRequestID()
 	for {
-		err := sendActionRequest(core, actReq)
+		err := core.sendActionRequest(actReq)
 		if err != nil {
-			logErrAndBackoff(core, "send action request failed. ", err)
+			core.logErrAndBackoff("send action request failed. ", err)
 			continue
 		}
 		resetBackOffDuration(core)
 
-		for i := 0; i < 4; i++ {
-			info, err := checkActionRequest(core, queryReq)
+		for i := 0; i < maxCheckCountBeforeRetry; i++ {
+			info, err := core.checkActionRequest(queryReq)
 			if err != nil {
-				logErrAndBackoff(core, "check action request failed. ", err)
+				core.logErrAndBackoff("check action request failed. ", err)
 			}
 			// RequestInfo exists and RequestID matches
 			if info != nil && info.RequestID == reqID {
@@ -345,7 +345,7 @@ func ExecuteActionRequest(core *ClientCore, act sm.TSMAction) (bool, string) {
 				return true, "action success"
 			}
 			if err == nil {
-				logErrAndBackoff(core, "info is nil or wrong request ID", err)
+				core.logErrAndBackoff("info is nil or wrong request ID", err)
 			}
 		}
 	}
@@ -353,10 +353,10 @@ func ExecuteActionRequest(core *ClientCore, act sm.TSMAction) (bool, string) {
 
 // ExecuteQueryRequest takes ClientCore and TSMQuery structs as arguments,
 // and returns data from the query response and error value if occurs
-func ExecuteQueryRequest(core *ClientCore, query sm.TSMQuery) (interface{}, error) {
+func (core *ClientCore) ExecuteQueryRequest(query sm.TSMQuery) (interface{}, error) {
 	queryReq := QueryReq{Cmd: query}
 	for {
-		leader := lookForLeader(core)
+		leader := core.lookForLeader()
 		var queryRes QueryRes
 		// call query request RPC
 		err := callRPC(core, leader, RPCMethodQueryRequest, queryReq, &queryRes)
@@ -372,7 +372,7 @@ func ExecuteQueryRequest(core *ClientCore, query sm.TSMQuery) (interface{}, erro
 			err = errors.Errorf("Node %v decliend the query request.", leader)
 		}
 		if err != nil {
-			logErrAndBackoff(core, "Request query failed. ", err)
+			core.logErrAndBackoff("Request query failed. ", err)
 			continue
 		}
 	}

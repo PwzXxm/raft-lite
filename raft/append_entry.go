@@ -13,6 +13,7 @@ package raft
 
 import (
 	"github.com/PwzXxm/raft-lite/rpccore"
+	"github.com/PwzXxm/raft-lite/utils"
 )
 
 // handleAppendEntries returns an appendEntriesRes struct as a response,
@@ -32,6 +33,10 @@ func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
 		for p.logLen() > (prevLogIndex+newLogIndex+1) &&
 			p.getLogTermByIndex(prevLogIndex+newLogIndex+1) == req.Entries[newLogIndex].Term {
 			newLogIndex++
+		}
+		if prevLogIndex+newLogIndex < p.commitIndex {
+			p.logger.Errorf("overriding committed log, prevLogIndex: %v, newLogIndex: %v, commitIndex: %v",
+				prevLogIndex, newLogIndex, p.commitIndex)
 		}
 		p.log = append(p.log[0:p.toLogIndex(prevLogIndex+newLogIndex+1)], req.Entries[newLogIndex:]...)
 		if len(req.Entries) > newLogIndex {
@@ -67,6 +72,10 @@ func (p *Peer) consistencyCheck(req appendEntriesReq) bool {
 	}
 	myPrevLogTerm := p.getLogTermByIndex(req.PrevLogIndex)
 	if myPrevLogTerm != req.PrevLogTerm {
+		if req.PrevLogIndex <= p.commitIndex {
+			p.logger.Fatalf("Overriding commited logs, prevLogIndex:%v, logreq:%v, loglocal:%v",
+				req.PrevLogIndex, req.Entries, p.log)
+		}
 		return false
 	}
 	return true
@@ -151,27 +160,30 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 				continue
 			} else {
 				p.mutex.Lock()
-				p.updateLastHeard(target)
-				if !res.Success {
-					// update nextIndex for target node
-					if res.Term > currentTerm {
-						p.updateTerm(res.Term)
-						p.changeState(Follower)
-						// update CurrentTerm, VotedFor
-						p.saveToPersistentStorageAndLogError()
-					} else {
-						p.nextIndex[target]--
-					}
-				} else {
-					// if success, update nextIndex for the node
-					commitIndex := p.commitIndex
-					p.nextIndex[target] = nextIndex + len(entries)
-					// send signal to the channels for index greater than commit index
-					for i := commitIndex + 1; i < p.nextIndex[target]; i++ {
-						c, ok := p.logIndexMajorityCheckChannel[i]
-						if ok {
-							c <- target
+				if p.state == Leader {
+					p.updateLastHeard(target)
+					if !res.Success {
+						// update nextIndex for target node
+						if res.Term > currentTerm {
+							p.updateTerm(res.Term)
+							p.changeState(Follower)
+							// update CurrentTerm, VotedFor
+							p.saveToPersistentStorageAndLogError()
+						} else {
+							p.nextIndex[target]--
 						}
+					} else {
+						// if success, update nextIndex for the node
+						commitIndex := p.commitIndex
+						p.nextIndex[target] = nextIndex + len(entries)
+						// send signal to the channels for index greater than commit index
+						for i := utils.Max(commitIndex, p.matchIndex[target]) + 1; i < p.nextIndex[target]; i++ {
+							c, ok := p.logIndexMajorityCheckChannel[i]
+							if ok {
+								c <- target
+							}
+						}
+						p.matchIndex[target] = p.nextIndex[target] - 1
 					}
 				}
 				p.mutex.Unlock()
@@ -203,8 +215,9 @@ func (p *Peer) onReceiveClientRequest(cmd interface{}) bool {
 	p.mutex.Unlock()
 
 	count := 0
-	for range majorityCheckChannel {
+	for nodeID := range majorityCheckChannel {
 		count++
+		p.logger.Debugf("peer %v confirm log with index %v", nodeID, newLogIndex)
 		if 2*count > totalPeers {
 			p.mutex.Lock()
 			// update commitIndex, use max in case commitIndex is already updated by other client request
