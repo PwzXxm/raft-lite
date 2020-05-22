@@ -190,13 +190,13 @@ func complexTest(ctx context.Context, wg *sync.WaitGroup, rst map[string]int) er
 
 		for i := 0; ; i++ {
 			time.Sleep(10 * time.Second)
-			// err := sl.AgreeOnLogEntries()
-			// if err == nil {
-			// 	_, _ = green.Printf("Check %v passed, agree on log entries\n", i)
-			// } else {
-			// 	c <- err
-			// 	return
-			// }
+			equal, err := sl.AgreeOnLogEntriesIfSnapshotEqual()
+			if err == nil && equal {
+				_, _ = green.Printf("Check %v passed, agree on log entries\n", i)
+			} else {
+				c <- err
+				return
+			}
 
 			select {
 			case <-ctx.Done():
