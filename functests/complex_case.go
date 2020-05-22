@@ -287,7 +287,10 @@ func complexTest(ctx context.Context, wg *sync.WaitGroup, rst map[string]int) er
 			resetNode := nodeIDs[rand.Intn(len(nodeIDs))]
 			_, _ = blue.Printf("Node %v will be reset...\n", resetNode)
 			if nodeWorking[resetNode] {
-				sl.ResetPeer(resetNode)
+				err := sl.ResetPeer(resetNode)
+				if err != nil {
+					simulation.Log.Panicf("Reset fail: %v", err)
+				}
 				nodeWorking[resetNode] = false
 			}
 			_, _ = blue.Printf("Current working nodes: ")
