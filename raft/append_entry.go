@@ -1,12 +1,9 @@
 package raft
 
 import (
-	"fmt"
 	"github.com/PwzXxm/raft-lite/rpccore"
 	"github.com/PwzXxm/raft-lite/utils"
 )
-
-var Foo func()
 
 func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
 	// consistency check
@@ -25,8 +22,8 @@ func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
 			newLogIndex++
 		}
 		if prevLogIndex + newLogIndex < p.commitIndex {
-			Foo()
-			panic("overriding committed log")
+			p.logger.Errorf("overriding committed log, prevLogIndex: %v, newLogIndex: %v, commitIndex: %v",
+				prevLogIndex, newLogIndex, p.commitIndex)
 		}
 		p.log = append(p.log[0:p.toLogIndex(prevLogIndex+newLogIndex+1)], req.Entries[newLogIndex:]...)
 		if len(req.Entries) > newLogIndex {
@@ -59,15 +56,11 @@ func (p *Peer) consitencyCheck(req appendEntriesReq) bool {
 	if p.logLen() <= req.PrevLogIndex {
 		return false
 	}
-	if p.toLogIndex(req.PrevLogIndex) < -1 {
-		fmt.Errorf("AAAAAA")
-		panic("")
-	}
 	myPrevLogTerm := p.getLogTermByIndex(req.PrevLogIndex)
 	if myPrevLogTerm != req.PrevLogTerm {
 		if req.PrevLogIndex <= p.commitIndex {
-			p.logger.Errorf("invalid case! prevLogIndex:%v, logreq:%v, loglocal:%v", req.PrevLogIndex, req.Entries, p.log)
-			panic("")
+			p.logger.Errorf("invalid case! prevLogIndex:%v, logreq:%v, loglocal:%v",
+				req.PrevLogIndex, req.Entries, p.log)
 		}
 		return false
 	}
