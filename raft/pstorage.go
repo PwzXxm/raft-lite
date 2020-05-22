@@ -1,3 +1,14 @@
+/*
+ * Project: raft-lite
+ * ---------------------
+ * Authors:
+ *   Minjian Chen 813534
+ *   Shijie Liu   813277
+ *   Weizhi Xu    752454
+ *   Wenqing Xue  813044
+ *   Zijun Chen   813190
+ */
+
 package raft
 
 import (
@@ -5,25 +16,29 @@ import (
 	"github.com/pkg/errors"
 )
 
+// PersistentData takes relevant attributes from Peer
+// in order to maintain the data for later recovery
 type PersistentData struct {
-	CurrentTerm int
-	CommitIndex int
-	VoteCount   int
-	VotedFor    *rpccore.NodeID
-	Log         []LogEntry
-	Snapshot    *Snapshot
+	CurrentTerm int             // latest term (increases monotonically)
+	CommitIndex int             // index of highest log entry known to be committed (increases monotonically)
+	VoteCount   int             // count for other peers vote me in this term
+	VotedFor    *rpccore.NodeID // candidateID that peer votes in this term, nil if none
+	Log         []LogEntry      // log entries
+	Snapshot    *Snapshot       // snapshot
 
 	// for validation
-	NodeID    rpccore.NodeID
-	NumOfNode int
+	NodeID    rpccore.NodeID // self node ID
+	NumOfNode int            // total number of nodes
 }
 
+// loadFromPersistentStorage loads any existing data in previous
 func (p *Peer) loadFromPersistentStorage() error {
 	var data PersistentData
 	hasData, err := p.persistentStorage.Load(&data)
 	if err != nil {
 		return err
 	}
+
 	if hasData {
 		p.logger.Info("Start loading persistent data.")
 		// verify
@@ -52,6 +67,7 @@ func (p *Peer) loadFromPersistentStorage() error {
 	return nil
 }
 
+// saveToPersistentStorage saves the data into persistent storage
 func (p *Peer) saveToPersistentStorage() error {
 	var data PersistentData
 	data.CurrentTerm = p.currentTerm
@@ -66,6 +82,7 @@ func (p *Peer) saveToPersistentStorage() error {
 	return p.persistentStorage.Save(data)
 }
 
+// saveToPersistentStorageAndLogError returns error value if occurs
 func (p *Peer) saveToPersistentStorageAndLogError() error {
 	err := p.saveToPersistentStorage()
 	if err != nil {

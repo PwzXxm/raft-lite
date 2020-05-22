@@ -1,3 +1,14 @@
+/*
+ * Project: raft-lite
+ * ---------------------
+ * Authors:
+ *   Minjian Chen 813534
+ *   Shijie Liu   813277
+ *   Weizhi Xu    752454
+ *   Wenqing Xue  813044
+ *   Zijun Chen   813190
+ */
+
 package pstorage
 
 import (
@@ -14,10 +25,12 @@ type FileBased struct {
 	filepath string
 }
 
+// initialize file based persistent storage
 func NewFileBasedPersistentStorage(filepath string) *FileBased {
 	return &FileBased{filepath: filepath}
 }
 
+// save persistent storage to file
 func (f *FileBased) Save(data interface{}) error {
 	f.lock.Lock()
 	defer f.lock.Unlock()
@@ -30,6 +43,7 @@ func (f *FileBased) Save(data interface{}) error {
 	return atomic.WriteFile(f.filepath, &buf)
 }
 
+// load persistent storage from file
 func (f *FileBased) Load(data interface{}) (bool, error) {
 	f.lock.Lock()
 	defer f.lock.Unlock()

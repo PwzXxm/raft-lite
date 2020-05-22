@@ -55,7 +55,7 @@ func StartPeerFromFile(configFilepath string) error {
 		_ = fl.Unlock()
 	}()
 
-	//new tcp network
+	// new tcp network
 	n := rpccore.NewTCPNetwork(config.Timeout * time.Second)
 	node, err := n.NewLocalNode(config.NodeID, config.NodeAddrMap[config.NodeID], config.ListenAddr)
 	if err != nil {
@@ -70,7 +70,7 @@ func StartPeerFromFile(configFilepath string) error {
 		}
 	}
 
-	//set logger
+	// set logger
 	logger := logrus.New()
 	logger.Out = os.Stdout
 	loggerEntry := logger.WithFields(logrus.Fields{"nodeID": node.NodeID()})
@@ -86,7 +86,7 @@ func StartPeerFromFile(configFilepath string) error {
 	}
 	ps := pstorage.NewHybridPersistentStorage(config.PstorageFilePath,
 		2*time.Second, loggerEntry)
-	//new peer
+	// new peer
 	peers := []rpccore.NodeID{}
 	for peer := range config.NodeAddrMap {
 		if peer != config.NodeID {

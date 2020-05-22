@@ -1,3 +1,14 @@
+/*
+ * Project: raft-lite
+ * ---------------------
+ * Authors:
+ *   Minjian Chen 813534
+ *   Shijie Liu   813277
+ *   Weizhi Xu    752454
+ *   Wenqing Xue  813044
+ *   Zijun Chen   813190
+ */
+
 package functests
 
 import (
@@ -37,6 +48,7 @@ const (
 var weightList = [...]int{nrWeight, npWeight, nscWeight, nbWeight, crWeight}
 var eventList = [...]string{networkPacketLoss, networkPartition, nodeStatusChange, networkBackToNormal, clientRequest}
 
+// get random event
 func getRandomEvent() string {
 	rd := utils.Random(0, totalWeight)
 	sum := 0
@@ -49,10 +61,12 @@ func getRandomEvent() string {
 	return ""
 }
 
+// get random action
 func getRandomAction() interface{} {
 	return utils.Random(0, 100)
 }
 
+// complex test for checking algorithm implementation
 func complexTest(ctx context.Context, wg *sync.WaitGroup, rst map[string]int) error {
 	sl := simulation.RunLocally(5)
 	defer sl.StopAll()
