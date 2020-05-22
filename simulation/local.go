@@ -319,7 +319,7 @@ func (l *Local) ResetPeer(nodeID rpccore.NodeID) error {
 	peer := l.raftPeers[nodeID]
 	// shut down first
 	peer.ShutDown()
-	nodeIDs := make([]rpccore.NodeID, 0, len(l.raftPeers)-1)
+	nodeIDs := make([]rpccore.NodeID, 0)
 	for k := range l.raftPeers {
 		if k != nodeID {
 			nodeIDs = append(nodeIDs, k)

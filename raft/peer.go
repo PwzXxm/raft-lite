@@ -72,8 +72,7 @@ type Peer struct {
 	timingFactor int // read-only
 
 	// don't use this one directly, use [triggerTimeout] or [resetTimeout]
-	// the value in it can only be [nil]
-	timeoutLoopChan          chan (interface{})
+	timeoutLoopChan          chan (struct{})
 	timeoutLoopSkipThisRound bool
 
 	// leader only
@@ -117,7 +116,7 @@ func NewPeer(node rpccore.Node, peers []rpccore.NodeID, logger *logrus.Entry,
 	p.stateMachine.Reset()
 	p.timingFactor = timingFactor
 
-	p.timeoutLoopChan = make(chan interface{}, 1)
+	p.timeoutLoopChan = make(chan struct{}, 1)
 	p.timeoutLoopSkipThisRound = false
 
 	p.appendingEntries = make(map[rpccore.NodeID]bool, len(peers))
@@ -186,7 +185,7 @@ func (p *Peer) timeoutLoop() {
 
 func (p *Peer) triggerTimeout() {
 	select {
-	case p.timeoutLoopChan <- nil:
+	case p.timeoutLoopChan <- struct{}{}:
 	default: // message dropped
 	}
 	p.timeoutLoopSkipThisRound = false
@@ -194,7 +193,7 @@ func (p *Peer) triggerTimeout() {
 
 func (p *Peer) resetTimeout() {
 	select {
-	case p.timeoutLoopChan <- nil:
+	case p.timeoutLoopChan <- struct{}{}:
 	default: // message dropped
 	}
 	p.timeoutLoopSkipThisRound = true
