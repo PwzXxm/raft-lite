@@ -38,7 +38,7 @@ consistency at the same time.
 ├── pstorage/       # Persistent storage
 ├── raft/           # Raft algorithm
 ├── rpccore/        # RPC implementation - channel and tcp version
-├── sample_config/  # Configuration files
+├── sample          # Sample configurations
 ├── simulation/     # Simulation for testing locally
 ├── sm/             # State machine
 └── utils/          # Utils
@@ -46,20 +46,39 @@ main.go             # main entrance
 ```
 
 ## Example Config
-Exmaple configuration files are under [`sample_config`](https://github.com/PwzXxm/raft-lite/tree/master/sample_config). The `NodeAddrMap` should be the same in all peers and client.
+Exmaple configuration files are under [`sample`](https://github.com/PwzXxm/raft-lite/tree/master/sample) folder. The `NodeAddrMap` should be the same in all peers and client.
 
 ## Usage
 
 ### Start
+
+#### Docker-compose
+To build docker image
+```bash
+docker build -t raft-lite .
+```
+
+To start peers
+```bash
+docker-compose up
+```
+
+To start clientA and clientB
+```bash
+./raft-lite peer -c sample/docker-compose/client-A.json
+./raft-lite peer -c sample/docker-compose/client-B.json
+```
+
+#### Manually
 On different computer or separate terminal on the same computer, run chosen configuration.
 To start with a size of five, you need to start five peers using different configuration files.
 ```bash
-go run . peer -c sample-config/sample-config1.json
+./raft-lite peer -c sample/config/sample-config1.json
 ```
 
 Start client with client configuration JSON file to send requests
 ```bash
-go run . client -c sample_config/client_config.json
+./raft-lite client -c sample/config/client_config.json
 ```
 
 ### Simulation
@@ -67,7 +86,7 @@ The purpose of simulation is to test the core of the raft algorithm on one local
 Events such as network glitches(delay, packet loss, etc.), network partition, peer shutdown and restart, are emulated.
 ```bash
 # Local simulation with 5 peers
-go run ./ simulation local -n 5
+./raft-lite simulation local -n 5
 ```
 
 ### Unit tests
@@ -83,12 +102,12 @@ Functional tests treat the raft system as a black box and check if the outputs m
 
 To list all functional test cases
 ```bash
-go run ./ functionaltest list
+./raft-lite functionaltest list
 ```
 
 To run single functional test case 10
 ```bash
-go run ./ functionaltest run 10
+./raft-lite functionaltest run 10
 ```
 
 To run all functional test cases in parallel
@@ -113,5 +132,5 @@ A local state machine is maintained to check the correctness of the queries.
 Also, snapshot and log entries are checked periodically.
 
 ```bash
-go run ./ integrationtest -t <minutes>
+./raft-lite integrationtest -t <minutes>
 ```
