@@ -1,3 +1,14 @@
+/*
+ * Project: raft-lite
+ * ---------------------
+ * Authors:
+ *   Minjian Chen 813534
+ *   Shijie Liu   813277
+ *   Weizhi Xu    752454
+ *   Wenqing Xue  813044
+ *   Zijun Chen   813190
+ */
+
 package functests
 
 import (
@@ -12,6 +23,7 @@ type testCase struct {
 	action func() error
 }
 
+// test cases are listed in order, starting from 1
 var testCases = []testCase{
 	{
 		name:   "initial leader election",
@@ -22,7 +34,7 @@ var testCases = []testCase{
 		action: caseRecoverLeaderElection,
 	},
 	{
-		name:   "Append log entries",
+		name:   "append log entries",
 		action: caseAppendLogEntry,
 	},
 	{
@@ -34,11 +46,11 @@ var testCases = []testCase{
 		action: caseHighPacketLossRate,
 	},
 	{
-		name:   "Even partition leader election",
+		name:   "even partition leader election",
 		action: caseEvenPartitionLeaderElection,
 	},
 	{
-		name:   "Skewed partition leader election",
+		name:   "skewed partition leader election",
 		action: caseSkewedPartitionLeaderElection,
 	},
 	{
@@ -79,16 +91,19 @@ var testCases = []testCase{
 	},
 }
 
+// list test cases
 func List() {
 	for i, c := range testCases {
 		fmt.Printf("%2d: %v\n", i+1, c.name)
 	}
 }
 
+// count test cases
 func Count() {
 	fmt.Printf("%v\n", len(testCases))
 }
 
+// run single test case
 func Run(n int) error {
 	if n <= 0 || n > len(testCases) {
 		return errors.New("Please provide a valid test case id.")

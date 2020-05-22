@@ -1,3 +1,14 @@
+/*
+ * Project: raft-lite
+ * ---------------------
+ * Authors:
+ *   Minjian Chen 813534
+ *   Shijie Liu   813277
+ *   Weizhi Xu    752454
+ *   Wenqing Xue  813044
+ *   Zijun Chen   813190
+ */
+
 package raft
 
 import (
@@ -13,6 +24,7 @@ import (
 
 type PeerState int
 
+// PeerState: Follower (0), Candidate (1), Leader (2)
 const (
 	Follower PeerState = iota
 	Candidate
@@ -31,20 +43,19 @@ type Snapshot struct {
 }
 
 type Peer struct {
-	state       PeerState
-	mutex       sync.Mutex
-	currentTerm int
-	votedFor    *rpccore.NodeID
-	voteCount   int
-	log         []LogEntry
+	state       PeerState       // peer state
+	mutex       sync.Mutex      // mutex, for accessing data across multiple goroutines
+	currentTerm int             // latest term (increases monotonically)
+	votedFor    *rpccore.NodeID // candidateID that peer votes in this term, nil if none
+	voteCount   int             // count for other peers vote me in this term
+	log         []LogEntry      // log entries
+	commitIndex int             // index of highest log entry known to be committed (increases monotonically)
 
-	commitIndex int
-
-	rpcPeersIds []rpccore.NodeID
-	node        rpccore.Node
-	shutdown    bool
-	startBefore bool
-	logger      *logrus.Entry
+	rpcPeersIds []rpccore.NodeID // array of other peer IDs, excludes self
+	node        rpccore.Node     // node
+	shutdown    bool             // bool value to check whether this peer starts
+	startBefore bool             // bool value to check whether this peer was started before
+	logger      *logrus.Entry    // logger
 
 	// snapshot
 	snapshot          *Snapshot
@@ -62,14 +73,14 @@ type Peer struct {
 	timeoutLoopSkipThisRound bool
 
 	// leader only
-	nextIndex                    map[rpccore.NodeID]int
-	matchIndex                   map[rpccore.NodeID]int
+	nextIndex                    map[rpccore.NodeID]int // index of the next log entry to send to that server
+	matchIndex                   map[rpccore.NodeID]int // index of highest log entry known to be replicated on server
 	appendingEntries             map[rpccore.NodeID]bool
 	logIndexMajorityCheckChannel map[int]chan rpccore.NodeID
 	lastHeardFromFollower        map[rpccore.NodeID]time.Time
 
 	// follower only
-	heardFromLeader bool
+	heardFromLeader bool // follower becomes candidate if no connection with leader
 
 	leaderID *rpccore.NodeID
 }
@@ -116,6 +127,7 @@ func NewPeer(node rpccore.Node, peers []rpccore.NodeID, logger *logrus.Entry,
 		return nil, err
 	}
 
+	// peer is required to start from follower state
 	p.changeState(Follower)
 	return p, nil
 }
@@ -261,7 +273,7 @@ func (p *Peer) Start() {
 	}
 }
 
-// ShutDown stop this peer from running
+// ShutDown stops this peer from running
 func (p *Peer) ShutDown() {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
@@ -279,6 +291,11 @@ func (p *Peer) ShutDown() {
 	}
 }
 
+// startElection begins the leader election
+//  1. increment current term
+//  2. vote for self
+//  3. send request vote RPCs to all other servers
+//  4. reset election timeout (trigger in changeState)
 func (p *Peer) startElection() {
 	p.logger.Info("Start election.")
 	p.voteCount = 1
@@ -295,8 +312,8 @@ func (p *Peer) startElection() {
 		go func(peerID rpccore.NodeID, term int) {
 			for {
 				// return if this election is invalid
-				// 1. peer is not candidate anymore
-				// 2. next round of election starts
+				//  1. peer is not candidate anymore
+				//  2. next round of election starts
 				p.mutex.Lock()
 				if p.state != Candidate || p.currentTerm != term {
 					p.mutex.Unlock()
@@ -315,14 +332,17 @@ func (p *Peer) startElection() {
 	}
 }
 
+// updateTerm updates the term and resets the votedFor
 func (p *Peer) updateTerm(term int) {
 	if term > p.currentTerm {
 		p.logger.Infof("Term is incremented from %v to %v.", p.currentTerm, term)
 		p.currentTerm = term
+		// clear votedFor in the new term
 		p.votedFor = nil
 	}
 }
 
+// updateCommitIndex updates the commit index
 func (p *Peer) updateCommitIndex(idx int) {
 	idx = utils.Min(idx, p.logLen()-1)
 	if idx > p.commitIndex {
@@ -341,23 +361,26 @@ func (p *Peer) updateCommitIndex(idx int) {
 		p.logger.Infof("CommitIndex is incremented from %v to %v.", p.commitIndex, idx)
 		p.commitIndex = idx
 
-		// update CommitIndex
+		// update CommitIndex, Log, Snapshot
 		p.saveToPersistentStorageAndLogError()
 	}
 }
 
+// GetTerm returns the current term of this peer
 func (p *Peer) GetTerm() int {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 	return p.currentTerm
 }
 
+// GetState returns the state of this peer
 func (p *Peer) GetState() PeerState {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 	return p.state
 }
 
+// GetRestLog returns the log entries of this peer
 func (p *Peer) GetRestLog() []LogEntry {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
@@ -366,18 +389,21 @@ func (p *Peer) GetRestLog() []LogEntry {
 	return peerLog
 }
 
+// GetNodeID returns the node ID of this peer
 func (p *Peer) GetNodeID() rpccore.NodeID {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 	return p.node.NodeID()
 }
 
+// GetRecentSnapshot returns the latest snapshot of this peer
 func (p *Peer) GetRecentSnapshot() *Snapshot {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 	return p.snapshot
 }
 
+// TakeStateMachineSnapshot takes the snapshot and returns it
 func (p *Peer) TakeStateMachineSnapshot() []byte {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
@@ -389,16 +415,19 @@ func (p *Peer) TakeStateMachineSnapshot() []byte {
 	return data
 }
 
+// GetVoteCount returns the vote count of this peer
 func (p *Peer) GetVoteCount() int {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 	return p.voteCount
 }
 
+// getTotalPeers returns the total number of peers
 func (p *Peer) getTotalPeers() int {
 	return len(p.rpcPeersIds) + 1
 }
 
+// toLogIndex returns the corresponding log index
 func (p *Peer) toLogIndex(trueIndex int) int {
 	if p.snapshot == nil {
 		return trueIndex
@@ -411,6 +440,7 @@ func (p *Peer) toLogIndex(trueIndex int) int {
 	return logidx
 }
 
+// logLen returns the corresponding log length
 func (p *Peer) logLen() int {
 	if p.snapshot == nil {
 		return len(p.log)
@@ -418,6 +448,7 @@ func (p *Peer) logLen() int {
 	return len(p.log) + p.snapshot.LastIncludedIndex + 1
 }
 
+// getLogTermByIndex returns the term of given index in log entries
 func (p *Peer) getLogTermByIndex(trueIndex int) int {
 	if p.snapshot != nil && trueIndex == p.snapshot.LastIncludedIndex {
 		return p.snapshot.LastIncludedTerm

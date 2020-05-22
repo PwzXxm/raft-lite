@@ -1,3 +1,14 @@
+/*
+ * Project: raft-lite
+ * ---------------------
+ * Authors:
+ *   Minjian Chen 813534
+ *   Shijie Liu   813277
+ *   Weizhi Xu    752454
+ *   Wenqing Xue  813044
+ *   Zijun Chen   813190
+ */
+
 package pstorage
 
 import (
@@ -15,11 +26,13 @@ type testStruct struct {
 	Int int
 }
 
+// test memory based persistent storage initialization
 func TestMemoryBased(t *testing.T) {
 	m := NewMemoryBasedPersistentStorage()
 	testPersistentStorage(t, m)
 }
 
+// test file based persistent storage initialization
 func TestFileBased(t *testing.T) {
 	file, err := ioutil.TempFile("", "tests")
 	if err != nil {
@@ -33,6 +46,7 @@ func TestFileBased(t *testing.T) {
 	testPersistentStorage(t, m)
 }
 
+// test hybrid based persistent storage initialization
 func TestHybridBased(t *testing.T) {
 	file, err := ioutil.TempFile("", "tests")
 	if err != nil {
@@ -47,12 +61,14 @@ func TestHybridBased(t *testing.T) {
 	_ = m.Stop()
 }
 
+// check with errors
 func checkNoError(t *testing.T, err error) {
 	if err != nil {
 		t.Errorf("Shouldn't be an error: %+v", errors.WithStack(err))
 	}
 }
 
+// test save and load persistent storage
 func testPersistentStorage(t *testing.T, p PersistentStorage) {
 	var data testStruct
 	hasData, err := p.Load(&data)
