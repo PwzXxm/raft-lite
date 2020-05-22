@@ -280,41 +280,6 @@ func (p *Peer) ShutDown() {
 	}
 }
 
-func (p *Peer) startElection() {
-	p.logger.Info("Start election.")
-	p.voteCount = 1
-	voteID := p.node.NodeID()
-	p.updateTerm(p.currentTerm + 1)
-	p.votedFor = &voteID
-
-	// update CurrentTerm, VoteCount, VotedFor
-	p.saveToPersistentStorageAndLogError()
-
-	term := p.currentTerm
-	req := requestVoteReq{Term: p.currentTerm, CandidateID: p.node.NodeID(), LastLogIndex: p.logLen() - 1, LastLogTerm: p.getLogTermByIndex(p.logLen() - 1)}
-	for _, peerID := range p.rpcPeersIds {
-		go func(peerID rpccore.NodeID, term int) {
-			for {
-				// return if this election is invalid
-				// 1. peer is not candidate anymore
-				// 2. next round of election starts
-				p.mutex.Lock()
-				if p.state != Candidate || p.currentTerm != term {
-					p.mutex.Unlock()
-					return
-				}
-				p.mutex.Unlock()
-
-				res := p.requestVote(peerID, req)
-				if res != nil {
-					p.mutex.Lock()
-					p.handleRequestVoteRespond(*res)
-					p.mutex.Unlock()
-				}
-			}
-		}(peerID, term)
-	}
-}
 
 func (p *Peer) updateTerm(term int) {
 	if term > p.currentTerm {

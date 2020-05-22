@@ -3,6 +3,7 @@ package functests
 import (
 	"context"
 	"fmt"
+	"github.com/PwzXxm/raft-lite/raft"
 	"math/rand"
 	"sort"
 	"strconv"
@@ -171,8 +172,12 @@ func clientRandomlySendRequest(clientName string, sl *simulation.Local) {
 }
 
 func complexTest(ctx context.Context, wg *sync.WaitGroup, rst map[string]int) error {
-	sl := simulation.RunLocallyOptional(5, 50, func() sm.StateMachine { return sm.NewTransactionStateMachine() })
+	sl := simulation.RunLocallyOptional(5, 1000, func() sm.StateMachine { return sm.NewTransactionStateMachine() })
+	raft.Foo = func() {
+		fmt.Print(sl)
+	}
 	defer sl.StopAll()
+
 	nodeIDs := []rpccore.NodeID{"0", "1", "2", "3", "4"}
 	// process inital election normally
 	time.Sleep(5 * time.Second)
