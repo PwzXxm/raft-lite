@@ -108,4 +108,4 @@ $RECYCLE.BIN/
 .vscode/settings.json
 
 # persistent storage data file
-pstorage_file/
+*.dat

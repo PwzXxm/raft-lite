@@ -30,7 +30,7 @@ import (
 )
 
 type peerConfig struct {
-	Timeout           time.Duration
+	TimeoutInMS       int
 	NodeAddrMap       map[rpccore.NodeID]string
 	NodeID            rpccore.NodeID
 	ListenAddr        string
@@ -56,7 +56,7 @@ func StartPeerFromFile(configFilepath string) error {
 	}()
 
 	// new tcp network
-	n := rpccore.NewTCPNetwork(config.Timeout * time.Second)
+	n := rpccore.NewTCPNetwork(time.Duration(config.TimeoutInMS) * time.Millisecond)
 	node, err := n.NewLocalNode(config.NodeID, config.NodeAddrMap[config.NodeID], config.ListenAddr)
 	if err != nil {
 		return err
