@@ -132,7 +132,7 @@ Commands:
 ## Testing
 
 Raft is a system that can be very hard to test and verify. We provide 3 type of tests (unit, functional and integration) and a simulation tool.
-We run all unit and functional tests in our continue integration so all changes we made are verified.
+We run all unit and functional tests in our continuous integration so all changes we made are verified.
 
 ### Unit test
 
