@@ -15,9 +15,9 @@ package sm
 
 // StateMachine records the current state and the operations of the state machine
 type StateMachine interface {
-	Reset()
-	ApplyAction(action interface{}) error
-	Query(req interface{}) (interface{}, error)
-	TakeSnapshot() ([]byte, error)
-	ResetWithSnapshot(b []byte) error
+	Reset()                                     // reset state machine
+	ApplyAction(action interface{}) error       // apply action to state machine
+	Query(req interface{}) (interface{}, error) // query from state machine
+	TakeSnapshot() ([]byte, error)              // take snapshot of the state machine
+	ResetWithSnapshot(b []byte) error           // reset the state machine with given snapshot
 }

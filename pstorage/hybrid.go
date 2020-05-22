@@ -61,6 +61,7 @@ func NewHybridPersistentStorage(filepath string, interval time.Duration, logger 
 	return h
 }
 
+// Save the hybrid version of save function
 func (h *Hybrid) Save(data interface{}) error {
 	h.lock.Lock()
 	defer h.lock.Unlock()
@@ -75,6 +76,7 @@ func (h *Hybrid) Save(data interface{}) error {
 	return nil
 }
 
+// Load the hybrid version of load function
 func (h *Hybrid) Load(data interface{}) (bool, error) {
 	h.lock.Lock()
 	defer h.lock.Unlock()
@@ -101,6 +103,7 @@ func (h *Hybrid) Load(data interface{}) (bool, error) {
 	}
 }
 
+// Flush the hybrid version of flush
 func (h *Hybrid) Flush() error {
 	h.lock.Lock()
 	defer h.lock.Unlock()
@@ -114,6 +117,7 @@ func (h *Hybrid) Flush() error {
 	return nil
 }
 
+// Stop the hybrid version of stop
 func (h *Hybrid) Stop() error {
 	h.stop <- struct{}{}
 	return h.Flush()

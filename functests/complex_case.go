@@ -230,6 +230,7 @@ func complexTest(ctx context.Context, wg *sync.WaitGroup, rst map[string]int) er
 	for true {
 		switch getRandomEvent() {
 		case networkPacketLoss:
+			// increace the network latency and package loss rate
 			latencyMin := time.Duration(utils.Random(10, 20)) * time.Millisecond
 			latencyMax := time.Duration(utils.Random(35, 45)) * time.Millisecond
 			packetLossRate := utils.RandomFloat(0, 0.4)

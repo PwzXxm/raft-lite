@@ -23,6 +23,7 @@ import (
 )
 
 func main() {
+	// run simulation
 	cmdSimulation := &cli.Command{
 		Name:  "simulation",
 		Usage: "commands for running simulation",
@@ -42,6 +43,7 @@ func main() {
 			},
 		},
 	}
+	// run functional test
 	cmdFunctional := &cli.Command{
 		Name:  "functionaltest",
 		Usage: "commands for running functional tests",
@@ -74,6 +76,7 @@ func main() {
 			},
 		},
 	}
+	// run raft
 	cmdStart := &cli.Command{
 		Name:  "peer",
 		Usage: "commands for running raft",
@@ -84,6 +87,7 @@ func main() {
 			return StartPeerFromFile(c.Path("c"))
 		},
 	}
+	// run complex testcases where actions are generated randomly
 	cmdIntegrationTest := &cli.Command{
 		Name:  "integrationtest",
 		Usage: "run complex testcases where actions are generated randomly",
@@ -94,6 +98,7 @@ func main() {
 			return functests.RunComplex(c.Int64("t"))
 		},
 	}
+	// run starting client
 	cmdClient := &cli.Command{
 		Name:  "client",
 		Usage: "commands for starting client",

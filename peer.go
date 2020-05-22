@@ -39,6 +39,7 @@ type peerConfig struct {
 	SnapshotThreshold int
 }
 
+// StartPeerFromFile starts peer from file and returns error value if occurs
 func StartPeerFromFile(configFilepath string) error {
 	var config peerConfig
 	err := utils.ReadClientFromJSON(&config, configFilepath)

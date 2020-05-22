@@ -13,7 +13,6 @@ package raft
 
 import "github.com/PwzXxm/raft-lite/rpccore"
 
-
 // handleRequestVote takes a requestVoteRes struct and returns a requestVoteRes
 // checks the required qualifications and responds with a term and bool value
 func (p *Peer) handleRequestVote(req requestVoteReq) requestVoteRes {
@@ -93,8 +92,10 @@ func (p *Peer) startElection() {
 	}
 }
 
-// Called by go routine, plz check lock status first
+// handleRequestVoteRespond handles the response, candidate only
+// called by go routine, plz check lock status first
 func (p *Peer) handleRequestVoteRespond(res requestVoteRes, id rpccore.NodeID) {
+	// outdated response case
 	if res.Term < p.currentTerm || p.state != Candidate {
 		return
 	}

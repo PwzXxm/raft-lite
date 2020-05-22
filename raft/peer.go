@@ -23,6 +23,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// PeerState state type of peer
 type PeerState int
 
 // PeerState: Follower (0), Candidate (1), Leader (2)
@@ -32,17 +33,20 @@ const (
 	Leader
 )
 
+// log entry structure
 type LogEntry struct {
 	Cmd  interface{}
 	Term int
 }
 
+// snapshot structure
 type Snapshot struct {
 	LastIncludedIndex    int
 	LastIncludedTerm     int
 	StateMachineSnapshot []byte
 }
 
+// peer structure
 type Peer struct {
 	state       PeerState       // peer state
 	mutex       sync.Mutex      // mutex, for accessing data across multiple goroutines
@@ -86,6 +90,7 @@ type Peer struct {
 	leaderID *rpccore.NodeID
 }
 
+// NewPeer creates a new peer
 func NewPeer(node rpccore.Node, peers []rpccore.NodeID, logger *logrus.Entry,
 	sm sm.StateMachine, ps pstorage.PersistentStorage, timingFactor int, snapshotThreshold int) (*Peer, error) {
 	p := new(Peer)
@@ -133,6 +138,7 @@ func NewPeer(node rpccore.Node, peers []rpccore.NodeID, logger *logrus.Entry,
 	return p, nil
 }
 
+// timeoutLoop loops the timeout
 func (p *Peer) timeoutLoop() {
 	for {
 		p.mutex.Lock()
@@ -196,6 +202,7 @@ func (p *Peer) resetTimeout() {
 }
 
 func (p *Peer) changeState(state PeerState) {
+	// when change to the same state
 	if state == p.state {
 		return
 	}
@@ -203,6 +210,7 @@ func (p *Peer) changeState(state PeerState) {
 	p.logger.Infof("Change from state: %v to state: %v.", p.state, state)
 
 	switch p.state {
+	// change from leader, remove some attributes
 	case Leader:
 		for _, c := range p.logIndexMajorityCheckChannel {
 			close(c)
@@ -216,6 +224,7 @@ func (p *Peer) changeState(state PeerState) {
 	p.state = state
 
 	switch state {
+	// change to other states
 	case Follower:
 		p.heardFromLeader = false
 	case Candidate:
@@ -242,21 +251,20 @@ func (p *Peer) updateLastHeard(target rpccore.NodeID) {
 	}
 }
 
+// isValidLeader checks if the peer is still a valid leader when received read request
+// from client by counting how many followers it can communicate with.
 func (p *Peer) isValidLeader() bool {
 	if p.state != Leader {
 		return false
 	}
 	now := time.Now()
-	count := 0
+	count := 1
 	for _, lastHeard := range p.lastHeardFromFollower {
 		if now.Sub(lastHeard) < time.Duration(250*p.timingFactor)*time.Millisecond {
 			count++
 		}
-		if 2*count > len(p.rpcPeersIds) {
-			return true
-		}
 	}
-	return false
+	return 2*count > p.getTotalPeers()
 }
 
 // Start fire up this peer

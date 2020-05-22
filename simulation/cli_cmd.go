@@ -138,6 +138,7 @@ func combineErrorUsage(e error, cmd string) error {
 	return errors.New(e.Error() + "\nUsage: " + cmd + " " + usageMp[cmd])
 }
 
+// validateNodeIds checks whether the node id in current network
 func (rf *Local) validateNodeIds(nodes []string, l, r int) ([]rpccore.NodeID, error) {
 	rst := make([]rpccore.NodeID, 0)
 	for i := l; i < r && i < len(nodes); i++ {

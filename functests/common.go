@@ -54,8 +54,8 @@ var testCases = []testCase{
 		action: caseSkewedPartitionLeaderElection,
 	},
 	{
-		name:   "agree on log entry with partition and leader reselection",
-		action: caseAgreeOnLogEntryWithPartitionAndLeaderReselection,
+		name:   "agree on log entry with partition and leader reelection",
+		action: caseAgreeOnLogEntryWithPartitionAndLeaderReelection,
 	},
 	{
 		name:   "leader in other partition",
@@ -91,22 +91,22 @@ var testCases = []testCase{
 	},
 }
 
-// list test cases
+// List lists test cases
 func List() {
 	for i, c := range testCases {
 		fmt.Printf("%2d: %v\n", i+1, c.name)
 	}
 }
 
-// count test cases
+// Count counts test cases
 func Count() {
 	fmt.Printf("%v\n", len(testCases))
 }
 
-// run single test case
+// Run runs a single test case with given id
 func Run(n int) error {
 	if n <= 0 || n > len(testCases) {
-		return errors.New("Please provide a valid test case id.")
+		return errors.New("Please provide a valid test case id")
 	}
 	c := testCases[n-1]
 	fmt.Printf("--------------------\n")
