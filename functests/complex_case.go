@@ -1,3 +1,14 @@
+/*
+ * Project: raft-lite
+ * ---------------------
+ * Authors:
+ *   Minjian Chen 813534
+ *   Shijie Liu   813277
+ *   Weizhi Xu    752454
+ *   Wenqing Xue  813044
+ *   Zijun Chen   813190
+ */
+
 package functests
 
 import (
@@ -61,6 +72,7 @@ var green = color.New(color.FgGreen)
 var red = color.New(color.FgRed)
 var blue = color.New(color.FgBlue)
 
+// get random event
 func getRandomEvent() string {
 	rd := utils.Random(0, eventTotalWeight)
 	sum := 0
@@ -168,6 +180,7 @@ func clientRandomlySendRequest(clientName string, sl *simulation.Local) {
 	}
 }
 
+// complex test for checking algorithm implementation
 func complexTest(ctx context.Context, wg *sync.WaitGroup, rst map[string]int) error {
 	sl := simulation.RunLocallyOptional(5, 5, func() sm.StateMachine { return sm.NewTransactionStateMachine() })
 	defer sl.StopAll()

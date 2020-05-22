@@ -1,3 +1,14 @@
+/*
+ * Project: raft-lite
+ * ---------------------
+ * Authors:
+ *   Minjian Chen 813534
+ *   Shijie Liu   813277
+ *   Weizhi Xu    752454
+ *   Wenqing Xue  813044
+ *   Zijun Chen   813190
+ */
+
 package rpccore
 
 import (
@@ -20,6 +31,8 @@ func init() {
 	gorpc.SetErrorLogger(func(format string, args ...interface{}) {})
 }
 
+// TCPNetwork representing the network using TCP
+// including all the nodes exisiting in the current network
 type TCPNetwork struct {
 	lock        sync.RWMutex
 	nodeAddrMap map[NodeID]string
@@ -27,6 +40,7 @@ type TCPNetwork struct {
 	localNodes  map[NodeID]*TCPNode
 }
 
+// NewTCPNetwork creates a new TCP newwork for other nodes to join in
 func NewTCPNetwork(timeout time.Duration) *TCPNetwork {
 	n := new(TCPNetwork)
 	n.nodeAddrMap = make(map[NodeID]string)
@@ -35,6 +49,7 @@ func NewTCPNetwork(timeout time.Duration) *TCPNetwork {
 	return n
 }
 
+// Shutdown the TCP network by stopping all nodes
 func (n *TCPNetwork) Shutdown() {
 	n.lock.Lock()
 	defer n.lock.Unlock()
@@ -54,6 +69,7 @@ func (n *TCPNetwork) Shutdown() {
 	n.nodeAddrMap = nil
 }
 
+// NewRemoteNode adds a new remote TCP node in the current network
 func (n *TCPNetwork) NewRemoteNode(nodeID NodeID, addr string) error {
 	n.lock.Lock()
 	defer n.lock.Unlock()
@@ -65,6 +81,7 @@ func (n *TCPNetwork) NewRemoteNode(nodeID NodeID, addr string) error {
 	return nil
 }
 
+// NewLocalNode starts a new server at local and starts to listening on given address and port
 func (n *TCPNetwork) NewLocalNode(nodeID NodeID, remoteAddr, listenAddr string) (*TCPNode, error) {
 	n.lock.Lock()
 	defer n.lock.Unlock()
@@ -74,7 +91,7 @@ func (n *TCPNetwork) NewLocalNode(nodeID NodeID, remoteAddr, listenAddr string) 
 	}
 
 	defaultCallback := func(source NodeID, method string, data []byte) ([]byte, error) {
-		return nil, errors.New("No callback function provided.")
+		return nil, errors.New("No callback function provided")
 	}
 
 	node := &TCPNode{
@@ -109,6 +126,8 @@ func (n *TCPNetwork) NewLocalNode(nodeID NodeID, remoteAddr, listenAddr string) 
 	return node, nil
 }
 
+// NewLocalClientOnlyNode creates a TCP node representing the client
+// it does not act as a server
 func (n *TCPNetwork) NewLocalClientOnlyNode(nodeID NodeID) (*TCPNode, error) {
 	n.lock.Lock()
 	defer n.lock.Unlock()
@@ -127,6 +146,8 @@ func (n *TCPNetwork) NewLocalClientOnlyNode(nodeID NodeID) (*TCPNode, error) {
 	return node, nil
 }
 
+// A TCPNode representing a node within the current TCP network
+// and the client associate with it if it is not in client only mode
 type TCPNode struct {
 	id             NodeID
 	network        *TCPNetwork
@@ -137,10 +158,12 @@ type TCPNode struct {
 	s              *gorpc.Server
 }
 
+// NodeID gets the node's ID
 func (node *TCPNode) NodeID() NodeID {
 	return node.id
 }
 
+// SendRawRequest invokes an RPC method on the target node
 func (node *TCPNode) SendRawRequest(target NodeID, method string, data []byte) ([]byte, error) {
 	node.lock.RLock()
 	client, ok := node.clientMap[target]
@@ -172,15 +195,15 @@ func (node *TCPNode) SendRawRequest(target NodeID, method string, data []byte) (
 	res, err := client.Call(&tcpReqMsg{Source: node.id, Method: method, Data: data})
 	if err != nil {
 		return nil, err
-	} else {
-		var err error = nil
-		if res.(tcpResMsg).Err != "" {
-			err = errors.New(res.(tcpResMsg).Err)
-		}
-		return res.(tcpResMsg).Data, err
 	}
+
+	if res.(tcpResMsg).Err != "" {
+		err = errors.New(res.(tcpResMsg).Err)
+	}
+	return res.(tcpResMsg).Data, err
 }
 
+// RegisterRawRequestCallback let nodes to register methods that will be called when receiving a RPC
 func (node *TCPNode) RegisterRawRequestCallback(callback Callback) {
 	node.lock.Lock()
 	node.callback = callback

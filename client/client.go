@@ -1,3 +1,14 @@
+/*
+ * Project: raft-lite
+ * ---------------------
+ * Authors:
+ *   Minjian Chen 813534
+ *   Shijie Liu   813277
+ *   Weizhi Xu    752454
+ *   Wenqing Xue  813044
+ *   Zijun Chen   813190
+ */
+
 package client
 
 import (
@@ -12,6 +23,7 @@ type clientConfig struct {
 	ClientID    string
 }
 
+// StartClientFromFile starts Client from given file
 func StartClientFromFile(filepath string) error {
 	var config clientConfig
 	err := utils.ReadClientFromJSON(&config, filepath)
@@ -32,6 +44,7 @@ func StartClientFromFile(filepath string) error {
 	if err != nil {
 		return err
 	}
+
 	c.startReadingCmd()
 	c.net.Shutdown()
 	return nil

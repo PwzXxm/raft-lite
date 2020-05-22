@@ -1,3 +1,14 @@
+/*
+ * Project: raft-lite
+ * ---------------------
+ * Authors:
+ *   Minjian Chen 813534
+ *   Shijie Liu   813277
+ *   Weizhi Xu    752454
+ *   Wenqing Xue  813044
+ *   Zijun Chen   813190
+ */
+
 package raft
 
 import (
@@ -5,14 +16,16 @@ import (
 	"github.com/PwzXxm/raft-lite/utils"
 )
 
+// handleAppendEntries returns an appendEntriesRes struct as a response,
+// which includes a term and bool value whether success of the current peer
 func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
 	// consistency check
-	consistent := p.consitencyCheck(req)
+	consistent := p.consistencyCheck(req)
 	if !consistent {
 		return &appendEntriesRes{Term: p.currentTerm, Success: false}
 	}
 
-	// consistency check ensure that req.Term >= p.currentTerm
+	// consistency check ensures that req.Term >= p.currentTerm
 	if len(req.Entries) != 0 {
 		prevLogIndex := req.PrevLogIndex
 		newLogIndex := 0
@@ -21,7 +34,7 @@ func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
 			p.getLogTermByIndex(prevLogIndex+newLogIndex+1) == req.Entries[newLogIndex].Term {
 			newLogIndex++
 		}
-		if prevLogIndex + newLogIndex < p.commitIndex {
+		if prevLogIndex+newLogIndex < p.commitIndex {
 			p.logger.Errorf("overriding committed log, prevLogIndex: %v, newLogIndex: %v, commitIndex: %v",
 				prevLogIndex, newLogIndex, p.commitIndex)
 		}
@@ -39,8 +52,9 @@ func (p *Peer) handleAppendEntries(req appendEntriesReq) *appendEntriesRes {
 	return &appendEntriesRes{Term: p.currentTerm, Success: true}
 }
 
-// check consitency, update state and term if necessary
-func (p *Peer) consitencyCheck(req appendEntriesReq) bool {
+// consistencyCheck returns a bool value for consistency
+// check consistency, update state and term if necessary
+func (p *Peer) consistencyCheck(req appendEntriesReq) bool {
 	if req.Term < p.currentTerm {
 		return false
 	}
@@ -67,6 +81,7 @@ func (p *Peer) consitencyCheck(req appendEntriesReq) bool {
 	return true
 }
 
+// triggerLeaderHeartbeat uses goroutines to call append entry RPC in loop
 func (p *Peer) triggerLeaderHeartbeat() {
 	for peerID, appendingEntry := range p.appendingEntries {
 		if !appendingEntry {
@@ -75,7 +90,7 @@ func (p *Peer) triggerLeaderHeartbeat() {
 	}
 }
 
-//iteratively call appendEntry RPC until the follower is up to date with leader.
+// callAppendEntryRPC iteratively calls append entry RPC until the follower is up to date with leader.
 func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 	p.mutex.Lock()
 	if p.appendingEntries[target] {
@@ -85,11 +100,14 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 	p.appendingEntries[target] = true
 	leaderID := p.node.NodeID()
 	p.mutex.Unlock()
+
+	// function will be executed when callAppendEntryRPC returns
 	defer func() {
 		p.mutex.Lock()
 		p.appendingEntries[target] = false
 		p.mutex.Unlock()
 	}()
+
 	isFirstTime := true
 	// call append entry RPC
 	for {
@@ -106,8 +124,10 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 				LastIncludedTerm: p.snapshot.LastIncludedTerm, Snapshot: p.snapshot}
 			res := p.installSnapshot(target, req)
 			if res == nil {
+				// retry install snapshot if response is nil
 				continue
 			} else {
+				// install snapshot successfully
 				p.mutex.Lock()
 				p.handleInstallSnapshotRes(res)
 				p.nextIndex[target] = p.snapshot.LastIncludedIndex + 1
@@ -125,10 +145,12 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 			leaderCommit := p.commitIndex
 			entries := p.log[p.toLogIndex(nextIndex):]
 			p.mutex.Unlock()
+
 			// if no more entries need to be updated, return
 			if len(entries) == 0 && !isFirstTime {
 				return
 			}
+
 			isFirstTime = false
 			req := appendEntriesReq{Term: currentTerm, LeaderID: leaderID, PrevLogIndex: nextIndex - 1,
 				PrevLogTerm: prevLogTerm, LeaderCommit: leaderCommit, Entries: entries}
@@ -144,10 +166,11 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 					if res.Term > currentTerm {
 						p.updateTerm(res.Term)
 						p.changeState(Follower)
+						// update CurrentTerm, VotedFor
+						p.saveToPersistentStorageAndLogError()
 					} else {
 						p.nextIndex[target]--
 					}
-					p.mutex.Unlock()
 				} else {
 					// if success, update nextIndex for the node
 					commitIndex := p.commitIndex
@@ -160,14 +183,15 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 						}
 					}
 					p.matchIndex[target] = p.nextIndex[target] - 1
-					p.mutex.Unlock()
 				}
+				p.mutex.Unlock()
 			}
 		}
 	}
 }
 
-// this is a blocking function
+// onReceiveClientRequest returns a bool value
+// note that this is a blocking function
 func (p *Peer) onReceiveClientRequest(cmd interface{}) bool {
 	p.mutex.Lock()
 	if p.state != Leader {
@@ -178,6 +202,7 @@ func (p *Peer) onReceiveClientRequest(cmd interface{}) bool {
 	p.log = append(p.log, newlog)
 	// update Log
 	p.saveToPersistentStorageAndLogError()
+
 	newLogIndex := p.logLen() - 1
 	totalPeers := p.getTotalPeers()
 	majorityCheckChannel := make(chan rpccore.NodeID, totalPeers)
@@ -186,6 +211,7 @@ func (p *Peer) onReceiveClientRequest(cmd interface{}) bool {
 	// trigger timeout to initialize call appendEntryRPC
 	p.triggerTimeout()
 	p.mutex.Unlock()
+
 	count := 0
 	for nodeID := range majorityCheckChannel {
 		count++
@@ -194,7 +220,6 @@ func (p *Peer) onReceiveClientRequest(cmd interface{}) bool {
 			p.mutex.Lock()
 			// update commitIndex, use max in case commitIndex is already updated by other client request
 			p.updateCommitIndex(newLogIndex)
-			// update CommitIndex
 			p.saveToPersistentStorageAndLogError()
 			// delete channel for the committed index
 			delete(p.logIndexMajorityCheckChannel, newLogIndex)

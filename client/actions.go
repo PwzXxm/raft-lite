@@ -1,3 +1,14 @@
+/*
+ * Project: raft-lite
+ * ---------------------
+ * Authors:
+ *   Minjian Chen 813534
+ *   Shijie Liu   813277
+ *   Weizhi Xu    752454
+ *   Wenqing Xue  813044
+ *   Zijun Chen   813190
+ */
+
 package client
 
 import (
@@ -17,11 +28,13 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Client representing the client
 type Client struct {
 	net  *rpccore.TCPNetwork
 	core ClientCore
 }
 
+// ClientCore representing the detailed info of clietn
 type ClientCore struct {
 	ActBuilder *sm.TSMActionBuilder
 
@@ -52,6 +65,7 @@ const (
 	loggerLevelError  = "error"
 )
 
+// command usage maps
 var usageMp = map[string]string{
 	cmdQuery:          "<key>",
 	cmdSet:            "<key> <value>",
@@ -60,36 +74,44 @@ var usageMp = map[string]string{
 	cmdSetLoggerLevel: "<level> (warn, info, debug, error)",
 }
 
+// NewClientFromConfig returns a new Client from a given configuration
 func NewClientFromConfig(config clientConfig) (*Client, error) {
 	c := new(Client)
 
+	// using TCP network with duration of tcpTimeout (1 second)
 	c.net = rpccore.NewTCPNetwork(tcpTimeout)
 
+	// create Client's TCPNode in local using Client ID
 	cnode, err := c.net.NewLocalClientOnlyNode(rpccore.NodeID(config.ClientID))
 	if err != nil {
 		return nil, err
 	}
 
+	// create a list of nodes with given node addresses
 	nl := make([]rpccore.NodeID, len(config.NodeAddrMap))
 	i := 0
 	for nodeID, addr := range config.NodeAddrMap {
 		nl[i] = nodeID
 		i++
+		// add all node addresses as remote ndoes
 		err := c.net.NewRemoteNode(nodeID, addr)
 		if err != nil {
 			return nil, err
 		}
 	}
 
+	// set up logger
 	logger := logrus.New()
 	logger.Out = os.Stdout
 	logger.SetLevel(logrus.InfoLevel)
 
+	// initialize the client core
 	c.core = NewClientCore(config.ClientID, nl, cnode, logger)
 
 	return c, nil
 }
 
+// NewClientCore takes arguments and returns a ClientCore object
 func NewClientCore(clientID string, nodeIDs []rpccore.NodeID, cnode rpccore.Node, logger *logrus.Logger) ClientCore {
 	return ClientCore{
 		clientID:        clientID,
@@ -102,15 +124,18 @@ func NewClientCore(clientID string, nodeIDs []rpccore.NodeID, cnode rpccore.Node
 	}
 }
 
+// client starts reading the commands
 func (c *Client) startReadingCmd() {
 	printWelcomeMsg()
 
 	invalidCommandError := errors.New("Invalid command")
 	var err error
 
+	// set colours
 	green := color.New(color.FgGreen)
 	red := color.New(color.FgRed)
 	green.Print("> ")
+
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		cmd := strings.Fields(scanner.Text())
@@ -124,6 +149,7 @@ func (c *Client) startReadingCmd() {
 
 		if err == nil {
 			switch cmd[0] {
+			// query command
 			case cmdQuery:
 				if l != 2 {
 					err = combineErrorUsage(invalidCommandError, cmd[0])
@@ -135,6 +161,7 @@ func (c *Client) startReadingCmd() {
 				} else {
 					green.Printf("The query result for key %v: %v\n", cmd[1], res)
 				}
+			// logger command: debug, info, warn, error
 			case cmdSetLoggerLevel:
 				if l != 2 {
 					err = combineErrorUsage(invalidCommandError, cmd[0])
@@ -156,6 +183,7 @@ func (c *Client) startReadingCmd() {
 				default:
 					err = combineErrorUsage(invalidCommandError, cmd[0])
 				}
+			// set and increment command
 			case cmdSet, cmdIncre:
 				if l != 3 {
 					err = combineErrorUsage(invalidCommandError, cmd[0])
@@ -172,6 +200,7 @@ func (c *Client) startReadingCmd() {
 				case cmdIncre:
 					c.executeActionRequestAndPrint(c.core.ActBuilder.TSMActionIncrValue(cmd[1], value))
 				}
+			// move command
 			case cmdMove:
 				if l != 4 {
 					err = combineErrorUsage(invalidCommandError, cmd[0])
@@ -199,6 +228,7 @@ func (c *Client) startReadingCmd() {
 	}
 }
 
+// client executes the action request and prints result messages
 func (c *Client) executeActionRequestAndPrint(act sm.TSMAction) {
 	success, msg := c.core.ExecuteActionRequest(act)
 	var ca color.Attribute
@@ -210,6 +240,7 @@ func (c *Client) executeActionRequestAndPrint(act sm.TSMAction) {
 	_, _ = color.New(ca).Println(msg)
 }
 
+// combineErrorUsage returns error usage message
 func combineErrorUsage(e error, cmd string) error {
 	return errors.New(e.Error() + "\nUsage: " + cmd + " " + usageMp[cmd])
 }
@@ -230,7 +261,6 @@ func (core *ClientCore) lookForLeader() rpccore.NodeID {
 				resetBackOffDuration(core)
 				return *core.leaderID
 			}
-
 			err = errors.Errorf("Node %v doesn't know the leader.", pl)
 		}
 		core.logErrAndBackoff("Unable to find leader. ", err)
@@ -238,10 +268,12 @@ func (core *ClientCore) lookForLeader() rpccore.NodeID {
 	return *core.leaderID
 }
 
+// resetBackOffDuration resets the backOffDuration
 func resetBackOffDuration(core *ClientCore) {
 	core.backOffDuration = initBackOffDuration
 }
 
+// logErrAndBackoff takes ClientCore pointer, message string and error value
 func (core *ClientCore) logErrAndBackoff(msg string, err error) {
 	core.leaderID = nil
 	core.logger.Debug(msg, err)
@@ -253,6 +285,8 @@ func (core *ClientCore) logErrAndBackoff(msg string, err error) {
 	core.backOffDuration = utils.Min(maxBackOffDuration, core.backOffDuration*2)
 }
 
+// sendActionRequest takes ClientCore and ActionReq structs as arguments,
+// calls action request RPC, and returns error value if occurs
 func (core *ClientCore) sendActionRequest(actReq ActionReq) error {
 	leader := core.lookForLeader()
 	var actionRes ActionRes
@@ -263,6 +297,8 @@ func (core *ClientCore) sendActionRequest(actReq ActionReq) error {
 	return err
 }
 
+// checkActionRequest takes ClientCore and QueryReq structs as arguments,
+// calls query request RPC and returns a TSMRequestInfo pointer if success
 func (core *ClientCore) checkActionRequest(queryReq QueryReq) (*sm.TSMRequestInfo, error) {
 	leader := core.lookForLeader()
 	var queryRes QueryRes
@@ -281,6 +317,8 @@ func (core *ClientCore) checkActionRequest(queryReq QueryReq) (*sm.TSMRequestInf
 	return nil, err
 }
 
+// ExecuteActionRequest takes ClientCore and TSMAction structs as arguments,
+// and returns whether the action is succeed and error value if occurs
 func (core *ClientCore) ExecuteActionRequest(act sm.TSMAction) (bool, string) {
 	actReq := ActionReq{Cmd: act}
 	queryReq := QueryReq{Cmd: sm.NewTSMLatestRequestQuery(core.clientID)}
@@ -298,16 +336,14 @@ func (core *ClientCore) ExecuteActionRequest(act sm.TSMAction) (bool, string) {
 			if err != nil {
 				core.logErrAndBackoff("check action request failed. ", err)
 			}
-
+			// RequestInfo exists and RequestID matches
 			if info != nil && info.RequestID == reqID {
 				resetBackOffDuration(core)
 				if info.Err != nil {
 					return false, *info.Err
 				}
-
 				return true, "action success"
 			}
-
 			if err == nil {
 				core.logErrAndBackoff("info is nil or wrong request ID", err)
 			}
@@ -315,11 +351,14 @@ func (core *ClientCore) ExecuteActionRequest(act sm.TSMAction) (bool, string) {
 	}
 }
 
+// ExecuteQueryRequest takes ClientCore and TSMQuery structs as arguments,
+// and returns data from the query response and error value if occurs
 func (core *ClientCore) ExecuteQueryRequest(query sm.TSMQuery) (interface{}, error) {
 	queryReq := QueryReq{Cmd: query}
 	for {
 		leader := core.lookForLeader()
 		var queryRes QueryRes
+		// call query request RPC
 		err := callRPC(core, leader, RPCMethodQueryRequest, queryReq, &queryRes)
 		if err == nil {
 			if queryRes.Success {
@@ -327,10 +366,9 @@ func (core *ClientCore) ExecuteQueryRequest(query sm.TSMQuery) (interface{}, err
 				if queryRes.QueryErr == nil {
 					return queryRes.Data, nil
 				}
-
+				// query success, but query error exists
 				return nil, errors.New(*queryRes.QueryErr)
 			}
-
 			err = errors.Errorf("Node %v decliend the query request.", leader)
 		}
 		if err != nil {
@@ -340,6 +378,7 @@ func (core *ClientCore) ExecuteQueryRequest(query sm.TSMQuery) (interface{}, err
 	}
 }
 
+// printWelcomeMsg prints welcome message
 func printWelcomeMsg() {
 	fmt.Printf("\n=============================================\n")
 	figure.NewFigure("Raft lite", "doom", true).Print()

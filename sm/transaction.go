@@ -1,3 +1,14 @@
+/*
+ * Project: raft-lite
+ * ---------------------
+ * Authors:
+ *   Minjian Chen 813534
+ *   Shijie Liu   813277
+ *   Weizhi Xu    752454
+ *   Wenqing Xue  813044
+ *   Zijun Chen   813190
+ */
+
 package sm
 
 import (
@@ -15,12 +26,14 @@ func init() {
 	gob.Register(TSMRequestInfo{})
 }
 
+// TSM contains the transaction data and information about last request info
 // This state machine is not thread-safe
 type TSM struct {
 	Data              map[string]int
 	LatestRequestInfo map[string]TSMRequestInfo
 }
 
+// TSMRequestInfo
 type TSMRequestInfo struct {
 	RequestID uint32
 	Err       *string
@@ -272,6 +285,7 @@ func TSMIsSnapshotEqual(b1 []byte, b2 []byte) (bool, error) {
 	return reflect.DeepEqual(tSM1, tSM2), nil
 }
 
+// TSMToStringHuman
 func TSMToStringHuman(b []byte) string {
 	tSM, err := decodeTSMFromBytes(b)
 	if err != nil {
