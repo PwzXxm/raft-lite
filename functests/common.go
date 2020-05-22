@@ -91,22 +91,22 @@ var testCases = []testCase{
 	},
 }
 
-// list test cases
+// List list test cases
 func List() {
 	for i, c := range testCases {
 		fmt.Printf("%2d: %v\n", i+1, c.name)
 	}
 }
 
-// count test cases
+// Count count test cases
 func Count() {
 	fmt.Printf("%v\n", len(testCases))
 }
 
-// run single test case
+// Run run single test case
 func Run(n int) error {
 	if n <= 0 || n > len(testCases) {
-		return errors.New("Please provide a valid test case id.")
+		return errors.New("Please provide a valid test case id")
 	}
 	c := testCases[n-1]
 	fmt.Printf("--------------------\n")

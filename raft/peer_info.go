@@ -53,9 +53,8 @@ func getFieldStr(v reflect.Value, lvl int) string {
 	case reflect.Ptr:
 		if v.IsNil() {
 			return "nil"
-		} else {
-			return reflect.Indirect(v).String()
 		}
+		return reflect.Indirect(v).String()
 	case reflect.String:
 		return v.String()
 	case reflect.Map:

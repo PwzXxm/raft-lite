@@ -45,7 +45,10 @@ const (
 	checkTotalCnt = "check total"
 )
 
+// weight of each event
 var weightList = [...]int{nrWeight, npWeight, nscWeight, nbWeight, crWeight}
+
+// events
 var eventList = [...]string{networkPacketLoss, networkPartition, nodeStatusChange, networkBackToNormal, clientRequest}
 
 // get random event
@@ -104,6 +107,7 @@ func complexTest(ctx context.Context, wg *sync.WaitGroup, rst map[string]int) er
 	for true {
 		switch getRandomEvent() {
 		case networkPacketLoss:
+			// increace the network latency and package loss rate
 			latencyMin := time.Duration(utils.Random(0, 1000))
 			latencyMax := time.Duration(utils.Random(2000, 3000))
 			packetLossRate := utils.RandomFloat(0, 0.4)

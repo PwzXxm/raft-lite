@@ -72,9 +72,8 @@ func (p *Peer) installSnapshot(target rpccore.NodeID, arg installSnapshotReq) *i
 	var res installSnapshotRes
 	if p.callRPCAndLogError(target, rpcMethodInstallSnapshot, arg, &res) == nil {
 		return &res
-	} else {
-		return nil
 	}
+	return nil
 }
 
 // requestVote takes target node ID and requestVoteReq struct as arguments
@@ -83,9 +82,8 @@ func (p *Peer) requestVote(target rpccore.NodeID, arg requestVoteReq) *requestVo
 	var res requestVoteRes
 	if p.callRPCAndLogError(target, rpcMethodRequestVote, arg, &res) == nil {
 		return &res
-	} else {
-		return nil
 	}
+	return nil
 }
 
 // appendEntries takes target node ID and appendEntriesReq struct as arguments
@@ -94,9 +92,8 @@ func (p *Peer) appendEntries(target rpccore.NodeID, arg appendEntriesReq) *appen
 	var res appendEntriesRes
 	if p.callRPCAndLogError(target, rpcMethodAppendEntries, arg, &res) == nil {
 		return &res
-	} else {
-		return nil
 	}
+	return nil
 }
 
 // callRPCAndLogError takes arguments and traces error value if occurs
@@ -148,7 +145,7 @@ func (p *Peer) handleRPCCall(source rpccore.NodeID, method string, data []byte) 
 		p.mutex.Unlock()
 		// reduce the number of logs
 		time.Sleep(1 * time.Second)
-		return nil, errors.New("Peer is not running.")
+		return nil, errors.New("Peer is not running")
 	}
 	p.mutex.Unlock()
 	switch method {

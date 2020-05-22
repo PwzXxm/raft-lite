@@ -322,6 +322,7 @@ func caseHighPacketLossRate() (err error) {
 	return
 }
 
+// check the system works in netwrok partition and leader reelection
 func caseAgreeOnLogEntryWithPartitionAndLeaderReselection() (err error) {
 	sl := simulation.RunLocally(5)
 	defer sl.StopAll()

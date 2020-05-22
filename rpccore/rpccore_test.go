@@ -24,6 +24,7 @@ func init() {
 	fmt.Println("* rpc core unit test *")
 }
 
+// TestNewNode test the creation of new node works
 func TestNewNode(t *testing.T) {
 	network := NewChanNetwork(time.Second)
 	defer network.Shutdown()
@@ -39,6 +40,7 @@ func TestNewNode(t *testing.T) {
 	}
 }
 
+// TestTimeoutAndDelayGenerator test the timeout and delay generator works
 func TestTimeoutAndDelayGenerator(t *testing.T) {
 	network := NewChanNetwork(time.Second)
 	defer network.Shutdown()
@@ -60,18 +62,19 @@ func TestTimeoutAndDelayGenerator(t *testing.T) {
 	}
 	nodeA.RegisterRawRequestCallback(callback)
 	nodeB.RegisterRawRequestCallback(callback)
-
+	// should fail
 	_, err := nodeC.SendRawRequest(nodeA.NodeID(), "", nil)
 	if err == nil {
 		t.Errorf("Send raw request to A should fail.")
 	}
-
+	// shouldn't fail
 	_, err = nodeC.SendRawRequest(nodeB.NodeID(), "", nil)
 	if err != nil {
 		t.Errorf("Send raw request to B shouldn't fail.\n%+v", err)
 	}
 }
 
+// TestNewTCPNetwork test TCP network creation
 func TestNewTCPNetwork(t *testing.T) {
 	tcpNetwork := NewTCPNetwork(time.Second)
 	defer tcpNetwork.Shutdown()
@@ -81,6 +84,7 @@ func TestNewTCPNetwork(t *testing.T) {
 	}
 }
 
+// TestNewRemoteNode test the creation of new remote node
 func TestNewRemoteNode(t *testing.T) {
 	tcpNetwork := NewTCPNetwork(time.Second)
 	defer tcpNetwork.Shutdown()
@@ -96,6 +100,7 @@ func TestNewRemoteNode(t *testing.T) {
 	}
 }
 
+// TestNewLoalNode test the creation of new local node
 func TestNewLocalNode(t *testing.T) {
 	tcpNetwork := NewTCPNetwork(time.Second)
 	defer tcpNetwork.Shutdown()
@@ -121,6 +126,7 @@ func checkNoError(t *testing.T, err error) {
 	}
 }
 
+// TestChanNode test the chanNetwork
 func TestChanNode(t *testing.T) {
 	network := NewChanNetwork(time.Second)
 	defer network.Shutdown()
@@ -132,6 +138,7 @@ func TestChanNode(t *testing.T) {
 	testNode(t, nodeA, nodeB)
 }
 
+// TestTCPNode test the TCP node works
 func TestTCPNode(t *testing.T) {
 	networkA := NewTCPNetwork(time.Second)
 	defer networkA.Shutdown()
@@ -178,6 +185,7 @@ func testNode(t *testing.T, nodeA Node, nodeB Node) {
 	}
 }
 
+// BenchmarkChanCommunication test the network speed of Channel network
 func BenchmarkChanCommunication(b *testing.B) {
 	network := NewChanNetwork(time.Second)
 	defer network.Shutdown()
@@ -188,6 +196,7 @@ func BenchmarkChanCommunication(b *testing.B) {
 	benchmarkCommunication(b, nodeA, nodeB, nodeC)
 }
 
+// BenchmarkTCPCommunication test the network speed of TCP network
 func BenchmarkTCPCommunication(b *testing.B) {
 	networkA := NewTCPNetwork(time.Second)
 	defer networkA.Shutdown()

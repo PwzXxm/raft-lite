@@ -87,6 +87,7 @@ func RunLocallyOptional(n int, snapshotThreshold int, smMaker stateMachineMaker)
 	return l
 }
 
+// SetupLocally set up the local simulaton env
 func SetupLocally(n int) *local {
 	log.Info("Setting up simulation locally ...")
 
@@ -206,6 +207,7 @@ func newLocalOptional(n int, snapshotThreshold int, smMaker stateMachineMaker) (
 	return l, nil
 }
 
+// StopAll stop all peers in the simulation
 func (l *local) StopAll() {
 	for _, peer := range l.raftPeers {
 		peer.ShutDown()
@@ -242,6 +244,7 @@ func (l *local) RequestRaw(cmd interface{}) chan bool {
 	return c
 }
 
+// RequstSync make sync request
 func (l *local) RequestSync(cmd interface{}) bool {
 	c := l.RequestRaw(cmd)
 	select {
@@ -253,6 +256,7 @@ func (l *local) RequestSync(cmd interface{}) bool {
 	}
 }
 
+// RequestActionSynv client makes sync action request, and reply whether success
 func (l *local) RequestActionSync(act sm.TSMAction) error {
 	ok, msg := client.ExecuteActionRequest(&l.clientCore, act)
 	if ok {
@@ -262,6 +266,7 @@ func (l *local) RequestActionSync(act sm.TSMAction) error {
 	return errors.New(msg)
 }
 
+// RequestQuerySync clinet make sync query request
 func (l *local) RequestQuerySync(key string) (interface{}, error) {
 	return client.ExecuteQueryRequest(&l.clientCore, sm.NewTSMDataQuery(key))
 }
@@ -274,6 +279,7 @@ func (l *local) StartPeer(id rpccore.NodeID) {
 	l.raftPeers[id].Start()
 }
 
+// Wait sleep for a certain time in the simulation
 func (l *local) Wait(sec int) {
 	if sec <= 0 {
 		log.Warnf("Seconds to wait should be positive integer, not %v", sec)
@@ -305,7 +311,9 @@ func (l *local) PrintAllNodeInfo() {
 	}
 }
 
+// ResetPeer reset the peer to initial with loading from presistant storage
 func (l *local) ResetPeer(nodeID rpccore.NodeID) error {
+	// shut down first
 	peer := l.raftPeers[nodeID]
 	peer.ShutDown()
 	nodeIDs := make([]rpccore.NodeID, 0, len(l.raftPeers)-1)
@@ -315,6 +323,7 @@ func (l *local) ResetPeer(nodeID rpccore.NodeID) error {
 		}
 	}
 	var err error
+	// remake the peer with loading from pStorage
 	l.raftPeers[nodeID], err = raft.NewPeer(l.rpcPeers[nodeID], nodeIDs,
 		l.logger.WithFields(logrus.Fields{
 			"nodeID": nodeID,
@@ -338,6 +347,7 @@ func (l *local) getAllNodeLogs() map[rpccore.NodeID][]raft.LogEntry {
 	return m
 }
 
+// AgreeOnLeader check whether all peer argee on the same leader
 func (l *local) AgreeOnLeader() (*rpccore.NodeID, error) {
 	var leaderID *rpccore.NodeID
 	for nodeID, peer := range l.raftPeers {
@@ -357,6 +367,7 @@ func (l *local) AgreeOnLeader() (*rpccore.NodeID, error) {
 	return leaderID, nil
 }
 
+// AgreeOnTerm check whether all peer agree on the same term
 func (l *local) AgreeOnTerm() (int, error) {
 	term := -1
 	for _, peer := range l.raftPeers {
@@ -372,6 +383,7 @@ func (l *local) AgreeOnTerm() (int, error) {
 	return term, nil
 }
 
+// IdenticalLogEntries check whether all peers have the same log entries
 func (l *local) IdenticalLogEntries() error {
 	var peerLogs1 []raft.LogEntry
 	for _, peer := range l.raftPeers {
@@ -395,6 +407,8 @@ func (l *local) IdenticalLogEntries() error {
 	return nil
 }
 
+// AgreeOnTwoLogEntries check whether two log entries are argee on each other, which should satisfy the
+// "log Matching" proporty described in paper
 func (l *local) AgreeOnTwoLogEntries(logEntry1, logEntry2 []raft.LogEntry) (bool, error) {
 	cmdIdentical := true
 	for i := 0; i < utils.Min(len(logEntry1), len(logEntry2)); i++ {
@@ -410,6 +424,7 @@ func (l *local) AgreeOnTwoLogEntries(logEntry1, logEntry2 []raft.LogEntry) (bool
 	return true, nil
 }
 
+// AgreeOnLogEntries check whether all peers satisfy the "log matching" proporty.
 func (l *local) AgreeOnLogEntries() error {
 	logEntriesMap := l.getAllNodeLogs()
 	for peer1, logEntry1 := range logEntriesMap {
@@ -425,6 +440,7 @@ func (l *local) AgreeOnLogEntries() error {
 	return nil
 }
 
+// AgreeOnSnapshot check whether all peers have the same sanpshot
 func (l *local) AgreeOnSnapshot() (int, int, error) {
 	var ss *raft.Snapshot
 	for _, peer := range l.raftPeers {
@@ -455,6 +471,7 @@ func (l *local) AgreeOnSnapshot() (int, int, error) {
 	return ss.LastIncludedIndex, ss.LastIncludedTerm, nil
 }
 
+// AgreeOnStateMachine check whether all peers have the same statemachine state
 func (l *local) AgreeOnStateMachine() ([]byte, error) {
 	var ss []byte
 	for _, peer := range l.raftPeers {
@@ -478,6 +495,7 @@ func (l *local) AgreeOnStateMachine() ([]byte, error) {
 	return ss, nil
 }
 
+// SetNetworkReliability set Latency and Packet Loss Rate of the network
 func (l *local) SetNetworkReliability(oneWayLatencyMin, oneWayLatencyMax time.Duration, packetLossRate float64) {
 	l.netLock.Lock()
 	defer l.netLock.Unlock()
@@ -486,12 +504,14 @@ func (l *local) SetNetworkReliability(oneWayLatencyMin, oneWayLatencyMax time.Du
 	l.packetLossRate = packetLossRate
 }
 
+// SetNodeNetworkStatus set the network connectoin state of a certain peer
 func (l *local) SetNodeNetworkStatus(nodeID rpccore.NodeID, online bool) {
 	l.netLock.Lock()
 	defer l.netLock.Unlock()
 	l.offlineNodes[nodeID] = !online
 }
 
+// SetNetworkPartition set network partition
 func (l *local) SetNetworkPartition(pMap map[rpccore.NodeID]int) {
 	log.Info("Set network partition...")
 	l.netLock.Lock()
