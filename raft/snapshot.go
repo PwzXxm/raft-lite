@@ -59,7 +59,10 @@ func (p *Peer) handleInstallSnapshot(req installSnapshotReq) installSnapshotRes 
 	p.commitIndex = req.LastIncludedIndex
 	p.snapshot = req.Snapshot
 	p.heardFromLeader = true
-	p.stateMachine.ResetWithSnapshot(p.snapshot.StateMachineSnapshot)
+	err := p.stateMachine.ResetWithSnapshot(p.snapshot.StateMachineSnapshot)
+	if err != nil {
+		p.logger.Errorf("Unable to reset snapshot, %v", err)
+	}
 
 	// update CommitIndex, Log, Snapshot
 	p.saveToPersistentStorageAndLogError()
