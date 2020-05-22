@@ -117,6 +117,7 @@ func main() {
 			cmdIntegrationTest,
 			cmdClient,
 		},
+		Usage: "A transaction system with Raft consensus algorithm",
 	}
 
 	err := app.Run(os.Args)
