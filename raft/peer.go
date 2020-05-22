@@ -12,7 +12,6 @@
 package raft
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
@@ -347,10 +346,8 @@ func (p *Peer) GetTerm() int {
 
 // GetState returns the state of this peer
 func (p *Peer) GetState() PeerState {
-	fmt.Println("getting lock", p.node.NodeID())
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
-	fmt.Println("got lock", p.node.NodeID())
 	return p.state
 }
 
@@ -374,7 +371,12 @@ func (p *Peer) GetNodeID() rpccore.NodeID {
 func (p *Peer) GetRecentSnapshot() *Snapshot {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
-	return p.snapshot
+	if p.snapshot == nil {
+		return nil
+	} else {
+		snapshot := *p.snapshot
+		return &snapshot
+	}
 }
 
 // TakeStateMachineSnapshot takes the snapshot and returns it

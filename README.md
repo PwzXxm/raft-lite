@@ -38,11 +38,11 @@ consistency at the same time.
 ├── pstorage/       # Persistent storage
 ├── raft/           # Raft algorithm
 ├── rpccore/        # RPC implementation - channel and tcp version
-├── sample          # Sample configurations
+├── sample/         # Sample configurations
 ├── simulation/     # Simulation for testing locally
 ├── sm/             # State machine
 └── utils/          # Utils
-main.go             # main entrance
+main.go             # Main entrance
 ```
 
 ## Example Config
@@ -50,7 +50,9 @@ Exmaple configuration files are under [`sample`](https://github.com/PwzXxm/raft-
 
 ## Usage
 
-### Start
+Note that you can always use `./raft-lite --help`.
+
+### Start Raft Peer
 
 #### Docker-compose
 To build docker image
@@ -58,39 +60,83 @@ To build docker image
 docker build -t raft-lite .
 ```
 
-To start peers
+To start peers (with the sample config)
 ```bash
+cd sample/docker-compose
 docker-compose up
 ```
 
-To start clientA and clientB
+#### Manually
+
+Build executable
 ```bash
-./raft-lite peer -c sample/docker-compose/client-A.json
-./raft-lite peer -c sample/docker-compose/client-B.json
+go build .
 ```
 
-#### Manually
 On different computer or separate terminal on the same computer, run chosen configuration.
 To start with a size of five, you need to start five peers using different configuration files.
 ```bash
 ./raft-lite peer -c sample/config/sample-config1.json
+./raft-lite peer -c sample/config/sample-config2.json
+./raft-lite peer -c sample/config/sample-config3.json
+./raft-lite peer -c sample/config/sample-config4.json
+./raft-lite peer -c sample/config/sample-config5.json
 ```
 
-Start client with client configuration JSON file to send requests
+### Start Raft Client
+
+Build executable for client
 ```bash
+go build .
+```
+
+To start client
+```bash
+# for sample docker-compose version
+./raft-lite client -c sample/docker-compose/client-A.json
+# for sample docker-compose version
+./raft-lite client -c sample/docker-compose/client-B.json
+# for sample manual version
 ./raft-lite client -c sample/config/client_config.json
 ```
+Note that you can't use multiple client instances with the same config at the same time, the clientID should be different.
 
-### Simulation
-The purpose of simulation is to test the core of the raft algorithm on one local machine.
-Events such as network glitches(delay, packet loss, etc.), network partition, peer shutdown and restart, are emulated.
-```bash
-# Local simulation with 5 peers
-./raft-lite simulation local -n 5
+You can start entering command once you see prompt like this:
+```
+=============================================
+______          __  _      _  _  _
+| ___ \        / _|| |    | |(_)| |
+| |_/ /  __ _ | |_ | |_   | | _ | |_   ___
+|    /  / _` ||  _|| __|  | || || __| / _ \
+| |\ \ | (_| || |  | |_   | || || |_ |  __/
+\_| \_| \__,_||_|   \__|  |_||_| \__| \___|
+
+
+ Welcome to Raft Lite Transaction System
+
+=============================================
+>
+```
+The supported commands are:
+```
+Usage: <cmd> <args> ...
+
+Commands:
+	increment   <key> <value>
+	loggerLevel <level> (warn, info, debug, error)
+	move        <source> <target> <value>
+	query       <key>
+	set         <key> <value>
 ```
 
-### Unit tests
-All core components - persistent storage and RPC have unit tests and RPC has benchmark tests to illustrate the performance.
+## Testing
+
+Raft is a system that can be very hard to test and verify. We provide 3 type of tests (unit, functional and integration) and a simulation tool.
+We run all unit and functional tests in our continuous integration so all changes we made are verified.
+
+### Unit test
+
+The code under `./raft/` only contains the core logic of raft and we use dependency injection to let it uses other components like persistent storage (`./pstorage/`), network (`./rpccore/`) and state machine (`./sm/`). Each component has multiple implementations, eg. rpccore has a tcp version and a go channel version (for testing). We use unit test to make sure they work as we want.
 
 ```bash
 go test -v ./...
@@ -98,7 +144,7 @@ go test -v ./... -bench=.
 ```
 
 ### Functional tests
-Functional tests treat the raft system as a black box and check if the outputs meet the requirements.
+Functional tests treat the raft system as a black box and check if the outputs meet the requirements. We design those cases manually.
 
 To list all functional test cases
 ```bash
@@ -133,4 +179,12 @@ Also, snapshot and log entries are checked periodically.
 
 ```bash
 ./raft-lite integrationtest -t <minutes>
+```
+
+### Simulation
+The purpose of simulation is to test the core of the raft algorithm on one local machine.
+Events such as network glitches(delay, packet loss, etc.), network partition, peer shutdown and restart, are emulated.
+```bash
+# Local simulation with 5 peers
+./raft-lite simulation local -n 5
 ```
