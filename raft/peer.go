@@ -154,19 +154,13 @@ func (p *Peer) timeoutLoop() {
 			timeout = time.Duration(100 * p.timingFactor)
 		}
 
-		p.logger.Debugf("timeout loop before wait, state: %v, term: %v, timeout: %v", currentState, p.currentTerm, timeout)
 		p.mutex.Unlock()
-
-		causeByChannel := false
 
 		select {
 		case <-time.After(timeout * time.Millisecond):
-			causeByChannel = false
 		case <-p.timeoutLoopChan:
-			causeByChannel = true
 		}
 		p.mutex.Lock()
-		p.logger.Debugf("timeout loop after wait, state: %v, term: %v, skip: %v, causeByChannel: %v", p.state, p.currentTerm, p.timeoutLoopSkipThisRound, causeByChannel)
 		skipThisRound := p.timeoutLoopSkipThisRound
 		p.timeoutLoopSkipThisRound = false
 
@@ -188,7 +182,6 @@ func (p *Peer) timeoutLoop() {
 			case Leader:
 				p.triggerLeaderHeartbeat()
 			case Candidate:
-				p.logger.Debug("start election: timeout loop")
 				p.startElection()
 			}
 		}
@@ -206,15 +199,12 @@ func (p *Peer) triggerTimeout() {
 	default: // message dropped
 	}
 	p.timeoutLoopSkipThisRound = false
-	p.logger.Debug("trigger timeout")
 }
 
 func (p *Peer) resetTimeout() {
 	select {
 	case p.timeoutLoopChan <- struct{}{}:
-		p.logger.Debug("reset timeout")
 	default: // message dropped
-		p.logger.Debug("reset timeout dropped")
 	}
 	p.timeoutLoopSkipThisRound = true
 }
@@ -247,7 +237,6 @@ func (p *Peer) changeState(state PeerState) {
 		p.heardFromLeader = false
 	case Candidate:
 		p.leaderID = nil
-		p.logger.Debug("start election: change state")
 		p.startElection()
 	case Leader:
 		p.nextIndex = make(map[rpccore.NodeID]int, len(p.rpcPeersIds))
