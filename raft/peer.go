@@ -141,9 +141,7 @@ func (p *Peer) timeoutLoop() {
 	for {
 		p.mutex.Lock()
 		currentState := p.state
-		currentTerm := p.currentTerm
-		p.logger.Debugf("timeout loop before wait, state: %v, term: %v", currentState, p.currentTerm)
-		p.mutex.Unlock()
+		// currentTerm := p.currentTerm
 
 		// timeout based on state
 		var timeout time.Duration
@@ -155,6 +153,9 @@ func (p *Peer) timeoutLoop() {
 		case Leader:
 			timeout = time.Duration(100 * p.timingFactor)
 		}
+
+		p.logger.Debugf("timeout loop before wait, state: %v, term: %v, timeout: %v", currentState, p.currentTerm, timeout)
+		p.mutex.Unlock()
 
 		causeByChannel := false
 
@@ -176,7 +177,7 @@ func (p *Peer) timeoutLoop() {
 		}
 
 		// ignore this round if the state has been changed.
-		if currentState == p.state && currentTerm == p.currentTerm && !skipThisRound {
+		if currentState == p.state && !skipThisRound {
 			switch p.state {
 			case Follower:
 				if !p.heardFromLeader {
