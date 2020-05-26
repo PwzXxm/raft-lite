@@ -142,7 +142,7 @@ func (p *Peer) timeoutLoop() {
 		p.mutex.Lock()
 		currentState := p.state
 		currentTerm := p.currentTerm
-		//p.logger.Debugf("timeout loop before wait, state: %v, term: %v", currentState, currentTerm)
+		p.logger.Debugf("timeout loop before wait, state: %v, term: %v", currentState, p.currentTerm)
 		p.mutex.Unlock()
 
 		// timeout based on state
@@ -156,14 +156,25 @@ func (p *Peer) timeoutLoop() {
 			timeout = time.Duration(100 * p.timingFactor)
 		}
 
+		causeByChannel := false
+
 		select {
 		case <-time.After(timeout * time.Millisecond):
+			causeByChannel = false
 		case <-p.timeoutLoopChan:
+			causeByChannel = true
 		}
 		p.mutex.Lock()
-		//p.logger.Debugf("timeout loop after wait, state: %v, term: %v, skip: %v", p.state, p.currentTerm, p.timeoutLoopSkipThisRound)
+		p.logger.Debugf("timeout loop after wait, state: %v, term: %v, skip: %v, causeByChannel: %v", p.state, p.currentTerm, p.timeoutLoopSkipThisRound, causeByChannel)
 		skipThisRound := p.timeoutLoopSkipThisRound
 		p.timeoutLoopSkipThisRound = false
+
+		// clear timeoutLoopChan
+		select {
+		case <-p.timeoutLoopChan:
+		default:
+		}
+
 		// ignore this round if the state has been changed.
 		if currentState == p.state && currentTerm == p.currentTerm && !skipThisRound {
 			switch p.state {
@@ -176,12 +187,10 @@ func (p *Peer) timeoutLoop() {
 			case Leader:
 				p.triggerLeaderHeartbeat()
 			case Candidate:
-				//p.logger.Debug("start election: timeout loop")
+				p.logger.Debug("start election: timeout loop")
 				p.startElection()
 			}
 		}
-		//p.logger.Debug("AAA")
-		//p.logger.Debug("BBB")
 		shutdown := p.shutdown
 		p.mutex.Unlock()
 		if shutdown {
@@ -196,16 +205,17 @@ func (p *Peer) triggerTimeout() {
 	default: // message dropped
 	}
 	p.timeoutLoopSkipThisRound = false
-	//p.logger.Debug("trigger timeout")
+	p.logger.Debug("trigger timeout")
 }
 
 func (p *Peer) resetTimeout() {
 	select {
 	case p.timeoutLoopChan <- struct{}{}:
+		p.logger.Debug("reset timeout")
 	default: // message dropped
+		p.logger.Debug("reset timeout dropped")
 	}
 	p.timeoutLoopSkipThisRound = true
-	//p.logger.Debug("reset timeout")
 }
 
 func (p *Peer) changeState(state PeerState) {
