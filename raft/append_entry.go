@@ -60,7 +60,7 @@ func (p *Peer) consistencyCheck(req appendEntriesReq) bool {
 	}
 
 	p.heardFromLeader = true
-	p.updateTerm(req.Term)
+	_ = p.updateTerm(req.Term)
 	p.changeState(Follower)
 	// update CurrentTerm, VotedFor
 	p.saveToPersistentStorageAndLogError()
@@ -119,9 +119,9 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 		nextIndex := p.nextIndex[target]
 		if p.toLogIndex(nextIndex) < 0 && p.snapshot != nil {
 			// do install snapshot
-			p.mutex.Unlock()
 			req := installSnapshotReq{Term: p.currentTerm, LeaderID: leaderID, LastIncludedIndex: p.snapshot.LastIncludedIndex,
 				LastIncludedTerm: p.snapshot.LastIncludedTerm, Snapshot: p.snapshot}
+			p.mutex.Unlock()
 			res := p.installSnapshot(target, req)
 			if res == nil {
 				// retry install snapshot if response is nil
@@ -167,8 +167,7 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 					p.updateLastHeard(target)
 					if !res.Success {
 						// update nextIndex for target node
-						if res.Term > currentTerm {
-							p.updateTerm(res.Term)
+						if p.updateTerm(res.Term) {
 							p.changeState(Follower)
 							// update CurrentTerm, VotedFor
 							p.saveToPersistentStorageAndLogError()

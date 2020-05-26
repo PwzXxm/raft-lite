@@ -22,7 +22,9 @@ func (p *Peer) handleRequestVote(req requestVoteReq) requestVoteRes {
 	if req.Term < p.currentTerm || p.logPriorCheck(req.LastLogIndex, req.LastLogTerm) {
 		return requestVoteRes{Term: p.currentTerm, VoteGranted: false}
 	}
-	p.updateTerm(req.Term)
+	if p.updateTerm(req.Term) {
+		p.changeState(Follower)
+	}
 	// check receiver's qualification:
 	//  1. Have not voted before, or voted to you before
 	if !(p.votedFor == nil || p.votedFor == &req.CandidateID) {
@@ -59,7 +61,7 @@ func (p *Peer) startElection() {
 	p.logger.Info("Start election.")
 	p.voteCount = 1
 	voteID := p.node.NodeID()
-	p.updateTerm(p.currentTerm + 1)
+	_ = p.updateTerm(p.currentTerm + 1)
 	p.votedFor = &voteID
 
 	// update CurrentTerm, VoteCount, VotedFor
@@ -113,8 +115,7 @@ func (p *Peer) handleRequestVoteRespond(res requestVoteRes, id rpccore.NodeID) {
 		}
 	} else {
 		// response contains term > currentTerm, convert to Follower
-		if res.Term > p.currentTerm {
-			p.updateTerm(res.Term)
+		if p.updateTerm(res.Term) {
 			p.changeState(Follower)
 		}
 	}

@@ -73,8 +73,7 @@ func (p *Peer) handleInstallSnapshot(req installSnapshotReq) installSnapshotRes 
 // handleInstallSnapshotRes handles the response
 func (p *Peer) handleInstallSnapshotRes(res *installSnapshotRes) {
 	// update leader's term if response includes a higher term
-	if res.Term > p.currentTerm {
-		p.updateTerm(res.Term)
+	if p.updateTerm(res.Term) {
 		p.changeState(Follower)
 		// update CurrentTerm, VotedFor
 		p.saveToPersistentStorageAndLogError()

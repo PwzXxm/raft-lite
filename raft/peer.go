@@ -303,13 +303,15 @@ func (p *Peer) ShutDown() {
 }
 
 // updateTerm updates the term and resets the votedFor
-func (p *Peer) updateTerm(term int) {
+func (p *Peer) updateTerm(term int) bool {
 	if term > p.currentTerm {
 		p.logger.Infof("Term is incremented from %v to %v.", p.currentTerm, term)
 		p.currentTerm = term
 		// clear votedFor in the new term
 		p.votedFor = nil
+		return true
 	}
+	return false
 }
 
 // updateCommitIndex updates the commit index
