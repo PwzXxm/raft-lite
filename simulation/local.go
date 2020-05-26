@@ -32,7 +32,7 @@ import (
 const (
 	testTimingFactor         = 1
 	clientRequestTimeout     = 1 * time.Second
-	rpcTimeout               = 80 * testTimingFactor * time.Millisecond
+	rpcTimeout               = 100 * testTimingFactor * time.Millisecond
 	defaultSnapshotThreshold = 10000
 )
 
