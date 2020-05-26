@@ -14,9 +14,10 @@ package pstorage
 import (
 	"bytes"
 	"encoding/gob"
-	"github.com/natefinch/atomic"
 	"os"
 	"sync"
+
+	"github.com/natefinch/atomic"
 )
 
 type FileBased struct {
