@@ -195,7 +195,7 @@ func newLocalOptional(n int, snapshotThreshold int, smMaker stateMachineMaker) (
 	}
 	l.oneWayLatencyMin = 10 * time.Millisecond
 	l.oneWayLatencyMax = 40 * time.Millisecond
-	l.packetLossRate = 0.01
+	l.packetLossRate = 0
 
 	cNode, err := l.network.NewNode("client")
 	if err != nil {
