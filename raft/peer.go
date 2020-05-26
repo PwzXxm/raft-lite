@@ -141,6 +141,8 @@ func (p *Peer) timeoutLoop() {
 	for {
 		p.mutex.Lock()
 		currentState := p.state
+		currentTerm := p.currentTerm
+		//p.logger.Debugf("timeout loop before wait, state: %v, term: %v", currentState, currentTerm)
 		p.mutex.Unlock()
 
 		// timeout based on state
@@ -159,8 +161,11 @@ func (p *Peer) timeoutLoop() {
 		case <-p.timeoutLoopChan:
 		}
 		p.mutex.Lock()
+		//p.logger.Debugf("timeout loop after wait, state: %v, term: %v, skip: %v", p.state, p.currentTerm, p.timeoutLoopSkipThisRound)
+		skipThisRound := p.timeoutLoopSkipThisRound
+		p.timeoutLoopSkipThisRound = false
 		// ignore this round if the state has been changed.
-		if currentState == p.state && !p.timeoutLoopSkipThisRound {
+		if currentState == p.state && currentTerm == p.currentTerm && !skipThisRound {
 			switch p.state {
 			case Follower:
 				if !p.heardFromLeader {
@@ -171,10 +176,12 @@ func (p *Peer) timeoutLoop() {
 			case Leader:
 				p.triggerLeaderHeartbeat()
 			case Candidate:
+				//p.logger.Debug("start election: timeout loop")
 				p.startElection()
 			}
 		}
-		p.timeoutLoopSkipThisRound = false
+		//p.logger.Debug("AAA")
+		//p.logger.Debug("BBB")
 		shutdown := p.shutdown
 		p.mutex.Unlock()
 		if shutdown {
@@ -189,6 +196,7 @@ func (p *Peer) triggerTimeout() {
 	default: // message dropped
 	}
 	p.timeoutLoopSkipThisRound = false
+	//p.logger.Debug("trigger timeout")
 }
 
 func (p *Peer) resetTimeout() {
@@ -197,6 +205,7 @@ func (p *Peer) resetTimeout() {
 	default: // message dropped
 	}
 	p.timeoutLoopSkipThisRound = true
+	//p.logger.Debug("reset timeout")
 }
 
 func (p *Peer) changeState(state PeerState) {
@@ -227,6 +236,7 @@ func (p *Peer) changeState(state PeerState) {
 		p.heardFromLeader = false
 	case Candidate:
 		p.leaderID = nil
+		p.logger.Debug("start election: change state")
 		p.startElection()
 	case Leader:
 		p.nextIndex = make(map[rpccore.NodeID]int, len(p.rpcPeersIds))

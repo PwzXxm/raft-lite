@@ -214,6 +214,7 @@ func (p *Peer) onReceiveClientRequest(cmd interface{}) bool {
 	p.logIndexMajorityCheckChannel[newLogIndex] = majorityCheckChannel
 	// trigger timeout to initialize call appendEntryRPC
 	p.triggerTimeout()
+	currentTerm := p.currentTerm
 	p.mutex.Unlock()
 
 	count := 0
@@ -222,12 +223,14 @@ func (p *Peer) onReceiveClientRequest(cmd interface{}) bool {
 		p.logger.Debugf("peer %v confirm log with index %v", nodeID, newLogIndex)
 		if 2*count > totalPeers {
 			p.mutex.Lock()
-			// update commitIndex, use max in case commitIndex is already updated by other client request
-			p.updateCommitIndex(newLogIndex)
-			p.saveToPersistentStorageAndLogError()
-			// delete channel for the committed index
-			delete(p.logIndexMajorityCheckChannel, newLogIndex)
-			close(majorityCheckChannel)
+			if p.state == Leader && currentTerm == p.currentTerm {
+				// update commitIndex, use max in case commitIndex is already updated by other client request
+				p.updateCommitIndex(newLogIndex)
+				p.saveToPersistentStorageAndLogError()
+				// delete channel for the committed index
+				delete(p.logIndexMajorityCheckChannel, newLogIndex)
+				close(majorityCheckChannel)
+			}
 			p.mutex.Unlock()
 			p.logger.Infof("New log %v has been commited with log index %v", newlog, newLogIndex)
 			break
