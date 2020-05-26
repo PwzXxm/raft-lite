@@ -14,13 +14,13 @@ package pstorage
 import (
 	"bytes"
 	"encoding/gob"
-	"github.com/sasha-s/go-deadlock"
-	"os"
 	"github.com/natefinch/atomic"
+	"os"
+	"sync"
 )
 
 type FileBased struct {
-	lock     deadlock.Mutex
+	lock     sync.Mutex
 	filepath string
 }
 

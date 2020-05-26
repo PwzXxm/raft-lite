@@ -14,11 +14,11 @@ package pstorage
 import (
 	"bytes"
 	"encoding/gob"
-	"github.com/sasha-s/go-deadlock"
+	"sync"
 )
 
 type MemoryBased struct {
-	lock deadlock.Mutex
+	lock sync.Mutex
 	data []byte
 }
 

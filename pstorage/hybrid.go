@@ -14,8 +14,8 @@ package pstorage
 import (
 	"bytes"
 	"encoding/gob"
-	"github.com/sasha-s/go-deadlock"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/natefinch/atomic"
@@ -27,7 +27,7 @@ import (
 // called before quiting so the file on disk is up to date.
 
 type Hybrid struct {
-	lock     deadlock.Mutex
+	lock     sync.Mutex
 	filepath string
 	data     []byte
 	changed  bool

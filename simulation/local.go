@@ -14,9 +14,9 @@ package simulation
 
 import (
 	"fmt"
-	"github.com/sasha-s/go-deadlock"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/PwzXxm/raft-lite/client"
@@ -48,7 +48,7 @@ type Local struct {
 	clientCore        client.ClientCore
 
 	// network related
-	netLock          deadlock.RWMutex
+	netLock          sync.RWMutex
 	offlineNodes     map[rpccore.NodeID]bool
 	nodePartition    map[rpccore.NodeID]int
 	oneWayLatencyMin time.Duration

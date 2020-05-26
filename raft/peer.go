@@ -12,7 +12,7 @@
 package raft
 
 import (
-	"github.com/sasha-s/go-deadlock"
+	"sync"
 	"time"
 
 	"github.com/PwzXxm/raft-lite/pstorage"
@@ -48,7 +48,7 @@ type Snapshot struct {
 // peer structure
 type Peer struct {
 	state       PeerState       // peer state
-	mutex       deadlock.Mutex      // mutex, for accessing data across multiple goroutines
+	mutex       sync.Mutex      // mutex, for accessing data across multiple goroutines
 	currentTerm int             // latest term (increases monotonically)
 	votedFor    *rpccore.NodeID // candidateID that peer votes in this term, nil if none
 	voteCount   int             // count for other peers vote me in this term
