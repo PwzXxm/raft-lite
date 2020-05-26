@@ -69,7 +69,12 @@ func (p *Peer) startElection() {
 	p.saveToPersistentStorageAndLogError()
 
 	term := p.currentTerm
-	req := requestVoteReq{Term: p.currentTerm, CandidateID: p.node.NodeID(), LastLogIndex: p.logLen() - 1, LastLogTerm: p.getLogTermByIndex(p.logLen() - 1)}
+	req := requestVoteReq{
+		Term:         p.currentTerm,
+		CandidateID:  p.node.NodeID(),
+		LastLogIndex: p.logLen() - 1,
+		LastLogTerm:  p.getLogTermByIndex(p.logLen() - 1),
+	}
 	for _, peerID := range p.rpcPeersIds {
 		go func(peerID rpccore.NodeID, term int) {
 			for {

@@ -59,7 +59,7 @@ type installSnapshotReq struct {
 	LeaderID          rpccore.NodeID // leader ID
 	LastIncludedIndex int            // index of latest snapshot inluded
 	LastIncludedTerm  int            // term of latest snapshot included
-	Snapshot          *Snapshot      // snapshot
+	Snapshot          Snapshot       // snapshot
 }
 
 type installSnapshotRes struct {

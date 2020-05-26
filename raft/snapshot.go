@@ -57,7 +57,7 @@ func (p *Peer) handleInstallSnapshot(req installSnapshotReq) installSnapshotRes 
 	}
 
 	p.commitIndex = req.LastIncludedIndex
-	p.snapshot = req.Snapshot
+	p.snapshot = &(req.Snapshot)
 	p.heardFromLeader = true
 	err := p.stateMachine.ResetWithSnapshot(p.snapshot.StateMachineSnapshot)
 	if err != nil {

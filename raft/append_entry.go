@@ -119,8 +119,13 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 		nextIndex := p.nextIndex[target]
 		if p.toLogIndex(nextIndex) < 0 && p.snapshot != nil {
 			// do install snapshot
-			req := installSnapshotReq{Term: p.currentTerm, LeaderID: leaderID, LastIncludedIndex: p.snapshot.LastIncludedIndex,
-				LastIncludedTerm: p.snapshot.LastIncludedTerm, Snapshot: p.snapshot}
+			req := installSnapshotReq{
+				Term:              p.currentTerm,
+				LeaderID:          leaderID,
+				LastIncludedIndex: p.snapshot.LastIncludedIndex,
+				LastIncludedTerm:  p.snapshot.LastIncludedTerm,
+				Snapshot:          *p.snapshot,
+			}
 			p.mutex.Unlock()
 			res := p.installSnapshot(target, req)
 			if res == nil {
@@ -147,6 +152,8 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 			prevLogTerm := p.getLogTermByIndex(nextIndex - 1)
 			leaderCommit := p.commitIndex
 			entries := p.log[p.toLogIndex(nextIndex):]
+			entriesCopy := make([]LogEntry, len(entries))
+			copy(entriesCopy, entries)
 			p.mutex.Unlock()
 
 			// if no more entries need to be updated, return
@@ -155,8 +162,14 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 			}
 
 			isFirstTime = false
-			req := appendEntriesReq{Term: currentTerm, LeaderID: leaderID, PrevLogIndex: nextIndex - 1,
-				PrevLogTerm: prevLogTerm, LeaderCommit: leaderCommit, Entries: entries}
+			req := appendEntriesReq{
+				Term:         currentTerm,
+				LeaderID:     leaderID,
+				PrevLogIndex: nextIndex - 1,
+				PrevLogTerm:  prevLogTerm,
+				LeaderCommit: leaderCommit,
+				Entries:      entriesCopy,
+			}
 			res := p.appendEntries(target, req)
 			if res == nil {
 				// retry call appendEntries rpc if response is nil
