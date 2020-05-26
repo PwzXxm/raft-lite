@@ -14,9 +14,9 @@ package simulation
 
 import (
 	"fmt"
+	"github.com/sasha-s/go-deadlock"
 	"os"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/PwzXxm/raft-lite/client"
@@ -48,7 +48,7 @@ type Local struct {
 	clientCore        client.ClientCore
 
 	// network related
-	netLock          sync.RWMutex
+	netLock          deadlock.RWMutex
 	offlineNodes     map[rpccore.NodeID]bool
 	nodePartition    map[rpccore.NodeID]int
 	oneWayLatencyMin time.Duration
@@ -195,7 +195,7 @@ func newLocalOptional(n int, snapshotThreshold int, smMaker stateMachineMaker) (
 	}
 	l.oneWayLatencyMin = 10 * time.Millisecond
 	l.oneWayLatencyMax = 40 * time.Millisecond
-	l.packetLossRate = 0.01
+	l.packetLossRate = 0
 
 	cNode, err := l.network.NewNode("client")
 	if err != nil {

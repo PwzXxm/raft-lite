@@ -14,10 +14,10 @@ package rpccore
 import (
 	"fmt"
 	"log"
-	"sync"
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/sasha-s/go-deadlock"
 )
 
 // A ChanNode representing a node using channel
@@ -25,7 +25,7 @@ type ChanNode struct {
 	id       NodeID
 	network  *ChanNetwork
 	callback Callback
-	lock     sync.RWMutex
+	lock     deadlock.RWMutex
 }
 
 // NodeID gets the node's ID
@@ -74,7 +74,7 @@ func (node *ChanNode) RegisterRawRequestCallback(callback Callback) {
 // ChanNetwork representing the network information
 // including available nodes, timeout and delays
 type ChanNetwork struct {
-	lock           sync.RWMutex
+	lock           deadlock.RWMutex
 	nodeChannelMap map[NodeID](chan *chanReqMsg)
 	timeout        time.Duration
 	delayGenerator DelayGenerator

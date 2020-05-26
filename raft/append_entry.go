@@ -130,7 +130,10 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 				// install snapshot successfully
 				p.mutex.Lock()
 				p.handleInstallSnapshotRes(res)
-				p.nextIndex[target] = p.snapshot.LastIncludedIndex + 1
+
+				if p.state == Leader {
+					p.nextIndex[target] = p.snapshot.LastIncludedIndex + 1
+				}
 				p.mutex.Unlock()
 			}
 		} else {

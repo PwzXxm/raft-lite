@@ -14,7 +14,7 @@ package rpccore
 import (
 	"encoding/gob"
 	"fmt"
-	"sync"
+	"github.com/sasha-s/go-deadlock"
 	"time"
 
 	"github.com/PwzXxm/raft-lite/sm"
@@ -34,7 +34,7 @@ func init() {
 // TCPNetwork representing the network using TCP
 // including all the nodes exisiting in the current network
 type TCPNetwork struct {
-	lock        sync.RWMutex
+	lock        deadlock.RWMutex
 	nodeAddrMap map[NodeID]string
 	timeout     time.Duration
 	localNodes  map[NodeID]*TCPNode
@@ -154,7 +154,7 @@ type TCPNode struct {
 	callback       Callback
 	clientMap      map[NodeID]*gorpc.Client
 	clientOnlyMode bool
-	lock           sync.RWMutex
+	lock           deadlock.RWMutex
 	s              *gorpc.Server
 }
 
