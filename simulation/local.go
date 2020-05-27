@@ -32,7 +32,7 @@ import (
 const (
 	testTimingFactor         = 1
 	clientRequestTimeout     = 1 * time.Second
-	rpcTimeout               = 80 * testTimingFactor * time.Millisecond
+	rpcTimeout               = 100 * testTimingFactor * time.Millisecond
 	defaultSnapshotThreshold = 10000
 )
 
@@ -119,7 +119,7 @@ func (l *Local) delayGenerator(source, target rpccore.NodeID) time.Duration {
 			}
 		}
 	}
-	return rpcTimeout + time.Second
+	return rpcTimeout
 }
 
 func newLocal(n int) (*Local, error) {

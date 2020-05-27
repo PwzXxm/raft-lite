@@ -60,7 +60,7 @@ func (p *Peer) consistencyCheck(req appendEntriesReq) bool {
 	}
 
 	p.heardFromLeader = true
-	p.updateTerm(req.Term)
+	_ = p.updateTerm(req.Term)
 	p.changeState(Follower)
 	// update CurrentTerm, VotedFor
 	p.saveToPersistentStorageAndLogError()
@@ -119,9 +119,14 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 		nextIndex := p.nextIndex[target]
 		if p.toLogIndex(nextIndex) < 0 && p.snapshot != nil {
 			// do install snapshot
+			req := installSnapshotReq{
+				Term:              p.currentTerm,
+				LeaderID:          leaderID,
+				LastIncludedIndex: p.snapshot.LastIncludedIndex,
+				LastIncludedTerm:  p.snapshot.LastIncludedTerm,
+				Snapshot:          *p.snapshot,
+			}
 			p.mutex.Unlock()
-			req := installSnapshotReq{Term: p.currentTerm, LeaderID: leaderID, LastIncludedIndex: p.snapshot.LastIncludedIndex,
-				LastIncludedTerm: p.snapshot.LastIncludedTerm, Snapshot: p.snapshot}
 			res := p.installSnapshot(target, req)
 			if res == nil {
 				// retry install snapshot if response is nil
@@ -147,6 +152,8 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 			prevLogTerm := p.getLogTermByIndex(nextIndex - 1)
 			leaderCommit := p.commitIndex
 			entries := p.log[p.toLogIndex(nextIndex):]
+			entriesCopy := make([]LogEntry, len(entries))
+			copy(entriesCopy, entries)
 			p.mutex.Unlock()
 
 			// if no more entries need to be updated, return
@@ -155,8 +162,14 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 			}
 
 			isFirstTime = false
-			req := appendEntriesReq{Term: currentTerm, LeaderID: leaderID, PrevLogIndex: nextIndex - 1,
-				PrevLogTerm: prevLogTerm, LeaderCommit: leaderCommit, Entries: entries}
+			req := appendEntriesReq{
+				Term:         currentTerm,
+				LeaderID:     leaderID,
+				PrevLogIndex: nextIndex - 1,
+				PrevLogTerm:  prevLogTerm,
+				LeaderCommit: leaderCommit,
+				Entries:      entriesCopy,
+			}
 			res := p.appendEntries(target, req)
 			if res == nil {
 				// retry call appendEntries rpc if response is nil
@@ -167,8 +180,7 @@ func (p *Peer) callAppendEntryRPC(target rpccore.NodeID) {
 					p.updateLastHeard(target)
 					if !res.Success {
 						// update nextIndex for target node
-						if res.Term > currentTerm {
-							p.updateTerm(res.Term)
+						if p.updateTerm(res.Term) {
 							p.changeState(Follower)
 							// update CurrentTerm, VotedFor
 							p.saveToPersistentStorageAndLogError()
@@ -215,6 +227,7 @@ func (p *Peer) onReceiveClientRequest(cmd interface{}) bool {
 	p.logIndexMajorityCheckChannel[newLogIndex] = majorityCheckChannel
 	// trigger timeout to initialize call appendEntryRPC
 	p.triggerTimeout()
+	currentTerm := p.currentTerm
 	p.mutex.Unlock()
 
 	count := 0
@@ -223,12 +236,14 @@ func (p *Peer) onReceiveClientRequest(cmd interface{}) bool {
 		p.logger.Debugf("peer %v confirm log with index %v", nodeID, newLogIndex)
 		if 2*count > totalPeers {
 			p.mutex.Lock()
-			// update commitIndex, use max in case commitIndex is already updated by other client request
-			p.updateCommitIndex(newLogIndex)
-			p.saveToPersistentStorageAndLogError()
-			// delete channel for the committed index
-			delete(p.logIndexMajorityCheckChannel, newLogIndex)
-			close(majorityCheckChannel)
+			if p.state == Leader && currentTerm == p.currentTerm {
+				// update commitIndex, use max in case commitIndex is already updated by other client request
+				p.updateCommitIndex(newLogIndex)
+				p.saveToPersistentStorageAndLogError()
+				// delete channel for the committed index
+				delete(p.logIndexMajorityCheckChannel, newLogIndex)
+				close(majorityCheckChannel)
+			}
 			p.mutex.Unlock()
 			p.logger.Infof("New log %v has been commited with log index %v", newlog, newLogIndex)
 			break

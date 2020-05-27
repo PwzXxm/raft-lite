@@ -16,13 +16,15 @@ import "github.com/PwzXxm/raft-lite/rpccore"
 // handleRequestVote takes a requestVoteRes struct and returns a requestVoteRes
 // checks the required qualifications and responds with a term and bool value
 func (p *Peer) handleRequestVote(req requestVoteReq) requestVoteRes {
+	if p.updateTerm(req.Term) {
+		p.changeState(Follower)
+	}
 	// check candidate's qualification:
 	//  1. Deny if its term is samller than mine
 	//  2. or my log is more up to date
 	if req.Term < p.currentTerm || p.logPriorCheck(req.LastLogIndex, req.LastLogTerm) {
 		return requestVoteRes{Term: p.currentTerm, VoteGranted: false}
 	}
-	p.updateTerm(req.Term)
 	// check receiver's qualification:
 	//  1. Have not voted before, or voted to you before
 	if !(p.votedFor == nil || p.votedFor == &req.CandidateID) {
@@ -59,14 +61,19 @@ func (p *Peer) startElection() {
 	p.logger.Info("Start election.")
 	p.voteCount = 1
 	voteID := p.node.NodeID()
-	p.updateTerm(p.currentTerm + 1)
+	_ = p.updateTerm(p.currentTerm + 1)
 	p.votedFor = &voteID
 
 	// update CurrentTerm, VoteCount, VotedFor
 	p.saveToPersistentStorageAndLogError()
 
 	term := p.currentTerm
-	req := requestVoteReq{Term: p.currentTerm, CandidateID: p.node.NodeID(), LastLogIndex: p.logLen() - 1, LastLogTerm: p.getLogTermByIndex(p.logLen() - 1)}
+	req := requestVoteReq{
+		Term:         p.currentTerm,
+		CandidateID:  p.node.NodeID(),
+		LastLogIndex: p.logLen() - 1,
+		LastLogTerm:  p.getLogTermByIndex(p.logLen() - 1),
+	}
 	for _, peerID := range p.rpcPeersIds {
 		go func(peerID rpccore.NodeID, term int) {
 			for {
@@ -95,6 +102,12 @@ func (p *Peer) startElection() {
 // handleRequestVoteRespond handles the response, candidate only
 // called by go routine, plz check lock status first
 func (p *Peer) handleRequestVoteRespond(res requestVoteRes, id rpccore.NodeID) {
+	// response contains term > currentTerm, convert to Follower
+	if p.updateTerm(res.Term) {
+		p.changeState(Follower)
+		return
+	}
+
 	// outdated response case
 	if res.Term < p.currentTerm || p.state != Candidate {
 		return
@@ -111,13 +124,8 @@ func (p *Peer) handleRequestVoteRespond(res requestVoteRes, id rpccore.NodeID) {
 			p.changeState(Leader)
 			go p.onReceiveClientRequest(nil)
 		}
-	} else {
-		// response contains term > currentTerm, convert to Follower
-		if res.Term > p.currentTerm {
-			p.updateTerm(res.Term)
-			p.changeState(Follower)
-		}
 	}
+
 	// save to persistent storage
 	//  1. update VoteCount if vote is granted
 	//  2. update CurrentTerm, VotedFor if steps down

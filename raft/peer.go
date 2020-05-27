@@ -141,7 +141,6 @@ func (p *Peer) timeoutLoop() {
 	for {
 		p.mutex.Lock()
 		currentState := p.state
-		p.mutex.Unlock()
 
 		// timeout based on state
 		var timeout time.Duration
@@ -154,13 +153,24 @@ func (p *Peer) timeoutLoop() {
 			timeout = time.Duration(100 * p.timingFactor)
 		}
 
+		p.mutex.Unlock()
+
 		select {
 		case <-time.After(timeout * time.Millisecond):
 		case <-p.timeoutLoopChan:
 		}
 		p.mutex.Lock()
+		skipThisRound := p.timeoutLoopSkipThisRound
+		p.timeoutLoopSkipThisRound = false
+
+		// clear timeoutLoopChan
+		select {
+		case <-p.timeoutLoopChan:
+		default:
+		}
+
 		// ignore this round if the state has been changed.
-		if currentState == p.state && !p.timeoutLoopSkipThisRound {
+		if currentState == p.state && !skipThisRound {
 			switch p.state {
 			case Follower:
 				if !p.heardFromLeader {
@@ -174,7 +184,6 @@ func (p *Peer) timeoutLoop() {
 				p.startElection()
 			}
 		}
-		p.timeoutLoopSkipThisRound = false
 		shutdown := p.shutdown
 		p.mutex.Unlock()
 		if shutdown {
@@ -303,13 +312,15 @@ func (p *Peer) ShutDown() {
 }
 
 // updateTerm updates the term and resets the votedFor
-func (p *Peer) updateTerm(term int) {
+func (p *Peer) updateTerm(term int) bool {
 	if term > p.currentTerm {
 		p.logger.Infof("Term is incremented from %v to %v.", p.currentTerm, term)
 		p.currentTerm = term
 		// clear votedFor in the new term
 		p.votedFor = nil
+		return true
 	}
+	return false
 }
 
 // updateCommitIndex updates the commit index

@@ -48,6 +48,11 @@ func (p *Peer) handleInstallSnapshot(req installSnapshotReq) installSnapshotRes 
 	if req.Term < p.currentTerm {
 		return res
 	}
+
+	if p.updateTerm(res.Term) {
+		p.changeState(Follower)
+	}
+
 	// retain following logs if mine is longer
 	myLastRecoredIndex := p.logLen() - 1
 	if req.LastIncludedIndex < myLastRecoredIndex && p.getLogTermByIndex(req.LastIncludedIndex) == req.LastIncludedTerm {
@@ -57,7 +62,7 @@ func (p *Peer) handleInstallSnapshot(req installSnapshotReq) installSnapshotRes 
 	}
 
 	p.commitIndex = req.LastIncludedIndex
-	p.snapshot = req.Snapshot
+	p.snapshot = &(req.Snapshot)
 	p.heardFromLeader = true
 	err := p.stateMachine.ResetWithSnapshot(p.snapshot.StateMachineSnapshot)
 	if err != nil {
@@ -73,8 +78,7 @@ func (p *Peer) handleInstallSnapshot(req installSnapshotReq) installSnapshotRes 
 // handleInstallSnapshotRes handles the response
 func (p *Peer) handleInstallSnapshotRes(res *installSnapshotRes) {
 	// update leader's term if response includes a higher term
-	if res.Term > p.currentTerm {
-		p.updateTerm(res.Term)
+	if p.updateTerm(res.Term) {
 		p.changeState(Follower)
 		// update CurrentTerm, VotedFor
 		p.saveToPersistentStorageAndLogError()
