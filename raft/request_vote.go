@@ -18,7 +18,6 @@ import "github.com/PwzXxm/raft-lite/rpccore"
 func (p *Peer) handleRequestVote(req requestVoteReq) requestVoteRes {
 	if p.updateTerm(req.Term) {
 		p.changeState(Follower)
-		// p.resetTimeout()
 	}
 	// check candidate's qualification:
 	//  1. Deny if its term is samller than mine

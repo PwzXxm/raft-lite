@@ -141,7 +141,6 @@ func (p *Peer) timeoutLoop() {
 	for {
 		p.mutex.Lock()
 		currentState := p.state
-		// currentTerm := p.currentTerm
 
 		// timeout based on state
 		var timeout time.Duration
